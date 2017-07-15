@@ -1,0 +1,148 @@
+{
+  "repository": {
+    "operators": {
+			"patterns": [
+				{
+					"match": "!=|<=|>=|==|<|>",
+					"name": "keyword.operator.comparison.mist-exp"
+				},
+				{
+					"match": "&&|!|\\|\\|",
+					"name": "keyword.operator.logical.mist-exp"
+				},
+				{
+					"match": "%|\\*|/|-|\\+",
+					"name": "keyword.operator.mist-exp"
+				},
+				{
+					"begin": "\\?",
+					"beginCaptures": {
+						"0": {
+							"name": "keyword.operator.ternary.mist-exp"
+						}
+					},
+					"end": ":",
+					"endCaptures": {
+						"0": {
+							"name": "keyword.operator.ternary.mist-exp"
+						}
+					},
+					"patterns": [
+						{
+							"include": "#exp"
+						}
+					]
+				}
+			]
+		},
+		"comments": {
+			"patterns": [
+				{
+					"begin": "/\\*",
+					"end": "\\*/|(?=\\n|}|\")",
+					"name": "comment.block.mist"
+				},
+				{
+          "begin": "//",
+          "end": "(?=\\n|\\\\n|}|\")",
+          "name": "comment.line.mist"
+				}
+			]
+		},
+    "numbers": {
+			"patterns": [
+				{
+					"match": "\\b((0(x|X)[0-9a-fA-F]*)|(0(b|B)[01]*)|(([0-9]+\\.?[0-9]*)|(\\.[0-9]+))((e|E)(\\+|-)?[0-9]+)?)(L|l|UL|ul|u|U|F|f|ll|LL|ull|ULL)?\\b",
+					"name": "constant.numeric.mist-exp"
+				}
+			]
+		},
+    "strings": {
+      "begin": "'", 
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.string.end.mist"
+        }
+      }, 
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.definition.string.begin.mist"
+        }
+      }, 
+      "patterns": [
+        {
+          "match": "(?x:                # turn on extended mode\n                     \\\\                # a literal backslash\n                     (?:               # ...followed by...\n                       [\"\\\\/bfnrt]     # one of these characters\n                       |               # ...or...\n                       u               # a u\n                       [0-9a-fA-F]{4}  # and four hex digits\n                     )\n                   )", 
+          "name": "constant.character.escape.mist"
+        }, 
+        {
+          "match": "\\\\.", 
+          "name": "invalid.illegal.unrecognized-string-escape.mist"
+        }
+      ], 
+      "name": "string.quoted.double.mist", 
+      "end": "'"
+    },
+		"access": {
+			"captures": {
+				"1": {
+					"name": "punctuation.separator.dot-access.mist-exp"
+				},
+				"2": {
+					"name": "variable.other.member.mist-exp"
+				}
+			},
+			"match": "(\\.)([a-zA-Z_][a-zA-Z_0-9]*)\\b(?!\\s*\\()"
+		},
+		"function_call": {
+			"captures": {
+				"2": {
+					"name": "support.function.any-method.mist-exp"
+				},
+				"4": {
+					"name": "punctuation.definition.parameters.mist-exp"
+				}
+			},
+			"match": "(?x)\n(?:\n  (?=\\s)\n  (?:(?<=else|new|return) | (?<!\\w)) (\\s+)\n)?\n\n# Actual name\n(\n  \\b\n  (?!\n    (while|for|do|if|else|switch|catch|enumerate|return|sizeof|r?iterate)\n    \\s* \\(\n  )\n  (?:(?!NS)[A-Za-z_][A-Za-z0-9_]*+\\b | ::)++\n)\n\\s*(\\() # Opening bracket",
+			"name": "meta.function-call.mist-exp"
+		},
+    "exp": {
+      "name": "entity.exp.mist-exp",
+      "patterns": [
+        {
+          "include": "#comments"
+        },
+        {
+          "match": "\\b(null|nil|true|false)\\b",
+          "name": "constant.language.mist-exp"
+        },
+        {
+          "match": "[\\[\\]\\{\\}\\(\\),]|=>",
+          "name": "punctuation.definition.language.mist-exp"
+        },
+        {
+          "include": "#operators"
+        },
+        {
+          "include": "#numbers"
+        },
+        {
+          "include": "#strings"
+        },
+        {
+          "include": "#access"
+        },
+        {
+          "include": "#function_call"
+        }
+      ]
+    }
+  },
+  "scopeName": "source.mist-exp", 
+  "patterns": [
+    {
+      "include": "#exp"
+    }
+  ],
+  "name": "MIST-EXP",
+  "uuid": "c53cc89e-f5ad-4476-ac70-6441bad9e778"
+}

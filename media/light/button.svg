@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="15px" height="15px" viewBox="0 0 15 15" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 45.1 (43504) - http://www.bohemiancoding.com/sketch -->
+    <title>button</title>
+    <desc>Created with Sketch.</desc>
+    <defs></defs>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Artboard-2" transform="translate(-36.000000, -132.000000)">
+            <g id="button-copy-3" transform="translate(36.000000, 132.000000)">
+                <rect id="node-copy-3" stroke="#424242" x="0.5" y="0.5" width="14" height="14" rx="2"></rect>
+                <text id="OK" font-family="AvenirNextCondensed-Medium, Avenir Next Condensed" font-size="10" font-style="condensed" font-weight="400" fill="#424242">
+                    <tspan x="2" y="11">OK</tspan>
+                </text>
+            </g>
+        </g>
+    </g>
+</svg>

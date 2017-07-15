@@ -1,0 +1,101 @@
+{
+    "name": "mist",
+    "displayName": "Mist",
+    "description": "Language support for Mist",
+    "version": "0.1.1",
+    "publisher": "Sleen",
+    "engines": {
+        "vscode": "^1.13.0"
+    },
+    "categories": [
+        "Languages"
+    ],
+    "activationEvents": [
+        "onLanguage:mist",
+        "onCommand:extension.convertAll"
+    ],
+    "repository": {
+        "url": "https://github.com/Sleen/vscode-mist"
+    },
+    "main": "./out/src/mistMain",
+    "icon": "media/mist.png",
+    "contributes": {
+        "configurationDefaults": {
+            "[mist]": {
+                "editor.tabSize": 2,
+                "editor.insertSpaces": true
+            }
+        },
+        "languages": [
+            {
+                "id": "mist",
+                "aliases": ["MIST", "mist"],
+                "extensions": [".mist"],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "mist",
+                "scopeName": "source.mist",
+                "path": "./syntaxes/mist.tmLanguage.json"
+            },
+            {
+                "scopeName": "source.mist-exp",
+                "path": "./syntaxes/mist-exp.tmLanguage.json"
+            }
+        ],
+        "commands": [
+            {
+                "command": "extension.convertToNew",
+                "title": "Convert Template To New Format",
+                "category": "Mist"
+            },{
+                "command": "extension.convertAll",
+                "title": "Convert All Templates To New Format",
+                "category": "Mist"
+            },
+            {
+				"command": "mist.showPreviewToSide",
+				"title": "Open Preview to the Side",
+				"category": "Mist",
+				"icon": {
+					"light": "./media/light/preview.svg",
+					"dark": "./media/dark/preview.svg"
+				}
+			}
+        ],
+        "menus": {
+            "editor/title": [
+                {
+					"when": "resourceLangId == mist",
+					"command": "mist.showPreviewToSide",
+					"group": "navigation"
+				}
+            ]
+        },
+        "views": {
+			"explorer": [
+				{
+					"id": "mistNodeTree",
+                    "name": "Mist Outline"
+				}
+			]
+		}
+    },
+    "scripts": {
+        "vscode:prepublish": "tsc -p ./",
+        "compile": "tsc -watch -p ./",
+        "postinstall": "node ./node_modules/vscode/bin/install"
+    },
+    "dependencies": {
+        "jsonc-parser": "^0.4.0"
+    },
+    "devDependencies": {
+        "typescript": "^2.0.3",
+        "vscode": "^1.0.0",
+        "mocha": "^2.3.3",
+        "@types/node": "^6.0.40",
+        "@types/mocha": "^2.2.32"
+    }
+}
