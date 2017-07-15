@@ -2,7 +2,7 @@
     "name": "mist",
     "displayName": "Mist",
     "description": "Language support for Mist",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "publisher": "Sleen",
     "engines": {
         "vscode": "^1.13.0"
@@ -47,12 +47,23 @@
         ],
         "commands": [
             {
-                "command": "extension.convertToNew",
+                "command": "mist.convertToNew",
                 "title": "Convert Template To New Format",
                 "category": "Mist"
-            },{
-                "command": "extension.convertAll",
+            },
+            {
+                "command": "mist.convertAll",
                 "title": "Convert All Templates To New Format",
+                "category": "Mist"
+            },
+            {
+                "command": "mist.format",
+                "title": "Format Document",
+                "category": "Mist"
+            },
+            {
+                "command": "mist.formatSelection",
+                "title": "Format Selection",
                 "category": "Mist"
             },
             {
@@ -68,12 +79,30 @@
         "menus": {
             "editor/title": [
                 {
-					"when": "resourceLangId == mist",
+					"when": "editorLangId == mist",
 					"command": "mist.showPreviewToSide",
 					"group": "navigation"
 				}
+            ],
+            "editor/context": [
+                {
+					"when": "editorLangId == mist",
+                    "command": "mist.format",
+                    "group": "navigation"
+                },
+                {
+					"when": "editorLangId == mist && editorHasSelection",
+                    "command": "mist.formatSelection",
+                    "group": "navigation"
+				}
             ]
         },
+        "keybindings": [
+            {
+                "command": "mist.format",
+                "key": "alt+shift+f"
+            }
+        ],
         "views": {
 			"explorer": [
 				{

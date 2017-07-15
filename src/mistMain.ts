@@ -5,6 +5,7 @@ import { MistContentProvider, getMistUri, isMistFile } from './previewProvider';
 import MistNodeTreeProvider from './nodeTreeProvider';
 import MistCompletionProvider from './completionProvider'
 import MistDiagnosticProvider from './diagnosticProvider'
+import { format } from './formatter'
 
 import * as fs from 'fs';
 import * as path from 'path';
@@ -17,6 +18,7 @@ export function activate(context: ExtensionContext) {
     registerNodeTreeProvider(context);
     registerCompletionProvider(context);
     registerDiagnosticProvider(context);
+    registerFormatter(context);
 }
 
 function registerPreviewProvider(context: ExtensionContext) {
@@ -55,7 +57,7 @@ function registerPreviewProvider(context: ExtensionContext) {
 }
 
 function registerConvertor(context: ExtensionContext) {
-    context.subscriptions.push(commands.registerTextEditorCommand('extension.convertToNew', (textEditor: TextEditor, edit: TextEditorEdit) => {
+    context.subscriptions.push(commands.registerTextEditorCommand('mist.convertToNew', (textEditor: TextEditor, edit: TextEditorEdit) => {
         try {
             let isHomePage = path.basename(textEditor.document.fileName).startsWith('home_');
             let [newText, error, todoCount] = convertor.convertToNewFormat(textEditor.document.getText(), isHomePage);
@@ -79,7 +81,7 @@ function registerConvertor(context: ExtensionContext) {
         }
     }));
 
-    context.subscriptions.push(commands.registerCommand('extension.convertAll', args => {
+    context.subscriptions.push(commands.registerCommand('mist.convertAll', args => {
         if (!vscode.workspace.rootPath) {
             vscode.window.showErrorMessage("未打开文件夹");
             return;
@@ -180,4 +182,22 @@ function registerDiagnosticProvider(context: ExtensionContext) {
 		}
     }));
     
+}
+
+function registerFormatter(context: ExtensionContext) {
+    function _format(textEditor: vscode.TextEditor, selection: boolean) {
+        let edits = format(textEditor.document, selection ? textEditor.selection : null, {
+            tabSize: <number>textEditor.options.tabSize,
+            insertSpaces: <boolean>textEditor.options.insertSpaces
+        });
+        textEditor.edit(edit => edits.forEach(e => edit.replace(e.range, e.newText)));
+    }
+
+    context.subscriptions.push(commands.registerTextEditorCommand('mist.format', (textEditor: TextEditor, edit: TextEditorEdit) => {
+        _format(textEditor, false);
+    }));
+
+    context.subscriptions.push(commands.registerTextEditorCommand('mist.formatSelection', (textEditor: TextEditor, edit: TextEditorEdit) => {
+        _format(textEditor, true);
+    }));
 }
