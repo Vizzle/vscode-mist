@@ -3,6 +3,7 @@
 
 import * as vscode from 'vscode';
 import * as json from 'jsonc-parser';
+import {parseJson} from './jsonUtils'
 import * as path from 'path';
 
 export default class MistNodeTreeProvider implements vscode.TreeDataProvider<json.Node>, vscode.DocumentSymbolProvider {
@@ -66,7 +67,7 @@ export default class MistNodeTreeProvider implements vscode.TreeDataProvider<jso
 		this.tree = null;
 		this.editor = vscode.window.activeTextEditor;
 		if (this.editor && this.editor.document && this.editor.document.languageId === 'mist') {
-			let tpl = json.parseTree(this.editor.document.getText());
+			let tpl = parseJson(this.editor.document.getText());
 			this.tree = this.getProp(tpl, 'layout');
 		}
 	}
@@ -282,9 +283,9 @@ export default class MistNodeTreeProvider implements vscode.TreeDataProvider<jso
 
 	provideDocumentSymbols(document: vscode.TextDocument): vscode.ProviderResult<vscode.SymbolInformation[]> {
 		let errors = [];
-		let tpl = json.parseTree(document.getText(), errors);
+		let tpl = parseJson(document.getText(), errors);
 		if (errors.length > 0) {
-			console.log("json parse error: ", errors);
+			console.log("json parse error: ", errors.map(err => json.getParseErrorMessage(err)));
         }
 		
 		let symbols:vscode.SymbolInformation[] = []

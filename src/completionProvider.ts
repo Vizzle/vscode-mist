@@ -3,6 +3,7 @@
 
 import * as vscode from 'vscode';
 import * as json from 'jsonc-parser'
+import {parseJson} from './jsonUtils'
 
 enum BasicType {
     Object,
@@ -540,20 +541,9 @@ export default class MistCompletionProvider implements vscode.CompletionItemProv
         return properties;
     }
 
-    private getRootNode(document: vscode.TextDocument) {
-        let rootNode = json.parseTree(document.getText());
-        
-        if (rootNode.type === "property") {
-            let node: json.Node = {type:"object", children:[rootNode], offset: 0, length: document.getText().length};
-            rootNode = node;
-        }
-        
-        return rootNode;
-    }
-    
     provideHover(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken): vscode.ProviderResult<vscode.Hover> {
         let location = json.getLocation(document.getText(), document.offsetAt(position));
-        let rootNode = this.getRootNode(document);
+        let rootNode = parseJson(document.getText());
         let properties = this.getProperties(rootNode, location);
         
         let node = json.findNodeAtLocation(rootNode, location.path);
@@ -576,7 +566,7 @@ export default class MistCompletionProvider implements vscode.CompletionItemProv
 
     provideCompletionItems(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken) {
         let location = json.getLocation(document.getText(), document.offsetAt(position));
-        let rootNode = this.getRootNode(document);
+        let rootNode = parseJson(document.getText());
         let properties = this.getProperties(rootNode, location);
 
         return Object.keys(properties).map(p => {
