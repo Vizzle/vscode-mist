@@ -412,17 +412,17 @@ export default class MistCompletionProvider implements vscode.CompletionItemProv
 	}
 
 	private getType(node: json.Node): string {
-		if (node.type == 'object') {
-			let childrenNode = this.getProp(node, 'children');
-			let typeNode = this.getProp(node, 'type');
-			return typeNode ? typeNode.value : childrenNode ? 'stack' : 'node';
-		}
-		else if (node.type == 'string' && (<string>node.value).match(/^\${.+}$/)) {
-			return "exp";
-		}
-		else {
-			return "unknown";
-		}
+        if (node) {
+            if (node.type == 'object') {
+                let childrenNode = this.getProp(node, 'children');
+                let typeNode = this.getProp(node, 'type');
+                return typeNode ? typeNode.value : childrenNode ? 'stack' : 'node';
+            }
+            else if (node.type == 'string' && (<string>node.value).match(/^\${.+}$/)) {
+                return "exp";
+            }
+        }
+        return "unknown";
 	}
 
     private getPropertiesWithPath(properties, path: json.Segment[]) {
@@ -498,15 +498,18 @@ export default class MistCompletionProvider implements vscode.CompletionItemProv
         }
 
         if (location.isAtPropertyKey) {
-            let existsProperties = json.findNodeAtLocation(rootNode, location.path.slice(0, location.path.length - 1)).children.map(p => p.children[0].value);
-            if (existsProperties) {
-                var index = existsProperties.indexOf(currentPath as string, 0);
-                if (index >= 0) {
-                    existsProperties.splice(index, 1);
+            let node = json.findNodeAtLocation(rootNode, location.path.slice(0, location.path.length - 1));
+            if (node) {
+                let existsProperties = node.children.map(p => p.children[0].value);
+                if (existsProperties) {
+                    var index = existsProperties.indexOf(currentPath as string, 0);
+                    if (index >= 0) {
+                        existsProperties.splice(index, 1);
+                    }
+                    existsProperties.forEach(p => {
+                        delete properties[p];
+                    });
                 }
-                existsProperties.forEach(p => {
-                    delete properties[p];
-                });
             }
         }
         else {

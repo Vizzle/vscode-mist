@@ -150,6 +150,10 @@ export default class MistNodeTreeProvider implements vscode.TreeDataProvider<jso
 				break;
 		}
 
+		if (!desc) {
+			desc = '';
+		}
+
 		let events = node.children.filter(p => (<string>p.children[0].value).startsWith('on-')).map(s => '[' + s.children[0].value + ']').join(' ');
 		if (events) {
 			desc = events + ' ' + desc;
