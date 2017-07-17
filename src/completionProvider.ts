@@ -581,33 +581,41 @@ export default class MistCompletionProvider implements vscode.CompletionItemProv
             let info: PropertyInfo = properties[p];
             item.documentation = info.desc;
             
+            function valueText() {
+                if (!location.isAtPropertyKey) {
+                    return '';
+                }
+
+                let valueText = '';
+                let comma = false;
+                if (document.lineAt(position.line).text.substr(position.character+1).match(/^\s*"/)) {
+                    comma = true;
+                }
+                else if (position.line + 1 < document.lineCount && document.lineAt(position.line + 1).text.match(/^\s*"/)) {
+                    comma = true;
+                }
+                valueText += `: ${info.defaultValue}`;
+                if (comma) {
+                    valueText += ',';
+                }
+                
+                return valueText;
+            }
+
             if (location.previousNode) {
                 let offset = document.offsetAt(position);
                 let delta = offset - location.previousNode.offset;
                 let inQuote = delta > 0 && delta < location.previousNode.length;
                 if (inQuote) {
-                    item.insertText = p;
-                    item.range = new vscode.Range(document.positionAt(location.previousNode.offset + 1), document.positionAt(location.previousNode.offset + location.previousNode.length - 1));
+                    item.insertText = new vscode.SnippetString(`${p}"${valueText()}`);
+                    item.range = new vscode.Range(document.positionAt(location.previousNode.offset + 1), document.positionAt(location.previousNode.offset + location.previousNode.length));
                 }
                 else {
                     item.insertText = `"${p}"`;
                     item.range = new vscode.Range(document.positionAt(location.previousNode.offset), document.positionAt(location.previousNode.offset + location.previousNode.length));
                 }
             } else {
-                let insertText = `"${p}"`;
-                let comma = false;
-                if (document.lineAt(position.line).text.substr(position.character).match(/^\s*"/)) {
-                    comma = true;
-                }
-                else if (position.line + 1 < document.lineCount && document.lineAt(position.line + 1).text.match(/^\s*"/)) {
-                    comma = true;
-                }
-                insertText += `: ${info.defaultValue}`;
-                if (comma) {
-                    insertText += ',';
-                }
-                // insertText += '$0';
-                item.insertText = new vscode.SnippetString(insertText);
+                item.insertText = new vscode.SnippetString(`"${p}"${valueText()}`);
             }
             return item;
         });
