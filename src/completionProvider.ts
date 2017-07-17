@@ -14,20 +14,46 @@ enum BasicType {
     Other,
 }
 
-type Enum = any[] | { [key: string]: string };
-type ObjectProperty = { [key: string]: PropertyInfo};
+class EnumProperty { [key: string]: string };
+class ObjectProperty { [key: string]: PropertyInfo };
+type Enum = any[] | EnumProperty;
 type PropertyType = BasicType | Enum | ObjectProperty;
-let Event = BasicType.Object;
 
 class PropertyInfo {
     constructor(public type: PropertyType, public desc: string, private _defaultValue = null) {}
+
+    public isEnumProperty() {
+        if (this.type instanceof Array) {
+            return true;
+        }
+        else if (this.type instanceof Object) {
+            let keys = Object.keys(this.type);
+            if (keys.length > 0) {
+                return typeof this.type[keys[0]] === "string";
+            }
+        }
+        return false;
+    }
+
+    public isObjectProperty() {
+        if (this.type instanceof Object) {
+            let keys = Object.keys(this.type);
+            if (keys.length > 0) {
+                return this.type[keys[0]] instanceof PropertyInfo;
+            }
+        }
+        return false;
+    }
 
     get defaultValue() {
         if (this._defaultValue) {
             return this._defaultValue;
         }
-        if (this.type instanceof Array || this.type instanceof Object) {
+        if (this.isEnumProperty()) {
             return '"$0"';
+        }
+        else if (this.isObjectProperty()) {
+            return '{$0}';
         }
 
         switch (this.type) {
@@ -42,6 +68,18 @@ class PropertyInfo {
         }
         
     }
+}
+
+let Log = {
+    "seed": new PropertyInfo(BasicType.String, "埋点的 spmId"),
+    "params": new PropertyInfo(BasicType.String, "埋点扩展参数"),
+}
+
+let Event = {
+    "openUrl:": new PropertyInfo(BasicType.String, "打开指定的 URL"),
+    "updateState:": new PropertyInfo(BasicType.Object, "更新状态。值应该为一个字典，将状态中对应的值更新。注意不是替换整个状态，只是更改对应的 key"),
+    "exposureLog:": new PropertyInfo(Log, "曝光埋点"),
+    "clickLog:": new PropertyInfo(Log, "点击埋点"),
 }
 
 export default class MistCompletionProvider implements vscode.CompletionItemProvider {
@@ -231,10 +269,30 @@ export default class MistCompletionProvider implements vscode.CompletionItemProv
         },
         "button": {
             "style": new PropertyInfo({
-                "title": new PropertyInfo(BasicType.String, "显示的文字"),
-                "image": new PropertyInfo(BasicType.String, "显示的图片，只能为本地图片，图片固定显示在文字左边。支持状态"),
-                "background-image": new PropertyInfo(BasicType.String, "按钮背景图片，只能为本地图片，也可以设置为颜色。支持状态"),
-                "title-color": new PropertyInfo(MistCompletionProvider.colors, "文字颜色。默认为黑色"),
+                "title": new PropertyInfo({
+                    "normal": new PropertyInfo(BasicType.String, "普通状态的样式"),
+                    "highlighted": new PropertyInfo(BasicType.String, "按下状态的样式"),
+                    // "disabled": new PropertyInfo(BasicType.String, "禁用状态的样式"),
+                    // "selected": new PropertyInfo(BasicType.String, "选择状态的样式"),
+                }, "显示的文字"),
+                "image": new PropertyInfo({
+                    "normal": new PropertyInfo(BasicType.String, "普通状态的样式"),
+                    "highlighted": new PropertyInfo(BasicType.String, "按下状态的样式"),
+                    // "disabled": new PropertyInfo(BasicType.String, "禁用状态的样式"),
+                    // "selected": new PropertyInfo(BasicType.String, "选择状态的样式"),
+                }, "显示的图片，只能为本地图片，图片固定显示在文字左边。支持状态"),
+                "background-image": new PropertyInfo({
+                    "normal": new PropertyInfo(BasicType.String, "普通状态的样式"),
+                    "highlighted": new PropertyInfo(BasicType.String, "按下状态的样式"),
+                    // "disabled": new PropertyInfo(BasicType.String, "禁用状态的样式"),
+                    // "selected": new PropertyInfo(BasicType.String, "选择状态的样式"),
+                }, "按钮背景图片，只能为本地图片，也可以设置为颜色。支持状态"),
+                "title-color": new PropertyInfo({
+                    "normal": new PropertyInfo(MistCompletionProvider.colors, "普通状态的样式"),
+                    "highlighted": new PropertyInfo(MistCompletionProvider.colors, "按下状态的样式"),
+                    // "disabled": new PropertyInfo(MistCompletionProvider.colors, "禁用状态的样式"),
+                    // "selected": new PropertyInfo(MistCompletionProvider.colors, "选择状态的样式"),
+                }, "文字颜色。默认为黑色"),
                 "font-size": new PropertyInfo(BasicType.Number, "字体大小。"),
                 "font-name": new PropertyInfo(BasicType.String, "字体名。默认为系统字体"),
                 "font-style": new PropertyInfo(["ultra-light", "thin", "light", "normal", "medium", "bold", "heavy", "black", "italic", "bold-italic"], "字体样式"),
@@ -372,7 +430,17 @@ export default class MistCompletionProvider implements vscode.CompletionItemProv
             return properties instanceof Object ? properties : {};
         }
         else if (path.length > 1) {
-            return this.getPropertiesWithPath(properties[path[0]].type, path.slice(1));
+            let key = path[0];
+            if (typeof key === "string" && key.startsWith("on-") && key.endsWith("-once")) {
+                key = key.substring(0, key.length - 5);
+                if (!(properties[key] instanceof PropertyInfo && properties[key].type === Event)) {
+                    return {};
+                }
+            }
+            let info = properties[key];
+            if (info) {
+                return this.getPropertiesWithPath(info.type, path.slice(1));
+            }
         }
         return {};
     }
@@ -444,13 +512,27 @@ export default class MistCompletionProvider implements vscode.CompletionItemProv
         else {
             let info: PropertyInfo = properties[currentPath];
             properties = {};
-            if (info.type instanceof Array) {
-                (<Array<string>>info.type).forEach(v => properties[v] = new PropertyInfo(BasicType.String, ""));
-            }
-            else if (info.type instanceof Object) {
-                Object.keys(info.type).forEach(k => properties[k] = new PropertyInfo(BasicType.String, info.type[k]));
+            if (info.isEnumProperty()) {
+                if (info.type instanceof Array) {
+                    (<Array<string>>info.type).forEach(v => properties[v] = new PropertyInfo(BasicType.String, ""));
+                }
+                else {
+                    Object.keys(info.type).forEach(k => properties[k] = new PropertyInfo(BasicType.String, info.type[k]));
+                }
             }
         }
+
+        let keys = Object.keys(properties);
+        keys.forEach(key => {
+            if (key.startsWith("on-")) {
+                let info: PropertyInfo = properties[key];
+                if (info.type === Event) {
+                    let once = new PropertyInfo(info.type, `${info.desc || ""}（只触发一次）`, info.defaultValue);
+                    properties[`${key}-once`] = once;
+                }
+            }
+        })
+
 
         return properties;
     }
@@ -470,7 +552,6 @@ export default class MistCompletionProvider implements vscode.CompletionItemProv
         let location = json.getLocation(document.getText(), document.offsetAt(position));
         let rootNode = this.getRootNode(document);
         let properties = this.getProperties(rootNode, location);
-
         
         let node = json.findNodeAtLocation(rootNode, location.path);
         if (location.isAtPropertyKey && node.parent.type == 'property') {
