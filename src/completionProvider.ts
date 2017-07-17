@@ -73,7 +73,7 @@ class PropertyInfo {
 
 let Log = {
     "seed": new PropertyInfo(BasicType.String, "埋点的 spmId"),
-    "params": new PropertyInfo(BasicType.String, "埋点扩展参数"),
+    "params": new PropertyInfo(BasicType.Object, "埋点扩展参数"),
 }
 
 let Event = {
@@ -498,6 +498,17 @@ export default class MistCompletionProvider implements vscode.CompletionItemProv
             properties = Object.assign(properties, this.getPropertiesWithPath(nodeProperties, path));
         }
 
+        let keys = Object.keys(properties);
+        keys.forEach(key => {
+            if (key.startsWith("on-")) {
+                let info: PropertyInfo = properties[key];
+                if (info.type === Event) {
+                    let once = new PropertyInfo(info.type, `${info.desc || ""}（只触发一次）`, info.defaultValue);
+                    properties[`${key}-once`] = once;
+                }
+            }
+        })
+
         if (location.isAtPropertyKey) {
             let node = json.findNodeAtLocation(rootNode, location.path.slice(0, location.path.length - 1));
             if (node) {
@@ -525,18 +536,6 @@ export default class MistCompletionProvider implements vscode.CompletionItemProv
                 }
             }
         }
-
-        let keys = Object.keys(properties);
-        keys.forEach(key => {
-            if (key.startsWith("on-")) {
-                let info: PropertyInfo = properties[key];
-                if (info.type === Event) {
-                    let once = new PropertyInfo(info.type, `${info.desc || ""}（只触发一次）`, info.defaultValue);
-                    properties[`${key}-once`] = once;
-                }
-            }
-        })
-
 
         return properties;
     }
