@@ -15,7 +15,7 @@
         "onCommand:extension.convertAll"
     ],
     "repository": {
-        "url": "https://github.com/Sleen/vscode-mist"
+        "url": "https://github.com/Vizzle/vscode-mist"
     },
     "main": "./out/src/mistMain",
     "icon": "media/mist.png",
