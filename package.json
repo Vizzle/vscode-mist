@@ -104,17 +104,17 @@
                 {
                     "when": "editorLangId == mist && !config.mist.isDebugging",
                     "command": "mist.startServer",
-                    "group": "navigation"
+                    "group": "navigation@1"
                 },
                 {
                     "when": "editorLangId == mist && config.mist.isDebugging",
                     "command": "mist.stopServer",
-                    "group": "navigation"
+                    "group": "navigation@1"
                 },
                 {
                     "when": "editorLangId == mist",
                     "command": "mist.showPreviewToSide",
-                    "group": "navigation"
+                    "group": "navigation@2"
                 }
             ],
             "editor/context": [

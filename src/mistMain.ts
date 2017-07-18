@@ -33,7 +33,7 @@ export function deactivate(context: ExtensionContext) {
 function registerMistServer(context: ExtensionContext) {
     let server;
     let output;
-    vscode.workspace.getConfiguration('mist').update('isDebugging', false);
+    vscode.workspace.getConfiguration().update('mist.isDebugging', false);
 
     context.subscriptions.push(commands.registerCommand('mist.startServer', uri => {
         if (server) {
@@ -56,7 +56,7 @@ function registerMistServer(context: ExtensionContext) {
         let serverPort = 10001;
         server = httpServer.createServer(options);
         server.listen(serverPort, "0.0.0.0", function () {
-            vscode.workspace.getConfiguration('mist').update('isDebugging', true);
+            vscode.workspace.getConfiguration().update('mist.isDebugging', true);
 
             output = vscode.window.createOutputChannel("Mist Debug Server");
             output.show();
@@ -90,8 +90,6 @@ function registerMistServer(context: ExtensionContext) {
     }));
 
     function stopServer() {
-        vscode.workspace.getConfiguration('mist').update('isDebugging', false);
-
         if (server) {
             server.close();
             server = null;
@@ -102,6 +100,19 @@ function registerMistServer(context: ExtensionContext) {
             output.hide();
             output.dispose();
             output = null;
+        }
+
+        if (vscode.workspace.rootPath) {
+            // return vscode.workspace.getConfiguration().update('mist.isDebugging', false);
+
+            // direct read/write the settings file cause update configuration dose not work in `deactivate`
+            let settingsPath = `${vscode.workspace.rootPath}/.vscode/settings.json`;
+            let text = fs.readFileSync(settingsPath).toString();
+            let settings = JSON.parse(text);
+            if (settings && settings["mist.isDebugging"]) {
+                settings["mist.isDebugging"] = false;
+                fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 4));
+            }
         }
     }
 
