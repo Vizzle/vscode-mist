@@ -10,10 +10,12 @@ import { format } from './formatter'
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { workspace, commands, Disposable, ExtensionContext, TextEditor, TextEditorEdit } from 'vscode'
+import { workspace, commands, Disposable, ExtensionContext, TextEditor, TextEditorEdit } from 'vscode';
+import * as httpServer from 'http-server';
 
 export function activate(context: ExtensionContext) {
     registerConvertor(context);
+    registerMistServer(context);
     registerPreviewProvider(context);
     registerNodeTreeProvider(context);
     registerCompletionProvider(context);
@@ -21,10 +23,95 @@ export function activate(context: ExtensionContext) {
     registerFormatter(context);
 }
 
+let stopServerFunc;
+export function deactivate(context: ExtensionContext) {
+    if (stopServerFunc) {
+        return stopServerFunc();
+    }
+}
+
+function registerMistServer(context: ExtensionContext) {
+    let server;
+    let output;
+    vscode.workspace.getConfiguration('mist').update('isDebugging', false);
+
+    context.subscriptions.push(commands.registerCommand('mist.startServer', uri => {
+        if (server) {
+            return;
+        }
+        
+        let workingDir = vscode.workspace.rootPath;
+        if (!workingDir) {
+            vscode.window.showErrorMessage("未打开文件夹");
+            return;
+        }
+
+        let options = {
+            root: workingDir,
+            logFn: (req, res, err) => {
+                output.appendLine(`> GET\t${req.url}`)
+            }
+        };
+
+        let serverPort = 10001;
+        server = httpServer.createServer(options);
+        server.listen(serverPort, "0.0.0.0", function () {
+            vscode.workspace.getConfiguration('mist').update('isDebugging', true);
+
+            output = vscode.window.createOutputChannel("Mist Debug Server");
+            output.show();
+            output.appendLine(`> Start mist debug server at 127.0.0.1:${serverPort}`);
+        });
+    }));
+
+    context.subscriptions.push(commands.registerCommand('mist.stopServer', uri => {
+        stopServer();
+    }));
+
+    context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(document => {
+        let validFormat = isMistFile(document) || document.uri.path.endsWith('.json');
+        if (!validFormat || !server) {
+            return;
+        }
+
+        let clientPort = 10002;
+        let options = {
+            hostname: '0.0.0.0',
+            port: clientPort,
+            method: 'GET',
+            path: '/refresh'
+        };
+
+        var req = require('http').request(options, null);
+        req.on('error', (e) => {
+            console.log(`SIMULATOR NOT RESPONSE: ${e.message}\n`);
+        });
+        req.end();
+    }));
+
+    function stopServer() {
+        vscode.workspace.getConfiguration('mist').update('isDebugging', false);
+
+        if (server) {
+            server.close();
+            server = null;
+        }
+        
+        if (output) {
+            output.clear();
+            output.hide();
+            output.dispose();
+            output = null;
+        }
+    }
+
+    stopServerFunc = stopServer;
+}
+
 function registerPreviewProvider(context: ExtensionContext) {
     const contentProvider = new MistContentProvider(context);
-	const contentProviderRegistration = vscode.workspace.registerTextDocumentContentProvider('mist', contentProvider);
-	context.subscriptions.push(contentProviderRegistration);
+    const contentProviderRegistration = vscode.workspace.registerTextDocumentContentProvider('mist', contentProvider);
+    context.subscriptions.push(contentProviderRegistration);
 
     context.subscriptions.push(commands.registerCommand('mist.showPreviewToSide', uri => {
         let resource = uri;
@@ -34,26 +121,26 @@ function registerPreviewProvider(context: ExtensionContext) {
                 resource = vscode.window.activeTextEditor.document.uri;
             }
         }
-        
+
         return vscode.commands.executeCommand('vscode.previewHtml',
             getMistUri(uri),
             vscode.ViewColumn.Two,
             `Preview '${path.basename(resource.fsPath)}'`)
     }));
-    
-	context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(document => {
-		if (isMistFile(document)) {
-			const uri = getMistUri(document.uri);
-			contentProvider.update(uri);
-		}
-	}));
 
-	context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(event => {
-		if (isMistFile(event.document)) {
-			const uri = getMistUri(event.document.uri);
-			contentProvider.update(uri);
-		}
-	}));
+    context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(document => {
+        if (isMistFile(document)) {
+            const uri = getMistUri(document.uri);
+            contentProvider.update(uri);
+        }
+    }));
+
+    context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(event => {
+        if (isMistFile(event.document)) {
+            const uri = getMistUri(event.document.uri);
+            contentProvider.update(uri);
+        }
+    }));
 }
 
 function registerConvertor(context: ExtensionContext) {
@@ -65,7 +152,7 @@ function registerConvertor(context: ExtensionContext) {
                 vscode.window.showErrorMessage(error);
             }
             else {
-                textEditor.edit(edit=>edit.replace(new vscode.Range(textEditor.document.positionAt(0), textEditor.document.positionAt(textEditor.document.getText().length)), newText)).then(success=>{
+                textEditor.edit(edit => edit.replace(new vscode.Range(textEditor.document.positionAt(0), textEditor.document.positionAt(textEditor.document.getText().length)), newText)).then(success => {
                     if (todoCount > 0) {
                         vscode.window.showInformationMessage("有 " + todoCount + " 个需要检查的地方");
                         let todoMark = "// TODO";
@@ -109,7 +196,7 @@ function registerConvertor(context: ExtensionContext) {
                                 throw error;
                             }
                             else {
-                                fs.writeFileSync(filePath, newText, {encoding: "utf-8"});
+                                fs.writeFileSync(filePath, newText, { encoding: "utf-8" });
                                 console.log('"' + filePath + '" 转换成功');
                                 successCount++;
                             }
@@ -129,25 +216,25 @@ function registerConvertor(context: ExtensionContext) {
 
 function registerNodeTreeProvider(context: ExtensionContext) {
     const nodeTreeProvider = new MistNodeTreeProvider(context);
-	const symbolsProviderRegistration = vscode.languages.registerDocumentSymbolProvider({ language: 'mist' }, nodeTreeProvider);
+    const symbolsProviderRegistration = vscode.languages.registerDocumentSymbolProvider({ language: 'mist' }, nodeTreeProvider);
     vscode.window.registerTreeDataProvider('mistNodeTree', nodeTreeProvider);
 
-	vscode.commands.registerCommand('mist.openNodeSelection', range => {
-		nodeTreeProvider.select(range);
+    vscode.commands.registerCommand('mist.openNodeSelection', range => {
+        nodeTreeProvider.select(range);
     });
-    
-	context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(document => {
-		if (document.languageId === 'mist') {
-			nodeTreeProvider.update();
-		}
-	}));
 
-	context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(event => {
-		if (event.document.languageId === 'mist') {
+    context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(document => {
+        if (document.languageId === 'mist') {
             nodeTreeProvider.update();
-		}
+        }
     }));
-    
+
+    context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(event => {
+        if (event.document.languageId === 'mist') {
+            nodeTreeProvider.update();
+        }
+    }));
+
 }
 
 function registerCompletionProvider(context: ExtensionContext) {
@@ -156,8 +243,8 @@ function registerCompletionProvider(context: ExtensionContext) {
     context.subscriptions.push(vscode.languages.registerHoverProvider({ language: 'mist' }, completionProvider));
     context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(event => {
         if (event.textEditor.document.languageId === 'mist') {
-			completionProvider.selectionDidChange(event.textEditor);
-		}
+            completionProvider.selectionDidChange(event.textEditor);
+        }
     }));
 }
 
@@ -165,24 +252,24 @@ function registerDiagnosticProvider(context: ExtensionContext) {
     let diagnosticProvider = new MistDiagnosticProvider();
     context.subscriptions.push(diagnosticProvider);
 
-	context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(event => {
-		if (event.document.languageId === 'mist') {
+    context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(event => {
+        if (event.document.languageId === 'mist') {
             diagnosticProvider.onChange(event.document);
-		}
+        }
     }));
-    
-	context.subscriptions.push(vscode.workspace.onDidOpenTextDocument(document => {
-		if (document.languageId === 'mist') {
+
+    context.subscriptions.push(vscode.workspace.onDidOpenTextDocument(document => {
+        if (document.languageId === 'mist') {
             diagnosticProvider.onChange(document);
-		}
+        }
     }));
-    
-	context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(document => {
-		if (document.languageId === 'mist') {
+
+    context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(document => {
+        if (document.languageId === 'mist') {
             diagnosticProvider.onChange(document);
-		}
+        }
     }));
-    
+
 }
 
 function registerFormatter(context: ExtensionContext) {

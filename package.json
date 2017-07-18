@@ -29,8 +29,13 @@
         "languages": [
             {
                 "id": "mist",
-                "aliases": ["MIST", "mist"],
-                "extensions": [".mist"],
+                "aliases": [
+                    "MIST",
+                    "mist"
+                ],
+                "extensions": [
+                    ".mist"
+                ],
                 "configuration": "./language-configuration.json"
             }
         ],
@@ -67,34 +72,62 @@
                 "category": "Mist"
             },
             {
-				"command": "mist.showPreviewToSide",
-				"title": "Open Preview to the Side",
-				"category": "Mist",
-				"icon": {
-					"light": "./media/light/preview.svg",
-					"dark": "./media/dark/preview.svg"
-				}
-			}
+                "command": "mist.startServer",
+                "title": "Start Mist Debug Server",
+                "category": "Mist",
+                "icon": {
+                    "light": "./media/light/start.svg",
+                    "dark": "./media/dark/start.svg"
+                }
+            },
+            {
+                "command": "mist.stopServer",
+                "title": "Stop Mist Debug Server",
+                "category": "Mist",
+                "icon": {
+                    "light": "./media/light/stop.svg",
+                    "dark": "./media/dark/stop.svg"
+                }
+            },
+            {
+                "command": "mist.showPreviewToSide",
+                "title": "Open Preview to the Side",
+                "category": "Mist",
+                "icon": {
+                    "light": "./media/light/preview.svg",
+                    "dark": "./media/dark/preview.svg"
+                }
+            }
         ],
         "menus": {
             "editor/title": [
                 {
-					"when": "editorLangId == mist",
-					"command": "mist.showPreviewToSide",
-					"group": "navigation"
-				}
+                    "when": "editorLangId == mist && !config.mist.isDebugging",
+                    "command": "mist.startServer",
+                    "group": "navigation"
+                },
+                {
+                    "when": "editorLangId == mist && config.mist.isDebugging",
+                    "command": "mist.stopServer",
+                    "group": "navigation"
+                },
+                {
+                    "when": "editorLangId == mist",
+                    "command": "mist.showPreviewToSide",
+                    "group": "navigation"
+                }
             ],
             "editor/context": [
                 {
-					"when": "editorLangId == mist",
+                    "when": "editorLangId == mist",
                     "command": "mist.format",
                     "group": "navigation"
                 },
                 {
-					"when": "editorLangId == mist && editorHasSelection",
+                    "when": "editorLangId == mist && editorHasSelection",
                     "command": "mist.formatSelection",
                     "group": "navigation"
-				}
+                }
             ]
         },
         "keybindings": [
@@ -104,13 +137,22 @@
             }
         ],
         "views": {
-			"explorer": [
-				{
-					"id": "mistNodeTree",
+            "explorer": [
+                {
+                    "id": "mistNodeTree",
                     "name": "Mist Outline"
-				}
-			]
-		}
+                }
+            ]
+        },
+        "configuration": {
+            "title": "Mist",
+            "properties": {
+                "mist.isDebugging": {
+                    "type": "boolean",
+                    "default": false
+                }
+            }
+        }
     },
     "scripts": {
         "vscode:prepublish": "tsc -p ./",
@@ -118,7 +160,8 @@
         "postinstall": "node ./node_modules/vscode/bin/install"
     },
     "dependencies": {
-        "jsonc-parser": "^0.4.0"
+        "jsonc-parser": "^0.4.0",
+        "http-server": "^0.9.0"
     },
     "devDependencies": {
         "typescript": "^2.0.3",
