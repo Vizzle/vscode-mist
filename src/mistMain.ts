@@ -22,6 +22,7 @@ export function activate(context: ExtensionContext) {
     registerCompletionProvider(context);
     registerDiagnosticProvider(context);
     registerFormatter(context);
+    registerColorDecorations(context);
 }
 
 let stopServerFunc;
@@ -346,4 +347,92 @@ function registerFormatter(context: ExtensionContext) {
     context.subscriptions.push(commands.registerTextEditorCommand('mist.formatSelection', (textEditor: TextEditor, edit: TextEditorEdit) => {
         _format(textEditor, true);
     }));
+}
+
+function registerColorDecorations(context: ExtensionContext) {
+    let decorationType = vscode.window.createTextEditorDecorationType({
+        before: {
+            contentText: ' ',
+            border: 'solid 0.1em #000',
+            margin: '0.1em 0.2em 0 0.2em',
+            width: '0.8em',
+            height: '0.8em',
+            
+        },
+        dark: {
+            before: {
+                border: 'solid 0.1em #eee'
+            }
+        }
+    });
+    context.subscriptions.push(decorationType);
+
+    function _updateColorDecorations(document: vscode.TextDocument) {
+        if (!document) {
+            return;
+        }
+
+        let textEditor = vscode.window.visibleTextEditors.find(e => e.document == document);
+        if (!textEditor) {
+            return;
+        }
+
+        if (document.languageId !== 'mist') {
+            textEditor.setDecorations(decorationType, []);
+            return;
+        }
+
+        let colorResults = []
+        let text = document.getText();
+        let colorRE = /#((([a-fA-F0-9]{2}){3,4})|([a-fA-F0-9]{3,4}))\b/mg;
+        let match;
+        while (match = colorRE.exec(text)) {
+            colorResults.push({color: match[0], offset:match.index});
+        }
+
+        textEditor.setDecorations(decorationType, []);
+        textEditor.setDecorations(decorationType, colorResults.map(c => {
+            let position = document.positionAt(c.offset);
+            let color = c.color;
+            if (color.length == 5) {
+                color = '#' + color.substring(2);
+            }
+            else if (color.length == 9) {
+                color = '#' + color.substring(3);
+            }
+
+            return <vscode.DecorationOptions> {
+                range: new vscode.Range(position, position),
+                renderOptions: {
+                    before: {
+                        backgroundColor: color
+                    }
+                }
+            }
+        }));
+    }
+    
+    context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(event => {
+        _updateColorDecorations(event.document);
+    }));
+    
+	context.subscriptions.push(vscode.workspace.onDidOpenTextDocument(document => {
+        _updateColorDecorations(document);
+    }));
+
+	vscode.window.onDidChangeVisibleTextEditors(editors => {
+		for (let editor of editors) {
+			_updateColorDecorations(editor.document);
+		}
+    }, null, [decorationType]);
+
+    function updateAllEditors() {
+        vscode.window.visibleTextEditors.forEach(editor => {
+            if (editor.document) {
+                _updateColorDecorations(editor.document);
+            }
+        });
+    }
+
+    updateAllEditors();
 }
