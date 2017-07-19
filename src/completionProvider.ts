@@ -135,6 +135,7 @@ export default class MistCompletionProvider implements vscode.CompletionItemProv
         "children": new PropertyInfo(BasicType.Array, "容器的子元素"),
         "style": new PropertyInfo({
             "background-color": new PropertyInfo(MistCompletionProvider.colors, "背景颜色，默认为透明"),
+            "alpha": new PropertyInfo(BasicType.Number, "元素的透明度，默认为 1"),
             "border-width": new PropertyInfo(BasicType.Number, "边框宽度，默认为 0。可以用 \"1px\"表示 1 像素的边框"),
             "border-color": new PropertyInfo(MistCompletionProvider.colors, "边框颜色，默认为黑色"),
             "corner-radius": new PropertyInfo(BasicType.Number, `圆角半径，默认为 0。
