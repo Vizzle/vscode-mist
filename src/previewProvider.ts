@@ -4,6 +4,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as JsonParser from 'jsonc-parser'
+import * as color from './utils/color'
 
 export function isMistFile(document: vscode.TextDocument) {
 	return document.languageId === 'mist'
@@ -135,7 +136,7 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
 		
 		if ("text" == node["type"]) {
 			content = style["text"] || "";
-			if ("color" in style) styles["color"] = style["color"];
+			if ("color" in style) styles["color"] = color.cssColor(style["color"]);
 			if ("font-size" in style) styles["font-size"] = this.flexLengthToCssLength(style["font-size"]);
 			if ("font-name" in style) styles["font-family"] = style["font-name"];
 			if ("alignment" in style) styles["text-align"] = style["alignment"];
@@ -169,7 +170,7 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
 		}
 		else if ("button" == node["type"]) {
 			content = style["title"];
-			if ("title-color" in style) styles["color"] = style["title-color"];
+			if ("title-color" in style) styles["color"] = color.cssColor(style["title-color"]);
 			if ("font-size" in style) styles["font-size"] = this.flexLengthToCssLength(style["font-size"]);
 			if ("font-name" in style) styles["font-family"] = style["font-name"];
 		}
@@ -238,8 +239,8 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
 		if ("flex-basis" in style) styles["flex-basis"] = this.flexLengthToCssLength(style["flex-basis"]);
 		if ("flex-grow" in style) styles["flex-grow"] = style["flex-grow"];
 		if ("flex-shrink" in style) styles["flex-shrink"] = style["flex-shrink"];
-		if ("background-color" in style) styles["background-color"] = style["background-color"];
-		if ("border-color" in style) styles["border-color"] = style["border-color"];
+		if ("background-color" in style) styles["background-color"] = color.cssColor(style["background-color"]);
+		if ("border-color" in style) styles["border-color"] = color.cssColor(style["border-color"]);
 		if ("border-width" in style) styles["border-width"] = this.flexLengthToCssLength(style["border-width"]);
 		if ("corner-radius" in style) styles["border-radius"] = this.flexLengthToCssLength(style["corner-radius"]);
 		if ("align-items" in style) styles["align-items"] = this.flexAlignToCssAlign(style["align-items"]);

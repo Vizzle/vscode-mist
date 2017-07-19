@@ -3,7 +3,7 @@
 
 import * as vscode from 'vscode';
 import * as json from 'jsonc-parser';
-import {parseJson} from './jsonUtils'
+import {parseJson} from './utils/json'
 import * as path from 'path';
 
 export default class MistNodeTreeProvider implements vscode.TreeDataProvider<json.Node>, vscode.DocumentSymbolProvider {

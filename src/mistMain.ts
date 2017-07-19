@@ -6,6 +6,7 @@ import MistNodeTreeProvider from './nodeTreeProvider';
 import MistCompletionProvider from './completionProvider'
 import MistDiagnosticProvider from './diagnosticProvider'
 import { format } from './formatter'
+import * as color from './utils/color'
 
 import * as fs from 'fs';
 import * as path from 'path';
@@ -393,19 +394,13 @@ function registerColorDecorations(context: ExtensionContext) {
         textEditor.setDecorations(decorationType, []);
         textEditor.setDecorations(decorationType, colorResults.map(c => {
             let position = document.positionAt(c.offset);
-            let color = c.color;
-            if (color.length == 5) {
-                color = '#' + color.substring(2);
-            }
-            else if (color.length == 9) {
-                color = '#' + color.substring(3);
-            }
+            let cl = color.cssColor(c.color);
 
             return <vscode.DecorationOptions> {
                 range: new vscode.Range(position, position),
                 renderOptions: {
                     before: {
-                        backgroundColor: color
+                        backgroundColor: cl
                     }
                 }
             }
