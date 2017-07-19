@@ -90,6 +90,15 @@
                 }
             },
             {
+                "command": "mist.showData",
+                "title": "Show Data File",
+                "category": "Mist",
+                "icon": {
+                    "light": "./media/light/show_data.svg",
+                    "dark": "./media/dark/show_data.svg"
+                }
+            },
+            {
                 "command": "mist.showPreviewToSide",
                 "title": "Open Preview to the Side",
                 "category": "Mist",
@@ -112,9 +121,14 @@
                     "group": "navigation@1"
                 },
                 {
+                    "when": "resourceLangId == mist",
+                    "command": "mist.showData",
+                    "group": "navigation@2"
+                },
+                {
                     "when": "editorLangId == mist",
                     "command": "mist.showPreviewToSide",
-                    "group": "navigation@2"
+                    "group": "navigation@3"
                 }
             ],
             "editor/context": [
