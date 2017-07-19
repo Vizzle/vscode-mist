@@ -111,12 +111,12 @@
         "menus": {
             "editor/title": [
                 {
-                    "when": "editorLangId == mist && !config.mist.isDebugging",
+                    "when": "explorerResourceIsFolder && editorLangId == mist && !config.mist.isDebugging",
                     "command": "mist.startServer",
                     "group": "navigation@1"
                 },
                 {
-                    "when": "editorLangId == mist && config.mist.isDebugging",
+                    "when": "explorerResourceIsFolder && editorLangId == mist && config.mist.isDebugging",
                     "command": "mist.stopServer",
                     "group": "navigation@1"
                 },
