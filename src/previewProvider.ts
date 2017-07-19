@@ -25,7 +25,7 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
 	public provideTextDocumentContent(uri: vscode.Uri): Thenable<string> {
 		const sourceUri = vscode.Uri.parse(uri.query);
 		return vscode.workspace.openTextDocument(sourceUri).then(document => {
-			let node = JsonParser.parse(document.getText());
+			let node = JsonParser.parse(document.getText()) || {};
 			let nodeHtml = this.convertToHtml(node.layout || {});
 			nodeHtml = nodeHtml.replace(/\"/g, "&quot;").replace(/\n/g, "");
 
