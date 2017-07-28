@@ -254,6 +254,11 @@ export default class MistCompletionProvider implements vscode.CompletionItemProv
                     "right": "文字靠右边显示",
                     "justify": "文字两端对齐。只对多行文字有效，且最后一行文字仍然靠左显示"
                 }, "文字水平对齐方式。默认为 left"),
+                "vertical-alignment": new PropertyInfo({
+                    "top": "文字靠上边显示",
+                    "center": "文字居中显示",
+                    "bottom": "文字靠下边显示",
+                }, "文字竖直对齐方式。默认为 center"),
                 "line-break-mode": new PropertyInfo({
                     "word": "按单词换行，尽量保证不从单词中间换行",
                     "char": "按字符换行"
@@ -265,7 +270,14 @@ export default class MistCompletionProvider implements vscode.CompletionItemProv
                     "none": "文字显示不下时不显示省略号。显示不下的文字不显示，不会出现半个字"
                 }, "文字省略方式。默认为 truncation-tail"),
                 "lines": new PropertyInfo(BasicType.Number, "最大行数。为 0 时，不限制行数。默认为 1"),
+                "kern": new PropertyInfo(BasicType.Number, "字间距。需要注意文字的最右边也会有一个字距大小的空白，一般可以通过设置 `margin-right` 来修正。如：  \n```\n\"kern\": 5,\n\"margin-right\": -5\n```"),
+                "line-spacing": new PropertyInfo(BasicType.Number, "行间距"),
                 "adjusts-font-size": new PropertyInfo(BasicType.Number, "是否调整字号以适应控件的宽度，默认为false"),
+                "baseline-adjustment": new PropertyInfo({
+                    "none": "Adjust text relative to the top-left corner of the bounding box. This is the default adjustment.",
+                    "baseline": "Adjust text relative to the position of its baseline.",
+                    "center": "Adjust text based relative to the center of its bounding box.",
+                }, "字体自动缩小时相对于缩小前的对齐方式。默认为 none"),
                 "mini-scale-factor": new PropertyInfo(BasicType.Number, "与adjusts-font-size配合使用，设置一个字号调整的最小系数，设置为0时，字号会调整至内容能完全展示"),
             }, "元素的样式和布局属性")
         },

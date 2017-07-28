@@ -309,7 +309,7 @@ function registerCompletionProvider(context: ExtensionContext) {
 }
 
 function registerDiagnosticProvider(context: ExtensionContext) {
-    let diagnosticProvider = new MistDiagnosticProvider();
+    let diagnosticProvider = new MistDiagnosticProvider(context);
     context.subscriptions.push(diagnosticProvider);
 
     context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(event => {
