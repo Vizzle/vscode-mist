@@ -118,11 +118,11 @@ export default class MistCompletionProvider implements vscode.CompletionItemProv
         "type": new PropertyInfo({
             "text": "文本元素，用于显示文本，支持富文本",
             "image": `图片元素，可展示本地图片和网络图片。网络图片自动缓存。
-            展示本地图片时，使用 image 属性，如 "image": "O2O.bundle/arrow"。
-            展示网络图片时，使用 image-url 指定网络图片，image 指定加载中显示的图片，error-image 指定下载失败时显示的图片。`,
+展示本地图片时，使用 image 属性，如 "image": "O2O.bundle/arrow"。
+展示网络图片时，使用 image-url 指定网络图片，image 指定加载中显示的图片，error-image 指定下载失败时显示的图片。`,
             "button": "按钮元素，可以设置按下时的文字颜色等",
             "scroll": `滚动容器元素，使用 children 定义子元素。
-            注意：scroll 元素的尺寸不会根据它的子元素自适应。`,
+注意：scroll 元素的尺寸不会根据它的子元素自适应。`,
             "paging": "分页元素，使用 children 定义子元素，每个子元素就是一页",
             "line": "线条元素，主要用于展示虚线，其粗细、长度由布局属性控制",
             "indicator": "加载指示器，俗称菊花"
@@ -136,18 +136,18 @@ export default class MistCompletionProvider implements vscode.CompletionItemProv
         "style": new PropertyInfo({
             "background-color": new PropertyInfo(MistCompletionProvider.colors, "背景颜色，默认为透明"),
             "alpha": new PropertyInfo(BasicType.Number, "元素的透明度，默认为 1"),
-            "border-width": new PropertyInfo(BasicType.Number, "边框宽度，默认为 0。可以用 \"1px\"表示 1 像素的边框"),
+            "border-width": new PropertyInfo(BasicType.Number, `边框宽度，默认为 0。可以用 "1px"表示 1 像素的边框`),
             "border-color": new PropertyInfo(MistCompletionProvider.colors, "边框颜色，默认为黑色"),
             "corner-radius": new PropertyInfo(BasicType.Number, `圆角半径，默认为 0。
-            可以使用 corner-radius-top-left、corner-radius-top-right、corner-radius-bottom-left、corner-radius-bottom-right 分别指定每个角的圆角半径`),
+可以使用 corner-radius-top-left、corner-radius-top-right、corner-radius-bottom-left、corner-radius-bottom-right 分别指定每个角的圆角半径`),
             "user-interaction-enabled": new PropertyInfo(BasicType.Boolean, "设置生成的 view 的userInteractionEnabled。默认不设置"),
             "clip": new PropertyInfo(BasicType.Boolean, "设置生成的 view 的 clipsToBounds"),
             "is-accessibility-element": new PropertyInfo(BasicType.Boolean, "是否为无障碍元素，如果为 true，则该元素与其子元素一起朗读，子元素不能再单独设置为无障碍元素"),
             "accessibility-label": new PropertyInfo(BasicType.String, "无障碍模式下朗读的文本"),
             "properties": new PropertyInfo(BasicType.Object, `通过反射给 view 设置属性，如：
-            "properties": {
-              "layer.shadowOpacity": 1
-            }`),
+"properties": {
+    "layer.shadowOpacity": 1
+}`),
 
             "width": new PropertyInfo(BasicType.Number, "元素的宽度，默认值为 auto"),
             "height": new PropertyInfo(BasicType.Number, "元素的高度，默认值为 auto"),
@@ -206,26 +206,26 @@ export default class MistCompletionProvider implements vscode.CompletionItemProv
                 "baseline": "根据元素的基线位置对齐。文本的基线为第一行文字的基线，容器的基线为其第一个元素的基线。",
             }, "覆写父元素的 align-items，指定元素在父元素中（沿父元素布局方向）的对齐方式，取值同 align-items"),
             "flex-grow": new PropertyInfo(BasicType.Number, `元素放大的权值，默认值为 0（即元素不会被放大）。不能为负数。
-            
-            当容器的空间（在布局方向上）有剩余时，所有子元素（在布局方向上）的尺寸会放大以填满剩余空间，flex-grow 决定元素放大的权值。见 flex-basis。
-            
-            当所有子元素的 flex-grow 总和小于 1 时，总权值按 1 计算，即剩余空间不会被填满`),
+
+当容器的空间（在布局方向上）有剩余时，所有子元素（在布局方向上）的尺寸会放大以填满剩余空间，flex-grow 决定元素放大的权值。见 flex-basis。
+
+当所有子元素的 flex-grow 总和小于 1 时，总权值按 1 计算，即剩余空间不会被填满`),
             "flex-shrink": new PropertyInfo(BasicType.Number, `元素缩小的权值，默认值为 1。不能为负数。
-            
-            当容器的空间不足以放下所有子元素时，所有子元素的大小会缩小以填满剩余空间。
-            元素的 flex-basis 也会计入权值，即实际权值为 flex-shrink * flex-basis 。
-            
-            默认值为 1，也就是说，当空间不足时，所有元素等比缩小。
-            
-            像图标、头像之类的元素，一般是不允许缩小的，这时记得将 flex-shrink 设置为 0 。`),
+
+当容器的空间不足以放下所有子元素时，所有子元素的大小会缩小以填满剩余空间。
+元素的 flex-basis 也会计入权值，即实际权值为 flex-shrink * flex-basis 。
+
+默认值为 1，也就是说，当空间不足时，所有元素等比缩小。
+
+像图标、头像之类的元素，一般是不允许缩小的，这时记得将 flex-shrink 设置为 0 。`),
             "flex-basis": new PropertyInfo(BasicType.Number, "元素伸缩时的基准尺寸。容器计算剩余空间时，使用子元素的基准尺寸来计算已分配空间。默认值为 auto"),
             "spacing": new PropertyInfo(BasicType.Number, "子元素间的间距。为每两个子元素之间添加间距，每行的第一个元素之前和最后一个元素之后不会添加。"),
             "line-spacing": new PropertyInfo(BasicType.Number, "多行布局的行间距。为每两行之间添加间距，跟 spacing 相似"),
             "fixed": new PropertyInfo(BasicType.Number, `是否为固定布局元素，固定元素不参与弹性布局，也不会对父容器的布局有任何影响，而是直接相对于父元素布局（等其它弹性元素布局完成之后再布局）。fixed 元素通过 width, height, margin 属性来确定元素的位置与大小。
-            
-            适合用于浮层、角标等元素。默认情况下（不设置 width, height, margin），一个 fixed 元素就是和父容器等大的一个浮层，也可以放置于容器底部作为背景。
-            
-            fixed 元素并不是一定处于其它元素的最上方，而是同其它元素一样，按照其在父容器里的顺序排列。`),
+
+适合用于浮层、角标等元素。默认情况下（不设置 width, height, margin），一个 fixed 元素就是和父容器等大的一个浮层，也可以放置于容器底部作为背景。
+
+fixed 元素并不是一定处于其它元素的最上方，而是同其它元素一样，按照其在父容器里的顺序排列。`),
             "lines": new PropertyInfo(BasicType.Number, "仅对多行容器有效（即 wrap 不为 nowrap），限制最大行数。默认为 0，即不限制行数。可以用来隐藏放不下的元素"),
             "items-per-line": new PropertyInfo(BasicType.Number, "仅对多行容器有效（即 wrap 不为 nowrap），限制每行最大元素个数。默认为 0，即不限制"),
         }, "元素的样式和布局属性"),
@@ -311,8 +311,8 @@ export default class MistCompletionProvider implements vscode.CompletionItemProv
                 "font-name": new PropertyInfo(BasicType.String, "字体名。默认为系统字体"),
                 "font-style": new PropertyInfo(["ultra-light", "thin", "light", "normal", "medium", "bold", "heavy", "black", "italic", "bold-italic"], "字体样式"),
                 "enlarg-size": new PropertyInfo(BasicType.Number, `放大按钮的点击区域。如：
-                "enlarge-size": 5 上下左右各放大 5
-                "enlarge-size": [5, 10] 左右放大 5，上下放大 10`),
+"enlarge-size": 5 上下左右各放大 5
+"enlarge-size": [5, 10] 左右放大 5，上下放大 10`),
             }, "元素的样式和布局属性")
         },
         "image": {
@@ -320,7 +320,7 @@ export default class MistCompletionProvider implements vscode.CompletionItemProv
                 "image": new PropertyInfo(BasicType.String, "显示的图片名，只能使用本地图片。规则同 [UIImage imageNamed:]"),
                 "image-url": new PropertyInfo(BasicType.String, "网络图片地址"),
                 "error-image": new PropertyInfo(BasicType.String, `网络图片下载失败时显示的图片，只能使用本地图片，如果没有指定则显示 image。
-                注意：image-url 为空时，将会使用 image 而不是 error-image`),
+注意：image-url 为空时，将会使用 image 而不是 error-image`),
                 "content-mode": new PropertyInfo({
                     "center": "图片不缩放，居中显示",
                     "scale-to-fill": "图片缩放至元素尺寸，不保留宽高比",
@@ -338,7 +338,7 @@ export default class MistCompletionProvider implements vscode.CompletionItemProv
                     "vertical": "竖直方向滚动",
                     "both": "水平方向和竖直方向都可以滚动"
                 }, `滚动方向。默认为 horizontal。
-                与 direction 不同，direction 表示子元素实际布局方向，scroll-direction表示该方向上不限制子元素的尺寸`),
+与 direction 不同，direction 表示子元素实际布局方向，scroll-direction表示该方向上不限制子元素的尺寸`),
                 "scroll-enabled": new PropertyInfo(BasicType.Boolean, "是否允许用户拖动"),
             }, "元素的样式和布局属性")
         },
@@ -358,13 +358,13 @@ export default class MistCompletionProvider implements vscode.CompletionItemProv
                 "page-control-color": new PropertyInfo(MistCompletionProvider.colors, "Page Control 圆点的颜色。默认为半透明的白色"),
                 "page-control-selected-color": new PropertyInfo(MistCompletionProvider.colors, "Page Control 当前页圆点的颜色。默认为白色"),
                 "page-control-margin-left": new PropertyInfo(BasicType.Number, `Page Control 距容器边缘的左边边距，用于控制 Page Control 的位置，跟 fixed 元素的 margin 规则相同。
-                默认值为 auto。`),
+默认值为 auto。`),
                 "page-control-margin-right": new PropertyInfo(BasicType.Number, `Page Control 距容器边缘的右边边距，用于控制 Page Control 的位置，跟 fixed 元素的 margin 规则相同。
-                默认值为 auto。`),
+默认值为 auto。`),
                 "page-control-margin-top": new PropertyInfo(BasicType.Number, `Page Control 距容器边缘的上边边距，用于控制 Page Control 的位置，跟 fixed 元素的 margin 规则相同。
-                默认值为 auto。`),
+默认值为 auto。`),
                 "page-control-margin-bottom": new PropertyInfo(BasicType.Number, `Page Control 距容器边缘的下边边距，用于控制 Page Control 的位置，跟 fixed 元素的 margin 规则相同。
-                默认值为 auto。`),
+默认值为 auto。`),
             }, "元素的样式和布局属性"),
             "on-switch": new PropertyInfo(Event, "（手动或自动）翻页时触发"),
         },
@@ -554,14 +554,57 @@ export default class MistCompletionProvider implements vscode.CompletionItemProv
     }
 
     provideHover(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken): vscode.ProviderResult<vscode.Hover> {
+        function findNodeAtLocation(root: json.Node, path: json.JSONPath): json.Node {
+            if (!root) {
+                return void 0;
+            }
+            let node = root;
+            for (let segment of path) {
+                if (typeof segment === 'string') {
+                    if (node.type !== 'object') {
+                        return void 0;
+                    }
+                    let found = false;
+                    for (let propertyNode of node.children) {
+                        if (propertyNode.children[0].value === segment) {
+                            if (propertyNode.children.length >= 2) {
+                                node = propertyNode.children[1];
+                            }
+                            else {
+                                node = propertyNode;
+                            }
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        return void 0;
+                    }
+                } else {
+                    let index = <number>segment;
+                    if (node.type !== 'array' || index < 0 || index >= node.children.length) {
+                        return void 0;
+                    }
+                    node = node.children[index];
+                }
+            }
+            return node;
+        }
+        
         let location = json.getLocation(document.getText(), document.offsetAt(position));
         let rootNode = parseJson(document.getText());
         let properties = this.getProperties(rootNode, location);
         
-        let node = json.findNodeAtLocation(rootNode, location.path);
-        if (location.isAtPropertyKey && node.parent.type == 'property') {
-            node = node.parent.children[0];
+        let node = findNodeAtLocation(rootNode, location.path);
+        if (location.isAtPropertyKey) {
+            if (node.type === 'property') {
+                node = node.children[0];
+            }
+            else if (node.parent.type === 'property') {
+                node = node.parent.children[0];
+            }
         }
+        
         let key = node.value;
         let info: PropertyInfo = properties[key];
         if (!info) {
