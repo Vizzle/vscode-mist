@@ -117,7 +117,10 @@
         {
           "match": "\\\\\\\\.", 
           "name": "invalid.illegal.unrecognized-string-escape.mist"
-        }
+        },
+				{
+          "include": "#escaped"
+				}
       ], 
       "name": "string.quoted.double.mist", 
       "end": "\\\\\"|\\\\n"
@@ -168,12 +171,12 @@
         {
           "include": "#strings"
 				},
-				{
-          "include": "#escaped"
-				},
         {
           "include": "#double_quoted_strings"
         },
+				{
+          "include": "#escaped"
+				},
         {
           "include": "#access"
         },
