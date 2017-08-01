@@ -58,6 +58,19 @@ function registerMistServer(context: ExtensionContext) {
 
         let serverPort = 10001;
         server = httpServer.createServer(options);
+
+        server.server.once("error", err => {
+            server = null;
+            let errMsg;
+            if (err.code === 'EADDRINUSE') {
+                errMsg = "Port 10001 already in use. Use <lsof -i tcp:10001> then <kill $PID> to free.";
+            }
+            else {
+                errMsg = "Failed to start server. " + err.message;
+            }
+            vscode.window.showErrorMessage(errMsg);
+        });
+
         server.listen(serverPort, "0.0.0.0", function () {
             vscode.workspace.getConfiguration().update('mist.isDebugging', true);
 
