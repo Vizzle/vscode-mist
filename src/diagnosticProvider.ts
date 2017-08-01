@@ -46,16 +46,68 @@ export default class MistDiagnosticProvider {
             },
             onLiteralValue (value: any, offset: number, length: number) {
                 if (typeof value === 'string') {
-                    let expRE = /\$\{(.*?)\}/mg;
+                    let offsets = [];
+                    let origin = document.getText().substr(offset, length);
+                    let isHex = c => c 
+                    for (let i = 0; i < origin.length; i++) {
+                        let c = origin.charAt(i);
+                        if (c == '\\' && i < origin.length - 1) {
+                            c = origin.charAt(i + 1);
+                            switch (c) {
+                                case '"':
+                                case '\\':
+                                case '/':
+                                case 'b':
+                                case 'f':
+                                case 'n':
+                                case 'r':
+                                case 't':
+                                    offsets.push(i);
+                                    i++;
+                                    break;
+                                case 'u':
+                                    offsets.push(i);
+                                    i++;
+                                    let n = 4;
+                                    do {
+                                        if (i < origin.length - 1 && /[0-9A-F]/i.test(origin.charAt(i + 1))) {
+                                            i++;
+                                        }
+                                        else {
+                                            errors.push({offset:offset, length:length, desc:'Invalid unicode sequence in string', type:vscode.DiagnosticSeverity.Error});
+                                            break;
+                                        }
+                                    } while (--n > 0);
+                                    if (n != 0) {
+                                        i++;
+                                    }
+                                    break;
+                                default:
+                                    i++;
+                                    errors.push({offset:offset, length:length, desc:'Invalid escape character in string', type:vscode.DiagnosticSeverity.Error});
+                                    break;
+                            }
+                        }
+                        else {
+                            offsets.push(i);
+                        }
+                    }
+                    offsets.push(origin.length);
+
+                    let originOffset = (offset, offsets) => offsets[offset];
+                    
+                    let expRE = /\$\{((?:.|[\r\n])*?)\}/mg;
                     let match;
                     while (match = expRE.exec(value)) {
-                        exps.push({exp: match[1], offset: offset + 1 + match.index+2, length: match[1].length});
+                        let start = 1 + match.index + 2;
+                        let expOffsets = offsets.slice(start, start + match[1].length + 2);
+                        exps.push({exp: match[1], offset: offset, length: match[1].length, offsets:expOffsets});
                     }
                 }
             }
         });
 
-        let mistexpPromist = new Promise<Error[]>((resolve, reject) => {
+        let mistexpPromise = new Promise<Error[]>((resolve, reject) => {
             if (exps.length == 0) {
                 resolve([]);
             }
@@ -70,11 +122,30 @@ export default class MistDiagnosticProvider {
                     str = out.toString("utf8");
                 }
                 let result = str.split('\x1e');
-                let errors = exps.map((v, i) => [v, result[i]] ).filter(v => v[1].length > 0).map(v => <Error>{
-                    type: vscode.DiagnosticSeverity.Error,
-                    desc: v[1],
-                    offset: v[0].offset,
-                    length: v[0].length,
+                let errors = exps.map((v, i) => [v, result[i]] ).filter(v => v[1].length > 0).map(v => {
+                    let match = /^\[(\d+), (\d+)\] (.+)$/.exec(v[1]);
+                    let error: Error;
+                    if (match) {
+                        error = {
+                            type: vscode.DiagnosticSeverity.Error,
+                            desc: match[3],
+                            offset: parseInt(match[1]),
+                            length: Math.max(1, parseInt(match[2])),
+                        };
+                    }
+                    else {
+                        error = {
+                            type: vscode.DiagnosticSeverity.Error,
+                            desc: v[1],
+                            offset: 0,
+                            length: v[0].length,
+                        };
+                    }
+                    let originOffset = v[0].offset + v[0].offsets[error.offset];
+                    let originLength = v[0].offsets[error.offset + error.length] - v[0].offsets[error.offset];
+                    error.offset = originOffset;
+                    error.length = originLength;
+                    return error;
                 });
                 resolve(errors);
             });
@@ -84,7 +155,7 @@ export default class MistDiagnosticProvider {
             mistexp.stdin.end();
         });
         
-        Promise.all([errors, mistexpPromist]).then(values => {
+        Promise.all([errors, mistexpPromise]).then(values => {
             let diagnostics = values.reduce((p, c, i, a) => {
                 return p.concat(c);
             }).map(err => {

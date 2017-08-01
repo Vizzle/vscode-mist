@@ -49,6 +49,18 @@
 				}
 			]
 		},
+		"escaped": {
+			"patterns": [
+        {
+          "match": "\\\\([\"\\\\/bfnrt]|u[0-9a-fA-F]{4})",
+          "name": "string.character.escape.mist"
+        },
+        {
+          "match": "\\\\.",
+          "name": "invalid.illegal.unrecognized-string-escape.mist"
+        }
+			]
+		},
     "numbers": {
 			"patterns": [
 				{
@@ -71,16 +83,44 @@
       }, 
       "patterns": [
         {
-          "match": "(?x:                # turn on extended mode\n                     \\\\                # a literal backslash\n                     (?:               # ...followed by...\n                       [\"\\\\/bfnrt]     # one of these characters\n                       |               # ...or...\n                       u               # a u\n                       [0-9a-fA-F]{4}  # and four hex digits\n                     )\n                   )", 
+          "match": "(?x:                # turn on extended mode\n                     \\\\\\\\                # a literal backslash\n                     (?:               # ...followed by...\n                       [\"'\\\\/bfnrt]     # one of these characters\n                       |               # ...or...\n                       u               # a u\n                       [0-9a-fA-F]{4}  # and four hex digits\n                     )\n                   )", 
+          "name": "constant.character.escape.mist"
+        },
+        {
+          "match": "\\\\\\\\.", 
+          "name": "invalid.illegal.unrecognized-string-escape.mist"
+        },
+        {
+          "include": "#escaped"
+        }
+      ], 
+      "name": "string.quoted.mist", 
+      "end": "'|\\\\n"
+    },
+    "double_quoted_strings": {
+      "begin": "\\\\\"", 
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.string.end.mist"
+        }
+      }, 
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.definition.string.begin.mist"
+        }
+      }, 
+      "patterns": [
+        {
+          "match": "(?x:                # turn on extended mode\n                     \\\\\\\\                # a literal backslash\n                     (?:               # ...followed by...\n                       [\"'\\\\/bfnrt]     # one of these characters\n                       |               # ...or...\n                       u               # a u\n                       [0-9a-fA-F]{4}  # and four hex digits\n                     )\n                   )", 
           "name": "constant.character.escape.mist"
         }, 
         {
-          "match": "\\\\.", 
+          "match": "\\\\\\\\.", 
           "name": "invalid.illegal.unrecognized-string-escape.mist"
         }
       ], 
       "name": "string.quoted.double.mist", 
-      "end": "'"
+      "end": "\\\\\"|\\\\n"
     },
 		"access": {
 			"captures": {
@@ -127,6 +167,12 @@
         },
         {
           "include": "#strings"
+				},
+				{
+          "include": "#escaped"
+				},
+        {
+          "include": "#double_quoted_strings"
         },
         {
           "include": "#access"
