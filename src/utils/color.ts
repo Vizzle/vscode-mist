@@ -2,6 +2,10 @@
 'use strict';
 
 export function cssColor(mistColor: string): string {
+    if (typeof mistColor !== "string") {
+        mistColor = mistColor["normal"] || "";
+    }
+    
     if (!mistColor.startsWith('#')) {
         return mistColor;
     }

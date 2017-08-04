@@ -7,6 +7,7 @@ import MistCompletionProvider from './completionProvider'
 import MistDiagnosticProvider from './diagnosticProvider'
 import { format } from './formatter'
 import * as color from './utils/color'
+import MistServer from './mistServer'
 
 import * as fs from 'fs';
 import * as path from 'path';
@@ -15,13 +16,16 @@ import { workspace, commands, Disposable, ExtensionContext, TextEditor, TextEdit
 import * as httpServer from 'http-server';
 
 export function activate(context: ExtensionContext) {
+    let server: MistServer = new MistServer(context);
+    context.subscriptions.push(server);
+    
     registerConvertor(context);
     registerMistServer(context);
     registerShowData(context);
-    registerPreviewProvider(context);
+    registerPreviewProvider(context, server);
     registerNodeTreeProvider(context);
     registerCompletionProvider(context);
-    registerDiagnosticProvider(context);
+    registerDiagnosticProvider(context, server);
     registerFormatter(context);
     registerColorDecorations(context);
 }
@@ -135,8 +139,8 @@ function registerMistServer(context: ExtensionContext) {
     stopServerFunc = stopServer;
 }
 
-function registerPreviewProvider(context: ExtensionContext) {
-    const contentProvider = new MistContentProvider(context);
+function registerPreviewProvider(context: ExtensionContext, server: MistServer) {
+    const contentProvider = new MistContentProvider(context, server);
     const contentProviderRegistration = vscode.workspace.registerTextDocumentContentProvider('mist', contentProvider);
     context.subscriptions.push(contentProviderRegistration);
 
@@ -321,8 +325,8 @@ function registerCompletionProvider(context: ExtensionContext) {
     }));
 }
 
-function registerDiagnosticProvider(context: ExtensionContext) {
-    let diagnosticProvider = new MistDiagnosticProvider(context);
+function registerDiagnosticProvider(context: ExtensionContext, server: MistServer) {
+    let diagnosticProvider = new MistDiagnosticProvider(context, server);
     context.subscriptions.push(diagnosticProvider);
 
     context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(event => {

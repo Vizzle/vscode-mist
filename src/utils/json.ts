@@ -88,7 +88,7 @@ export function parseJson(text: string, errors?: json.ParseErrorCode[]): json.No
         },
         onLiteralValue(value: any, offset: number, length: number) {
             let node: json.Node = {
-                type: <json.NodeType>typeof value,
+                type: value == null ? "null" : <json.NodeType>typeof value,
                 offset: offset,
                 length: length,
                 value: value
