@@ -166,6 +166,17 @@ function registerPreviewProvider(context: ExtensionContext, server: MistServer) 
         }
     }));
 
+    context.subscriptions.push(commands.registerCommand('mist.changePreviewConfig', (uri, configChange) => {
+        contentProvider.update(vscode.Uri.parse(uri), configChange);
+    }));
+
+    context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(document => {
+        if (isMistFile(document)) {
+            const uri = getMistUri(document.uri);
+            contentProvider.update(uri);
+        }
+    }));
+
     context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(event => {
         if (isMistFile(event.document)) {
             const uri = getMistUri(event.document.uri);

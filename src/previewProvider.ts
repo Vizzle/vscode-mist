@@ -5,6 +5,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as JsonParser from 'jsonc-parser'
 import * as color from './utils/color'
+import * as fs from 'fs'
 import { parseJson } from './utils/json'
 import MistServer from './mistServer'
 
@@ -17,19 +18,62 @@ export function getMistUri(uri: vscode.Uri) {
 	return uri.with({ scheme: 'mist', path: uri.path + '.rendered', query: uri.toString() });
 }
 
+class Device {
+	constructor(public name: string,
+				public desc: string,
+				public width: number,
+				public height: number,
+				public scale: number) { }
+}
+
+const devices = [
+	new Device("iPhone", "iPhone 1g-3GS, iPod Touch 1g-3g", 320, 480, 1),
+	new Device("iPhone Retina", "iPhone 4/4S, iPod Touch 4g", 320, 480, 2),
+	new Device("iPhone 5", "iPhone 5/5C/5S, iPod Touch 5g", 320, 568, 2),
+	new Device("iPhone 6", "iPhone 6/6S", 375, 667, 2),
+	new Device("iPhone 6 Plus", "iPhone 6+/6S+", 414, 736, 3),
+	new Device("iPad", "iPad, iPad 2, iPad Mini", 768, 1024, 1),
+	new Device("iPad Retina", "iPad 3/4, iPad Air 1/2, iPad Mini 2/4, iPad Pro 9.7-inch", 768, 1024, 2),
+	new Device("iPad Pro 12.9-inch", "iPad Pro 12.9-inch", 1024, 1366, 2),
+];
+
+const defaultDevice = devices[3];
+
+type PreviewConfig = {
+	device: Device;
+}
+
 export class MistContentProvider implements vscode.TextDocumentContentProvider {
+	
+
 	private _onDidChange = new vscode.EventEmitter<vscode.Uri>();
 	private _waiting: boolean = false;
+	private _config = new Map<string, PreviewConfig>();
 
 	constructor(
 		private context: vscode.ExtensionContext,
 		private server: MistServer
 	) { }
 
-	private pageHtml(html: string, screenWidth: number, screenHeight: number) {
+	private pageHtml(uri: vscode.Uri, html: string, datas: any[], config: PreviewConfig) {
 		return `
-		
+<head>
+	<link rel="stylesheet" href="https://cdn.bootcss.com/bootstrap/3.3.7/css/bootstrap.min.css">
+	<script src="https://cdn.bootcss.com/jquery/2.1.1/jquery.min.js"></script>
+	<script src="https://cdn.bootcss.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
 <style type="text/css">
+
+div {
+	margin: 0;
+	padding: 0;
+}
+
+html, body {
+	margin: 0;
+	padding: 0;
+	width: 100%;
+	height: 100%;
+}
 
 .dot {
 width: 6px;
@@ -39,57 +83,190 @@ background-color: white;
 border-radius: 50%;
 }
 
-</style>
+.navi-bar {
+	background-color: #E24810;
+}
 
-<div style="position:relative;display:flex;align-items:flex-start;">
-<div id="editor"></div>
+.navi-item {
+	display: inline-block;
+}
+
+.active, .focus, .active.focus, :active, :focus, :active:focus {
+	outline: 0 !important;
+}
+
+.btn.active.focus, .btn.active:focus, .btn.focus, .btn:active.focus, .btn:active:focus, .btn:focus {
+	color: white
+}
+
+.btn.active, .btn:active {
+	box-shadow: none;
+}
+
+.btn:hover {
+	color: rgba(255, 255, 255, 0.8)
+}
+
+.dropdown>button {
+	background-color: transparent;
+    border: 0;
+    color: white;
+}
+
+.dropdown-menu li.selected>a:before {
+	content: "✓";
+    position: absolute;
+    margin-left: -1.1em;
+}
+.dropdown-menu li.selected>a {
+    color: #E24810;
+}
+
+</style>
+</head>
+
+<body>
+<div style="width:100%; height:100%; display:flex; flex-direction:column">
+<div class="navi-bar">
+	<div class="dropdown navi-item">
+		<button type="button" class="btn dropdown-toggle" id="dropdownMenu1" 
+				data-toggle="dropdown">
+			${config.device.name}
+			<span class="caret"></span>
+		</button>
+		<ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu1">
+			${devices.map((d,i) => `
+		<li role="presentation" class="${d === config.device ? 'selected' : ''}">
+			<a role="menuitem" tabindex="-1" href="${encodeURI(`command:mist.changePreviewConfig?${JSON.stringify([uri.toString(), {deviceIndex: i}])}`)}">${d.name}</a>
+		</li>`).join("")}
+		</ul>
+	</div>
+	<div class="dropdown navi-item">
+		<button type="button" class="btn ${datas.length == 0 ? 'disabled' : ''} dropdown-toggle" id="dropdownMenu1" 
+				data-toggle="dropdown">
+			${datas.length == 0 ? '无数据' : datas[0].desc}
+			<span class="caret"></span>
+		</button>
+		<ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu1">
+			${datas.map((d, i) => `
+		<li role="presentation" class="${i == 0 ? 'selected' : ''}">
+			<a role="menuitem" tabindex="-1" href="#">${d.desc}</a>
+		</li>`).join("")}
+		</ul>
+	</div>
+</div>
+<script type="text/javascript">
+$(".dropdown-menu li a").click(function(){
+  var selText = $(this).text();
+  $(this).parents('.dropdown').find('.selected').removeClass('selected');
+  $(this).parent().addClass('selected');
+  $(this).parents('.dropdown').find('.dropdown-toggle').html(selText+' <span class="caret"></span>');
+});
+</script>
+
+<div style="display:flex;align-items:flex-start;overflow:auto">
 <div style="display:flex; flex-direction:column; background-color:white; margin:10px; box-shadow:1px 2px 5px gray;">
 <div style="display:flex; flex-direction:column; background-color:#333; flex-shrink:0;">
-<div style="display:flex; position:absolute; float:left; height:20px; color:white; align-items:center; justify-content:center; padding-left:5px">
-	<div class="dot"></div>
-	<div class="dot"></div>
-	<div class="dot"></div>
-	<div class="dot"></div>
-	<div class="dot"></div>
-	<div style="color:white; font-size:12px; margin-left:5px;">中国移动</div>
-</div>
+
 <div style="display:flex; height:20px; color:white; align-items:center; justify-content:center;">
-	<div style="display:flex; color:white; font-size:12px;">上午12:00</div>
+	<div style="display:flex; height:20px; color:white; align-items:center; justify-content:center; padding-left:5px">
+		<div class="dot"></div>
+		<div class="dot"></div>
+		<div class="dot"></div>
+		<div class="dot"></div>
+		<div class="dot"></div>
+		<div style="color:white; font-size:12px; margin-left:5px;">中国移动</div>
+	</div>
+	<div style="display:flex; margin:auto; color:white; font-size:12px;">上午12:00</div>
+	<div style="display:flex; visibility:hidden; height:20px; color:white; align-items:center; justify-content:center; padding-left:5px">
+		<div class="dot"></div>
+		<div class="dot"></div>
+		<div class="dot"></div>
+		<div class="dot"></div>
+		<div class="dot"></div>
+		<div style="color:white; font-size:12px; margin-left:5px;">中国移动</div>
+	</div>
 </div>
 <div style="display:flex; height:44px; color:white; align-items:center; justify-content:center;">
 	<div style="display:flex; color:white; font-size:18px;">Preview</div>
 </div>
 </div>
-<iframe id="preview" width="${screenWidth}px" height="${screenHeight-64}px" style="border:0" srcdoc="<style type='text/css'>html, body{width:100%; height:100%;} html, body, div, img, iframe { margin:0px; padding:0px; font-size:100%; line-height:1.15em; box-sizing:border-box; display:flex; overflow:hidden;} body>div{flex-grow:1;}</style><body style='font-family:Helvetica Neue; display:block; overflow-y:scroll;'>${html}</body>" scrolling="auto"></iframe>
+<iframe id="preview" width="${config.device.width}px" height="${config.device.height - 64}px" style="border:0" srcdoc="<style type='text/css'>html, body{width:100%; height:100%;} html, body, div, img, iframe { margin:0px; padding:0px; font-size:100%; line-height:1.15em; box-sizing:border-box; display:flex; overflow:hidden;} body>div{flex-grow:1;}</style><body style='font-family:Helvetica Neue; display:block; overflow-y:scroll;'>${html}</body>" scrolling="auto"></iframe>
 </div>
+</div>
+</body>
 		`
 	}
 
-	public provideTextDocumentContent(uri: vscode.Uri): Thenable<string> {
-		const screenWidth = 375;
-		const screenHeight = 667;
-		const screenScale = 2;
+	private findData(sourceFile: string) {
+		let file = sourceFile;
+        let dir = path.dirname(file);
+        let templateId = path.basename(file, ".mist");
+        return new Promise<{file:string,desc:string,data:any}[]>((resolve, reject) => {
+			fs.readdir(dir, (err, files) => {
+				if (err) {
+					vscode.window.showErrorMessage(err.message);
+					reject(err);
+					return;
+				}
+				let result = [];
+				files.filter(f => f.endsWith(".json")).map(f => {
+					let file = `${dir}/${f}`;
+					let text = fs.readFileSync(file).toString();
+					if (text) {
+						let re = new RegExp(`"(block|template)\\w*"\\s*:\\s*"(\\w*?@)?${templateId}"`, "mg");
+						let match;
+						let fileResult = []
+						while (match = re.exec(text)) {
+							fileResult.push({file: file, position: match.index});
+						}
+						if (fileResult.length > 0) {
+							let rootNode = parseJson(text);
+							fileResult = fileResult.map((r, i) => {
+								let data;
+								let location = JsonParser.getLocation(text, r.position);
+								let node = JsonParser.findNodeAtLocation(rootNode, location.path.slice(0, location.path.length - 1));
+								if (node) {
+									let dataNode = JsonParser.findNodeAtLocation(node, ["data"]) || node;
+									data = JsonParser.getNodeValue(dataNode);
+								}
+								return { file: file, desc: fileResult.length > 1 ? f + ' #' + i : f, data: data };
+							})
+							result.push(...fileResult.filter(r => r.data));
+						}
+					}
+				});
+				resolve(result);
+			});
+		});
+	}
 
+	public provideTextDocumentContent(uri: vscode.Uri): Thenable<string> {
 		const sourceUri = vscode.Uri.parse(uri.query);
+		let config = this._config.get(uri.query) || { device: defaultDevice };
+		if (uri)
+
 		return vscode.workspace.openTextDocument(sourceUri).then(document => {
-			let tpl = document.getText();
-			let parsed = parseJson(tpl);
-			let node = parsed ? JsonParser.getNodeValue(parsed) : {};
-			let request = {
-				template: node,
-				data: {},
-				screenWidth: screenWidth,
-				screenHeight: screenHeight,
-				screenScale: screenScale
-			};
-			return this.server.send("bindData", JSON.stringify(request))
-				.then(str => JSON.parse(str), err => node).then(node => {
-				let nodeHtml = this.convertToHtml(node.layout || {});
-				nodeHtml = this.htmlEncode(nodeHtml);
-				nodeHtml = this.pageHtml(nodeHtml, screenWidth, screenHeight);
-				console.log(nodeHtml);
-				return nodeHtml;
-			})
+			return this.findData(sourceUri.path).then(datas => {
+				let tpl = document.getText();
+				let parsed = parseJson(tpl);
+				let node = parsed ? JsonParser.getNodeValue(parsed) : {};
+				let request = {
+					template: node,
+					data: datas && datas.length > 0 ? datas[0].data : {},
+					screenWidth: config.device.width,
+					screenHeight: config.device.height,
+					screenScale: config.device.scale
+				};
+				return this.server.send("bindData", JSON.stringify(request))
+					.then(str => JSON.parse(str), err => node).then(node => {
+					let nodeHtml = this.convertToHtml(node.layout || {});
+					nodeHtml = this.htmlEncode(nodeHtml);
+					nodeHtml = this.pageHtml(uri, nodeHtml, datas, config);
+					// console.log(nodeHtml);
+					return nodeHtml;
+				});
+			});
 		});
 	}
 
@@ -97,7 +274,18 @@ border-radius: 50%;
 		return this._onDidChange.event;
 	}
 
-	public update(uri: vscode.Uri) {
+	public update(uri: vscode.Uri, configChange?: any) {
+		if (configChange) {
+			if ("deviceIndex" in configChange) {
+				let config = this._config.get(uri.query);
+				if (!config) {
+					config = {device: defaultDevice};
+					this._config.set(uri.query, config);
+				}
+				config.device = devices[configChange.deviceIndex];
+			}
+		}
+
 		if (!this._waiting) {
 			this._waiting = true;
 			setTimeout(() => {
@@ -213,7 +401,7 @@ border-radius: 50%;
 
 		let paddingStyle = this.paddingStyle(style);
 
-		if ("text" == node["type"]) {
+		if ("text" === node["type"]) {
 			if ("color" in style) styles["color"] = color.cssColor(style["color"]);
 			if ("font-size" in style) styles["font-size"] = this.flexLengthToCssLength(style["font-size"]);
 			if ("font-name" in style) styles["font-family"] = style["font-name"];
@@ -309,7 +497,7 @@ border-radius: 50%;
 			styles["flex-direction"] = "column";
 			styles["justify-content"] = veticalAlign;
 		}
-		else if ("button" == node["type"]) {
+		else if ("button" === node["type"]) {
 			var title = style["title"];
 			content = title instanceof Object ? title.normal : title;
 			if (content == undefined) {
@@ -327,7 +515,7 @@ border-radius: 50%;
 			styles["flex-direction"] = "column";
 			styles["justify-content"] = "center";
 		}
-		else if ("image" == node["type"]) {
+		else if ("image" === node["type"]) {
 			tag = "img";
 			if (style["content-mode"] == "scale-aspect-fit") {
 				styles["object-fit"] = "contain";
@@ -373,7 +561,7 @@ border-radius: 50%;
 
 			if ("image-url" in style) attrs["src"] = style["image-url"];
 		}
-		else if ("stack" == node["type"] || node.children && node.children.length > 0) {
+		else if ("stack" === node["type"] || node.children && node.children.length > 0) {
 			var str = "";
 			var spacing = style["spacing"] || 0;
 			var firstItem = true;

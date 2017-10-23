@@ -81,6 +81,90 @@
       "match": "(?x)        # turn on extended mode\n  -?        # an optional minus\n  (?:\n    0       # a zero\n    |       # ...or...\n    [1-9]   # a 1-9 character\n    \\d*     # followed by zero or more digits\n  )\n  (?:\n    (?:\n      \\.    # a period\n      \\d+   # followed by one or more digits\n    )?\n    (?:\n      [eE]  # an e character\n      [+-]? # followed by an option +/-\n      \\d+   # followed by one or more digits\n    )?      # make exponent optional\n  )?        # make decimal portion optional",
       "name": "constant.numeric.mist"
     },
+    "exp": {
+      "begin": "\\$\\{",
+      "endCaptures": {
+        "0": {
+          "name": "keyword.control.exp.end.mist"
+        }
+      }, 
+      "beginCaptures": {
+        "0": {
+          "name": "keyword.control.exp.begin.mist"
+        }
+      }, 
+      "name": "variable.exp.language.mist", 
+      "end": "}|(?=\")|\\n",
+      "patterns": [
+        {
+          "include": "source.mist-exp"
+        }
+      ]
+    },
+    "repeat": {
+      "patterns": [
+        {
+          "include": "#number"
+        },
+        {
+          "include": "#array"
+        },
+        {
+          "begin": "\"",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.string.begin.mist"
+            }
+          },
+          "end": "\"",
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.definition.string.end.mist"
+            }
+          },
+          "name": "string.quoted.double.mist",
+          "patterns": [
+            {
+              "include": "#exp"
+            },
+            {
+              "begin": " in ", 
+              "endCaptures": {
+                "0": {
+                  "name": "keyword.control.exp.end.mist"
+                }
+              }, 
+              "beginCaptures": {
+                "0": {
+                  "name": "keyword.control.exp.begin.mist"
+                }
+              }, 
+              "name": "variable.exp.language.mist", 
+              "end": "(?=\")",
+              "patterns": [
+                {
+                  "include": "source.mist-exp"
+                }
+              ]
+            },
+            {
+              "match": ",",
+              "name": "punctuation.separator.repeat.language.mist"
+            },
+            {
+              "match": "[a-zA-Z_][a-zA-Z_0-9]*",
+              "name": "variable.repeat.language.mist"
+            },
+            {
+              "include": "#stringcontent"
+            }
+          ]
+        },
+        {
+          "include": "#comments"
+        }
+      ]
+    },
     "object": {
       "begin": "\\{",
       "beginCaptures": {
@@ -101,6 +185,30 @@
         },
         {
           "include": "#comments"
+        },
+        {
+          "begin": "(?<=\"repeat\")\\s*(:)",
+          "beginCaptures": {
+            "1": {
+              "name": "punctuation.separator.dictionary.key-value.mist"
+            }
+          },
+          "end": "(,)|(?=\\})",
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.separator.dictionary.pair.mist"
+            }
+          },
+          "name": "meta.structure.dictionary.value.mist",
+          "patterns": [
+            {
+              "include": "#repeat"
+            },
+            {
+              "match": "[^\\s,]",
+              "name": "invalid.illegal.expected-dictionary-separator.mist"
+            }
+          ]
         },
         {
           "begin": ":",
@@ -148,24 +256,7 @@
       "name": "string.quoted.double.mist",
       "patterns": [
         {
-          "begin": "\\$\\{", 
-          "endCaptures": {
-            "0": {
-              "name": "keyword.control.exp.end.mist"
-            }
-          }, 
-          "beginCaptures": {
-            "0": {
-              "name": "keyword.control.exp.begin.mist"
-            }
-          }, 
-          "name": "variable.exp.language.mist", 
-          "end": "}",
-          "patterns": [
-            {
-              "include": "source.mist-exp"
-            }
-          ]
+          "include": "#exp"
         },
         {
           "include": "#stringcontent"

@@ -75,7 +75,8 @@
         "0": {
           "name": "punctuation.definition.string.end.mist"
         }
-      }, 
+      },
+      "end": "'|\\\\n|(?=})|(?=\")",
       "beginCaptures": {
         "0": {
           "name": "punctuation.definition.string.begin.mist"
@@ -94,8 +95,7 @@
           "include": "#escaped"
         }
       ], 
-      "name": "string.quoted.mist", 
-      "end": "'|\\\\n"
+      "name": "string.quoted.mist"
     },
     "double_quoted_strings": {
       "begin": "\\\\\"", 
@@ -103,7 +103,8 @@
         "0": {
           "name": "punctuation.definition.string.end.mist"
         }
-      }, 
+      },
+      "end": "\\\\\"|\\\\n|(?=})|(?=\")",
       "beginCaptures": {
         "0": {
           "name": "punctuation.definition.string.begin.mist"
@@ -122,8 +123,7 @@
           "include": "#escaped"
 				}
       ], 
-      "name": "string.quoted.double.mist", 
-      "end": "\\\\\"|\\\\n"
+      "name": "string.quoted.double.mist"
     },
 		"access": {
 			"captures": {
@@ -150,6 +150,7 @@
 		},
     "exp": {
       "name": "entity.exp.mist-exp",
+      "end": "(?=})|(?=\")|(?=\\n)",
       "patterns": [
         {
           "include": "#comments"

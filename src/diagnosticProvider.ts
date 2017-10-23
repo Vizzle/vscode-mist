@@ -29,6 +29,7 @@ export default class MistDiagnosticProvider {
         let objectStack = [];
         let exps = [];
         let mistexpPath = this.context.asAbsolutePath('./bin/mistexp');
+        let currentProperty: string;
         json.visit(document.getText(), {
             onError(error: json.ParseErrorCode, offset: number, length: number) {
                 errors.push({offset:offset, length:length, desc:json.getParseErrorMessage(error), type:vscode.DiagnosticSeverity.Error});
@@ -40,6 +41,7 @@ export default class MistDiagnosticProvider {
                 objectStack.pop();
             },
             onObjectProperty (property: string, offset: number, length: number) {
+                currentProperty = property;
                 let object: string[] = objectStack[objectStack.length - 1];
                 if (object.indexOf(property) >= 0) {
                     errors.push({offset:offset, length:length, desc:"Duplicate object key", type:vscode.DiagnosticSeverity.Warning});
@@ -98,6 +100,23 @@ export default class MistDiagnosticProvider {
 
                     let originOffset = (offset, offsets) => offsets[offset];
                     
+                    
+                    if (currentProperty === 'repeat') {
+                        let expRE = /^(.*)(\s+in\s+)((?:.|[\r\n])*)$/m;
+                        let match = expRE.exec(value);
+                        if (match) {
+                            let start = 1 + match.index + match[1].length + match[2].length;
+                            let expOffsets = offsets.slice(start, start + match[3].length + 2);
+                            exps.push({exp: match[3], offset: offset, length: match[3].length, offsets:expOffsets});
+                            return;
+                        }
+                    }
+
+                    if (/\$\{((?:[^}]|[\r\n])*)$/m.test(value)) {
+                        errors.push({offset: offset + length - 1, length: 1, desc: "unclosed expression", type: vscode.DiagnosticSeverity.Error});
+                        return;
+                    }
+
                     let expRE = /\$\{((?:.|[\r\n])*?)\}/mg;
                     let match;
                     while (match = expRE.exec(value)) {
@@ -137,7 +156,7 @@ export default class MistDiagnosticProvider {
                 return error;
             });
             return errors;
-        });
+        }).catch(err => <Error[]>[]);
         
         Promise.all([errors, mistexpPromise]).then(values => {
             let diagnostics = values.reduce((p, c, i, a) => {
