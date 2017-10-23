@@ -244,30 +244,31 @@ $(".dropdown-menu li a").click(function(){
 	public provideTextDocumentContent(uri: vscode.Uri): Thenable<string> {
 		const sourceUri = vscode.Uri.parse(uri.query);
 		let config = this._config.get(uri.query) || { device: defaultDevice };
-		if (uri)
-
-		return vscode.workspace.openTextDocument(sourceUri).then(document => {
-			return this.findData(sourceUri.path).then(datas => {
-				let tpl = document.getText();
-				let parsed = parseJson(tpl);
-				let node = parsed ? JsonParser.getNodeValue(parsed) : {};
-				let request = {
-					template: node,
-					data: datas && datas.length > 0 ? datas[0].data : {},
-					screenWidth: config.device.width,
-					screenHeight: config.device.height,
-					screenScale: config.device.scale
-				};
-				return this.server.send("bindData", JSON.stringify(request))
-					.then(str => JSON.parse(str), err => node).then(node => {
-					let nodeHtml = this.convertToHtml(node.layout || {});
-					nodeHtml = this.htmlEncode(nodeHtml);
-					nodeHtml = this.pageHtml(uri, nodeHtml, datas, config);
-					// console.log(nodeHtml);
-					return nodeHtml;
+		if (uri) {
+			return vscode.workspace.openTextDocument(sourceUri).then(document => {
+				return this.findData(sourceUri.path).then((datas): Thenable<string> => {
+					let tpl = document.getText();
+					let parsed = parseJson(tpl);
+					let node = parsed ? JsonParser.getNodeValue(parsed) : {};
+					let request = {
+						template: node,
+						data: datas && datas.length > 0 ? datas[0].data : {},
+						screenWidth: config.device.width,
+						screenHeight: config.device.height,
+						screenScale: config.device.scale
+					};
+					return this.server.send("bindData", JSON.stringify(request))
+						.then(str => JSON.parse(str), err => node).then(node => {
+						let nodeHtml = this.convertToHtml(node.layout || {});
+						nodeHtml = this.htmlEncode(nodeHtml);
+						nodeHtml = this.pageHtml(uri, nodeHtml, datas, config);
+						// console.log(nodeHtml);
+						return nodeHtml;
+					});
 				});
 			});
-		});
+		}
+		return null;
 	}
 
 	get onDidChange(): vscode.Event<vscode.Uri> {
