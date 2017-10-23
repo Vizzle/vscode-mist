@@ -79,6 +79,16 @@ let Log = {
 let Event = {
     "openUrl:": new PropertyInfo(BasicType.String, "打开指定的 URL"),
     "updateState:": new PropertyInfo(BasicType.Object, "更新状态。值应该为一个字典，将状态中对应的值更新。注意不是替换整个状态，只是更改对应的 key"),
+    "alert:": new PropertyInfo(BasicType.String, "显示 Alert，主要用于调试"),
+    "runAction:": new PropertyInfo({
+        "name": new PropertyInfo(BasicType.String, "Action 名称"),
+        "params": new PropertyInfo(BasicType.Object, "触发 Action 时传入的参数"),
+    }, "触发自定义 Action"),
+    "postNotification:": new PropertyInfo({
+        "name": new PropertyInfo(BasicType.String, "Notification 名称"),
+        "userInfo": new PropertyInfo(BasicType.Object, "Notification 的 userInfo"),
+    }, "发送 Notification"),
+
     "exposureLog:": new PropertyInfo(Log, "曝光埋点"),
     "clickLog:": new PropertyInfo(Log, "点击埋点"),
 }
@@ -94,6 +104,12 @@ export default class MistCompletionProvider implements vscode.CompletionItemProv
         "async-display": new PropertyInfo(BasicType.Boolean, "是否开启异步渲染"),
         "reuse-identifier": new PropertyInfo(BasicType.String, "模版在 tableview 中的复用 id，默认为模版名"),
         "identifier": new PropertyInfo(BasicType.String, "给模版指定一个 id"),
+        "actions": new PropertyInfo({
+            "*": new PropertyInfo(Event, "自定义 Action 的名称")
+        }, "自定义 Action"),
+        "notifications": new PropertyInfo({
+            "*": new PropertyInfo(Event, "接收通知的名称")
+        }, "接收 native 通知"),
     };
 
     private static colors = [
@@ -128,6 +144,7 @@ export default class MistCompletionProvider implements vscode.CompletionItemProv
             "indicator": "加载指示器，俗称菊花"
         }, "元素类型"),
         "tag": new PropertyInfo(BasicType.Integer, "元素的 tag，用于在 native 查找该 view。必须是整数"),
+        "identifier": new PropertyInfo(BasicType.String, "元素的 identifier，影响元素的重用"),
         "gone": new PropertyInfo(BasicType.Boolean, "为 true 时，元素不显示，且不加入布局"),
         "repeat": new PropertyInfo(BasicType.Number, "模版衍生机制。repeat 为元素重复的次数或重复的数组。注意：根节点元素使用 repeat 无效"),
         "vars": new PropertyInfo(BasicType.Object, "定义变量（宏）"),
@@ -264,11 +281,11 @@ fixed 元素并不是一定处于其它元素的最上方，而是同其它元�
                     "char": "按字符换行"
                 }, "文字换行方式。默认为 word"),
                 "truncation-mode": new PropertyInfo({
-                    "truncation-head": "文字显示不下时头部显示省略号。多行时省略号在最后一行",
-                    "truncation-middle": "文字显示不下时中间显示省略号。多行时省略号在最后一行",
-                    "truncation-tail": "文字显示不下时尾部显示省略号。多行时省略号在最后一行",
+                    "truncating-head": "文字显示不下时头部显示省略号。多行时省略号在最后一行",
+                    "truncating-middle": "文字显示不下时中间显示省略号。多行时省略号在最后一行",
+                    "truncating-tail": "文字显示不下时尾部显示省略号。多行时省略号在最后一行",
                     "none": "文字显示不下时不显示省略号。显示不下的文字不显示，不会出现半个字"
-                }, "文字省略方式。默认为 truncation-tail"),
+                }, "文字省略方式。默认为 truncating-tail"),
                 "lines": new PropertyInfo(BasicType.Number, "最大行数。为 0 时，不限制行数。默认为 1"),
                 "kern": new PropertyInfo(BasicType.Number, "字间距。需要注意文字的最右边也会有一个字距大小的空白，一般可以通过设置 `margin-right` 来修正。如：  \n```\n\"kern\": 5,\n\"margin-right\": -5\n```"),
                 "line-spacing": new PropertyInfo(BasicType.Number, "行间距"),
@@ -327,6 +344,8 @@ fixed 元素并不是一定处于其它元素的最上方，而是同其它元�
                     "scale-aspect-fit": "图片按长边缩放，图片能完全显示，可能填不满元素",
                     "scale-aspect-fill": "图片按短边缩放，图片能填满元素，可能显示不完全"
                 }, "图片缩放模式"),
+                "download-scale": new PropertyInfo(BasicType.Number, "使用 django 图片时，下载的缩放倍数"),
+                "animate-count": new PropertyInfo(BasicType.Integer, "gif 图播放次数"),
             }, "元素的样式和布局属性"),
             "on-complete": new PropertyInfo(Event, "图片下载完成时触发"),
         },
