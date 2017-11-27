@@ -1,5 +1,6 @@
 'use strict';
 
+import { MistDocument​​ } from './mistDocument'
 import * as convertor from './convertor';
 import { MistContentProvider, getMistUri, isMistFile } from './previewProvider';
 import MistNodeTreeProvider from './nodeTreeProvider';
@@ -14,20 +15,43 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { workspace, commands, Disposable, ExtensionContext, TextEditor, TextEditorEdit } from 'vscode';
 import * as httpServer from 'http-server';
+import { MistSignatureHelpProvider } from './signatureHelpProvider';
 
 export function activate(context: ExtensionContext) {
     let server: MistServer = new MistServer(context);
     context.subscriptions.push(server);
     
+    setupMistDocument(context);
     registerConvertor(context);
     registerMistServer(context);
     registerShowData(context);
     registerPreviewProvider(context, server);
     registerNodeTreeProvider(context);
     registerCompletionProvider(context);
+    registerSignatureHelpProvider(context);
     registerDiagnosticProvider(context, server);
     registerFormatter(context);
     registerColorDecorations(context);
+}
+
+function setupMistDocument(context: ExtensionContext) {
+    context.subscriptions.push(vscode.workspace.onDidOpenTextDocument(document => {
+        MistDocument​​.onDidOpenTextDocument(document);
+    }));
+
+    context.subscriptions.push(vscode.workspace.onDidCloseTextDocument(document => {
+        MistDocument​​.onDidCloseTextDocument(document);
+    }));
+
+    context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(document => {
+        MistDocument​​.onDidSaveTextDocument(document);
+    }));
+
+    context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(event => {
+        MistDocument​​.onDidChangeTextDocument(event);
+    }));
+
+    MistDocument.initialize();
 }
 
 let stopServerFunc;
@@ -334,6 +358,17 @@ function registerCompletionProvider(context: ExtensionContext) {
             completionProvider.selectionDidChange(event.textEditor);
         }
     }));
+    context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(event => {
+        if (event.document.languageId === 'mist') {
+            let textEditor = vscode.window.visibleTextEditors.find(e => e.document == event.document);
+            completionProvider.documentDidChange(textEditor, event);
+        }
+    }));
+}
+
+function registerSignatureHelpProvider(context: ExtensionContext) {
+    let signatureHelpProvider = new MistSignatureHelpProvider();
+    context.subscriptions.push(vscode.languages.registerSignatureHelpProvider({ language: 'mist' }, signatureHelpProvider, '(', ','));
 }
 
 function registerDiagnosticProvider(context: ExtensionContext, server: MistServer) {

@@ -3,6 +3,16 @@
 
 import * as json from 'jsonc-parser'
 
+export function getPropertyNode(node: json.Node, property: string) {
+    if (node.type == 'object') {
+        let propertyNode = node.children.find(n => n.type == 'property' && n.children[0].value == property);
+        if (propertyNode) {
+            return propertyNode.children[1];
+        }
+    }
+    return null;
+}
+
 // `json.parseTree` sometimes produces incorrect result
 export function parseJson(text: string, errors?: json.ParseErrorCode[]): json.Node {
     let currentNode: json.Node;
@@ -103,4 +113,19 @@ export function parseJson(text: string, errors?: json.ParseErrorCode[]): json.No
     });
 
     return currentNode;
+}
+
+export function getNodeValue(node: json.Node): any {
+	if (node.type === 'array') {
+		return node.children.map(getNodeValue);
+	} else if (node.type === 'object') {
+		let obj = {};
+		for (let prop of node.children) {
+            if (prop.children.length == 2) {
+                obj[prop.children[0].value] = getNodeValue(prop.children[1]);
+            }
+		}
+		return obj;
+	}
+	return node.value;
 }

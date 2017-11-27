@@ -52,7 +52,6 @@ export default class MistDiagnosticProvider {
                 if (typeof value === 'string') {
                     let offsets = [];
                     let origin = document.getText().substr(offset, length);
-                    let isHex = c => c 
                     for (let i = 0; i < origin.length; i++) {
                         let c = origin.charAt(i);
                         if (c == '\\' && i < origin.length - 1) {
