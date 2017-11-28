@@ -305,6 +305,7 @@ export let functions = {
     ], 
     "for": [
       {
+        "comment": " 返回 `start` 到 `count`（不含） 的数字组成的数组，步长为 `step`\n\n `for(5, 8, 0.5)`       =>      `[5, 5.5, 6, 6.5, 7, 7.5]`", 
         "params": [
           {
             "type": "double", 
@@ -322,6 +323,7 @@ export let functions = {
         "return": "NSArray*"
       }, 
       {
+        "comment": " 返回 `start` 到 `count - 1` 的数字组成的数组\n\n `for(5, 8)`       =>      `[5, 6, 7]`", 
         "params": [
           {
             "type": "double", 
@@ -335,6 +337,7 @@ export let functions = {
         "return": "NSArray*"
       }, 
       {
+        "comment": " 返回 `0` 到 `count - 1` 的数字组成的数组\n\n `for(5)`       =>      `[0, 1, 2, 3, 4]`", 
         "params": [
           {
             "type": "double", 
@@ -400,6 +403,7 @@ export let functions = {
     ], 
     "m34": [
       {
+        "comment": "单位矩阵设置 m34 的值，一般用于创建 3D 旋转", 
         "params": [
           {
             "type": "CGFloat", 
@@ -430,27 +434,6 @@ export let functions = {
           }
         ], 
         "return": "UIEdgeInsets"
-      }, 
-      {
-        "params": [
-          {
-            "type": "double", 
-            "name": "top"
-          }, 
-          {
-            "type": "double", 
-            "name": "left"
-          }, 
-          {
-            "type": "double", 
-            "name": "bottom"
-          }, 
-          {
-            "type": "double", 
-            "name": "right"
-          }
-        ], 
-        "return": "NSEdgeInsets"
       }
     ], 
     "sqrt": [
@@ -466,6 +449,7 @@ export let functions = {
     ], 
     "transformSet": [
       {
+        "comment": "设置指定行列的值，并返回新的矩阵", 
         "params": [
           {
             "type": "CATransform3D", 
@@ -530,6 +514,7 @@ export let functions = {
     ], 
     "identity": [
       {
+        "comment": "单位矩阵", 
         "return": "CATransform3D"
       }
     ], 
@@ -644,6 +629,7 @@ export let functions = {
     ], 
     "randomInt": [
       {
+        "comment": "返回一个不小于 0 的随机整数", 
         "return": "uint"
       }, 
       {
@@ -907,6 +893,7 @@ export let functions = {
   "NSDictionary": {
     "set_value": [
       {
+        "comment": " 字典设置一个值并返回新的字典\n\n `{'a': 1}.set_value('b', 2)`      =>      `{'a': 1, 'b': 2}`", 
         "params": [
           {
             "type": "NSString*", 
@@ -924,11 +911,13 @@ export let functions = {
   "NSString": {
     "trim": [
       {
+        "comment": "移除首尾空白字符", 
         "return": "NSString*"
       }
     ], 
     "sub_string": [
       {
+        "comment": "返回给定范围内的子串", 
         "params": [
           {
             "type": "NSInteger", 
@@ -940,19 +929,20 @@ export let functions = {
           }
         ], 
         "return": "NSString*", 
-        "deprecated": "use `substring` instead"
+        "deprecated": "使用 `substring` 代替"
       }
     ], 
     "replace": [
       {
+        "comment": "替换所有", 
         "params": [
           {
             "type": "NSString*", 
-            "name": "replace"
+            "name": "target"
           }, 
           {
             "type": "NSString*", 
-            "name": "with"
+            "name": "replacement"
           }
         ], 
         "return": "NSString*"
@@ -960,15 +950,17 @@ export let functions = {
     ], 
     "substring": [
       {
+        "comment": "返回从给定位置开始的子串，如果 start 为负数，则表示从后往前数", 
         "params": [
           {
             "type": "NSInteger", 
-            "name": "length"
+            "name": "start"
           }
         ], 
         "return": "NSString*"
       }, 
       {
+        "comment": "返回给定范围内的子串，如果 start 为负数，则表示从后往前数", 
         "params": [
           {
             "type": "NSInteger", 
@@ -984,6 +976,7 @@ export let functions = {
     ], 
     "split": [
       {
+        "comment": "使用指定分割符分割字符串，返回数组", 
         "params": [
           {
             "type": "NSString*", 
@@ -995,22 +988,24 @@ export let functions = {
     ], 
     "replace_with": [
       {
+        "comment": "替换所有", 
         "params": [
           {
             "type": "NSString*", 
-            "name": "replace"
+            "name": "target"
           }, 
           {
             "type": "NSString*", 
-            "name": "with"
+            "name": "replacement"
           }
         ], 
         "return": "NSString*", 
-        "deprecated": "use `replace` instead"
+        "deprecated": "使用 `replace` 代替"
       }
     ], 
     "find": [
       {
+        "comment": "返回给定子串在字符串中的开始位置", 
         "params": [
           {
             "type": "NSString*", 
@@ -1037,7 +1032,7 @@ export let functions = {
   "NSArray": {
     "all": [
       {
-        "comment": "[11, 12, 13, 14].all(n -> n % 2 == 0)      =>      false", 
+        "comment": " 是否所有元素都满足条件\n\n `[11, 12, 13, 14].all(n -> n % 2 == 0)`      =>      `false`", 
         "params": [
           {
             "type": "id(^)(id)", 
@@ -1049,7 +1044,7 @@ export let functions = {
     ], 
     "repeat": [
       {
-        "comment": "[1, 2, 3].repeat(2)      =>      [1, 2, 3, 1, 2, 3]", 
+        "comment": " 重复所有元素指定的次数\n\n `[1, 2, 3].repeat(2)`      =>      `[1, 2, 3, 1, 2, 3]`", 
         "params": [
           {
             "type": "NSUInteger", 
@@ -1061,11 +1056,11 @@ export let functions = {
     ], 
     "last": [
       {
-        "comment": "['a', 'b', 'c'].last()      =>      'c'", 
+        "comment": " 最后一个元素，没有元素时返回 `nil`\n\n `['a', 'b', 'c'].last()`      =>      `'c'`", 
         "return": "id"
       }, 
       {
-        "comment": "[11, 12, 13, 14].last(n -> n % 2 == 0)       =>      14", 
+        "comment": " 最后一个满足条件的元素，没有满足条件的元素时返回 `nil`\n\n `[11, 12, 13, 14].last(n -> n % 2 == 0)`       =>      `14`", 
         "params": [
           {
             "type": "id(^)(id)", 
@@ -1077,13 +1072,13 @@ export let functions = {
     ], 
     "reverse": [
       {
-        "comment": "[1, 2, 3].reverse()      =>      [3, 2, 1]", 
+        "comment": " 反转数组\n\n `[1, 2, 3].reverse()`      =>      `[3, 2, 1]`", 
         "return": "NSArray*"
       }
     ], 
     "indexOf": [
       {
-        "comment": "['a', 'b', 'c', 'a', 'b'].indexOf('a')       =>      0", 
+        "comment": " 元素在数组中的索引，找不到返回 `-1`\n\n `['a', 'b', 'c', 'a', 'b'].indexOf('a')`       =>      `0`", 
         "params": [
           {
             "type": "id", 
@@ -1095,7 +1090,7 @@ export let functions = {
     ], 
     "join": [
       {
-        "comment": "['a', 'b', 'c'].join(',')      =>      'a,b,c'", 
+        "comment": " 使用给定的分隔符把数组元素拼成一个字符串\n\n `['a', 'b', 'c'].join(',')`      =>      `'a,b,c'`", 
         "params": [
           {
             "type": "NSString*", 
@@ -1107,7 +1102,7 @@ export let functions = {
     ], 
     "lastIndex": [
       {
-        "comment": "[11, 12, 13, 14].lastIndex(n -> n % 2 == 0)       =>      3", 
+        "comment": " 最后一个满足条件的元素的索引，没有满足条件的元素时返回 `-1`\n\n `[11, 12, 13, 14].lastIndex(n -> n % 2 == 0)`       =>      `3`", 
         "params": [
           {
             "type": "id(^)(id)", 
@@ -1119,7 +1114,7 @@ export let functions = {
     ], 
     "join_property": [
       {
-        "comment": "[1, 2, 3].join_property(',', 'description')      =>      '1,2,3'", 
+        "comment": " 使用给定的分隔符把数组元素的指定属性拼成一个字符串\n\n `[1, 2, 3].join_property(',', 'description')`      =>      `'1,2,3'`", 
         "params": [
           {
             "type": "NSString*", 
@@ -1130,12 +1125,13 @@ export let functions = {
             "name": "property"
           }
         ], 
-        "return": "NSString*"
+        "return": "NSString*", 
+        "deprecated": "使用 `select` 和 `join` 代替"
       }
     ], 
     "filter": [
       {
-        "comment": "[11, 12, 13, 14].filter(n -> n % 2 == 0)      =>      [12, 14]", 
+        "comment": " 筛选出符合条件的元素\n\n `[11, 12, 13, 14].filter(n -> n % 2 == 0)`      =>      `[12, 14]`", 
         "params": [
           {
             "type": "id(^)(id)", 
@@ -1147,13 +1143,13 @@ export let functions = {
     ], 
     "distinct": [
       {
-        "comment": "['a', 'b', 'a', 'c'].distinct()      =>      ['a', 'b', 'c']", 
+        "comment": " 返回去重后的数组\n\n `['a', 'b', 'a', 'c'].distinct()`      =>      `['a', 'b', 'c']`", 
         "return": "NSArray*"
       }
     ], 
     "concat": [
       {
-        "comment": "[1, 2].concat([3])      =>      [1, 2, 3]", 
+        "comment": " 合并数组\n\n `[1, 2].concat([3])`      =>      `[1, 2, 3]`", 
         "params": [
           {
             "type": "NSArray*", 
@@ -1165,7 +1161,7 @@ export let functions = {
     ], 
     "slice": [
       {
-        "comment": "[1, 2, 3, 4, 5, 6, 7, 8].slice(3)    =>      [[1, 2, 3], [4, 5, 6], [7, 8]]", 
+        "comment": " 把数组分割成若干个指定元素个数的小数组\n\n `[1, 2, 3, 4, 5, 6, 7, 8].slice(3)`    =>      `[[1, 2, 3], [4, 5, 6], [7, 8]]`", 
         "params": [
           {
             "type": "NSUInteger", 
@@ -1177,7 +1173,7 @@ export let functions = {
     ], 
     "sub_array": [
       {
-        "comment": "[1, 2, 3, 4, 5].sub_array(0, 3)      =>      [1, 2, 3]", 
+        "comment": " 返回给定范围内的子数组\n\n `[1, 2, 3, 4, 5].sub_array(0, 3)`      =>      `[1, 2, 3]`", 
         "params": [
           {
             "type": "NSUInteger", 
@@ -1188,12 +1184,13 @@ export let functions = {
             "name": "length"
           }
         ], 
-        "return": "NSArray*"
+        "return": "NSArray*", 
+        "deprecated": "使用 `subarray` 代替"
       }
     ], 
     "splice": [
       {
-        "comment": "[1, 2, 3].splice(1, 0, 5)      =>      [1, 2, 5, 3]\n[1, 2, 3].splice(1, 1, 5)      =>      [1, 5, 3]", 
+        "comment": " 删除/增加/替换元素\n\n `[1, 2, 3].splice(1, 0, 5)`      =>      `[1, 2, 5, 3]`\n `[1, 2, 3].splice(1, 1, 5)`      =>      `[1, 5, 3]`", 
         "params": [
           {
             "type": "NSInteger", 
@@ -1211,7 +1208,7 @@ export let functions = {
         "return": "NSArray*"
       }, 
       {
-        "comment": "[1, 2, 3].splice(1, 1)      =>      [1, 3]", 
+        "comment": " 删除元素\n\n `[1, 2, 3].splice(1, 1)`      =>      `[1, 3]`", 
         "params": [
           {
             "type": "NSInteger", 
@@ -1225,7 +1222,7 @@ export let functions = {
         "return": "NSArray*"
       }, 
       {
-        "comment": "[1, 2, 3].splice(1)      =>      [1]\n[1, 2, 3].splice(-2)      =>      [1]", 
+        "comment": " 删除给定索引后的所有元素，如果 `start` 为负数，则表示从后往前数\n\n `[1, 2, 3].splice(1)`      =>      `[1]`\n `[1, 2, 3].splice(-2)`      =>      `[1]`", 
         "params": [
           {
             "type": "NSInteger", 
@@ -1235,9 +1232,25 @@ export let functions = {
         "return": "NSArray*"
       }
     ], 
+    "subarray": [
+      {
+        "comment": " 返回给定范围内的子数组\n\n `[1, 2, 3, 4, 5].subarray(0, 3)`      =>      `[1, 2, 3]`", 
+        "params": [
+          {
+            "type": "NSUInteger", 
+            "name": "start"
+          }, 
+          {
+            "type": "NSUInteger", 
+            "name": "length"
+          }
+        ], 
+        "return": "NSArray*"
+      }
+    ], 
     "lastIndexOf": [
       {
-        "comment": "['a', 'b', 'c', 'a', 'b'].lastIndexOf('a')       =>      3", 
+        "comment": " 元素在数组中的索引，反向查找，找不到返回 `-1`\n\n `['a', 'b', 'c', 'a', 'b'].lastIndexOf('a')`       =>      `3`", 
         "params": [
           {
             "type": "id", 
@@ -1249,7 +1262,7 @@ export let functions = {
     ], 
     "flatten": [
       {
-        "comment": "[1, [2, [3, 4]], 5].flatten(false)      =>      [1, 2, [3, 4], 5]", 
+        "comment": " 展开数组，`recursive` 为 `false` 表示不继续展开元素中的数组\n\n `[1, [2, [3, 4]], 5].flatten(false)`      =>      `[1, 2, [3, 4], 5]`", 
         "params": [
           {
             "type": "BOOL", 
@@ -1259,13 +1272,13 @@ export let functions = {
         "return": "NSArray*"
       }, 
       {
-        "comment": "[1, [2, [3, 4]], 5].flatten()      =>      [1, 2, 3, 4, 5]", 
+        "comment": " 展开数组\n\n `[1, [2, [3, 4]], 5].flatten()`      =>      `[1, 2, 3, 4, 5]`", 
         "return": "NSArray*"
       }
     ], 
     "firstIndex": [
       {
-        "comment": "[11, 12, 13, 14].firstIndex(n -> n % 2 == 0)       =>      1", 
+        "comment": " 第一个满足条件的元素的索引，没有满足条件的元素时返回 `-1`\n\n `[11, 12, 13, 14].firstIndex(n -> n % 2 == 0)`       =>      `1`", 
         "params": [
           {
             "type": "id(^)(id)", 
@@ -1277,7 +1290,7 @@ export let functions = {
     ], 
     "any": [
       {
-        "comment": "[11, 12, 13, 14].any(n -> n % 2 == 0)      =>      true", 
+        "comment": " 是否有至少一个元素满足条件\n\n `[11, 12, 13, 14].any(n -> n % 2 == 0)`      =>      `true`", 
         "params": [
           {
             "type": "id(^)(id)", 
@@ -1289,7 +1302,7 @@ export let functions = {
     ], 
     "select": [
       {
-        "comment": "[1, 2, 3].select(n -> n * 2)      =>      [2, 4, 6]", 
+        "comment": " 对数组每个元素做转换\n\n `[1, 2, 3].select(n -> n * 2)`      =>      `[2, 4, 6]`", 
         "params": [
           {
             "type": "id(^)(id)", 
@@ -1301,11 +1314,11 @@ export let functions = {
     ], 
     "first": [
       {
-        "comment": "['a', 'b', 'c'].first()      =>      'a'", 
+        "comment": " 第一个元素，没有元素时返回 `nil`\n\n `['a', 'b', 'c'].first()`      =>      `'a'`", 
         "return": "id"
       }, 
       {
-        "comment": "[11, 12, 13, 14].first(n -> n % 2 == 0)       =>      12", 
+        "comment": " 第一个满足条件的元素，没有满足条件的元素时返回 `nil`\n\n `[11, 12, 13, 14].first(n -> n % 2 == 0)`       =>      `12`", 
         "params": [
           {
             "type": "id(^)(id)", 

@@ -5,9 +5,6 @@ import * as path from 'path'
 import * as fs from 'fs'
 import { parseJson, getPropertyNode, getNodeValue } from './utils/json'
 import { functions } from './functions';
-import { resolve } from "dns";
-import { print } from "util";
-import { deactivate } from "./mistMain";
 import { Properties, PropertyInfo, Event, BasicType } from "./properties";
 
 enum ExpType {
@@ -88,9 +85,9 @@ class MistData {
     template: string;
     file: string;
     data: {};
-    description: string;
     start: number;
     end: number;
+    index: number;
 
     static dataMap: { [dir: string]: { [file: string]: MistData[] } } = {};
     
@@ -101,7 +98,7 @@ class MistData {
         }
         let text = fs.readFileSync(file).toString();
         if (text) {
-            let jsonTree = parseJson​​(text);
+            let jsonTree = parseJson(text);
             var results = [];
             let travelTree = (obj: json.Node) => {
                 if (obj.type === 'array') {
@@ -132,7 +129,7 @@ class MistData {
             }
             travelTree(jsonTree);
             this.dataMap[dir][file] = results;
-            Object.keys(MistDocument.documents).forEach(k => MistDocument.documents[k].datas = null);
+            Object.keys(MistDocument.documents).forEach(k => MistDocument.documents[k].clearDatas());
         }
     }
 
@@ -161,11 +158,18 @@ class MistData {
                 let datas = dirDatas[file];
                 let found = datas.filter(d => d.template === template);
                 if (found && found.length > 0) {
+                    if (found.length > 1) {
+                        found.forEach((d, i) => d.index = i);
+                    }
                     result = result.concat(found);
                 }
             }
         }
         return result;
+    }
+
+    public description() {
+        return `${path.basename(this.file)} ${this.index > 0 ? `#${this.index + 1}` : ''}`.trim();
     }
 }
 
@@ -345,14 +349,16 @@ function isObject(obj: any) {
 
 let ID_RE = /^[_a-zA-Z]\w*$/;
 function isId(str: string) {
-    return ID_RE.test​​(str);
+    return ID_RE.test(str);
 }
 
 export class MistDocument {
     static documents: { [path: string]: MistDocument } = {}
 
     private document: TextDocument;
-    datas: MistData[];
+    private datas: MistData[];
+    private dataFile: string;
+    private dataIndex: number = 0;
     private rootNode: json.Node;
     private nodeTree: MistNode;
     private template: any;
@@ -361,7 +367,11 @@ export class MistDocument {
         this.document = document;
     }
 
-	private getDatas() {
+    public clearDatas() {
+        this.datas = null;
+    }
+
+	public getDatas() {
         if (!this.datas) {
             let file = this.document.fileName;
             let dir = path.dirname(file);
@@ -370,6 +380,25 @@ export class MistDocument {
         }
         return this.datas;
 	}
+
+    public setData(file: string, index: number) {
+        this.dataFile = file;
+        this.dataIndex = index;
+    }
+
+    public getData() {
+        let datas = this.getDatas();
+        if (datas && datas.length > 0) {
+            if (this.dataFile == null) {
+                this.dataFile = datas[0].file;
+            }
+            let filterdDatas = datas.filter(d => d.file === this.dataFile);
+            if (this.dataIndex < filterdDatas.length) {
+                return filterdDatas[this.dataIndex];
+            }
+        }
+        return null;
+    }
 
     public static getDocumentByUri(uri: Uri) {
         let path = uri.fsPath;
@@ -499,9 +528,6 @@ export class MistDocument {
         let path = [...location.path];
         let node = this.nodeAtPath(path);
         let vars = {};
-        if (path.length == 0) {
-            return vars;
-        }
         while (node) {
             let nodeVars = node.property('vars');
             if (nodeVars) {
@@ -532,44 +558,35 @@ export class MistDocument {
             return {};
         }
 
-        let datas = this.getDatas();
-        let data = datas && datas.length > 0 ? (datas[0].data || {}) : {};
+        let data = (this.getData() ? this.getData().data : {}) || {};
         if (location.path[0] !== 'data' && this.template.data instanceof Object) {
             data = {...data, ...this.template.data};
         }
         let vars: any = {...BUILTIN_VARS, ...data, '_data_': data};
         if (location.path[0] !== 'data' && location.path[0] !== 'state') {
-            vars = {...vars, 'state': this.template.state || {}};
+            vars = {...vars, 'state': this.template.state || new Property("NSDictionary", "状态")};
         }
         return {...vars, ...this.varsAtLocation(location)};
-    }
-
-    private getObject(keyPath: string[], datas: {}[]) {
-        if (keyPath.length == 0) {
-            return datas;
-        }
-
-        let key = keyPath[0];
-        return this.getObject(keyPath.slice(1), datas.map(data => data[key]).filter(d => d instanceof Object));
-    }
-
-    private completionItemForDatas(datas: {}[]) {
-        let keys = datas.map(data => Object.keys(data)).reduce((p, c, i, a) => p.concat(c), []);
-        return keys.map(k => {
-            return new vscode.CompletionItem(k, vscode.CompletionItemKind.Value);
-        });
     }
 
     private functionName(name: string, info: any) {
         return `${info.return || 'void'} ${name}(${(info.params || []).map(p => `${p.type} ${p.name}`).join(', ')})`
     }
 
+    private functionsDetail(name: string, infos: any[]) {
+        let detail = this.functionName(name, infos[0]);
+        if (infos.length > 1) {
+            detail += ` (+${infos.length - 1} overload${infos.length > 2 ? 's' : ''})`
+        }
+        return detail;
+    }
+
     private functionDoc(info: any) {
-        var doc = info.comment || '';
+        var doc: string = info.comment || '';
         if (info.deprecated) {
             doc = `[Deprecated] ${info.deprecated}\n${doc}`;
         }
-        return doc;
+        return doc.trim();
     }
 
     private completionItemForFunctions(functions: {}) {
@@ -586,10 +603,7 @@ export class MistDocument {
                 };
             }
             item.documentation = this.functionDoc(funInfo);
-            item.detail = this.functionName(s, funInfo);
-            if (functions[s].length > 1) {
-                item.detail += ` (+${functions[s].length - 1} overload${functions[s].length > 2 ? 's' : ''})`
-            }
+            item.detail = this.functionsDetail(s, functions[s]);
             return item;
         });
     }
@@ -875,9 +889,9 @@ export class MistDocument {
                     }
                 }
                 
-                if (!(vars instanceof Object)) {
-                    break;
-                }
+                // if (!(vars instanceof Object)) {
+                //     break;
+                // }
             }
         }
         return vars;
@@ -944,6 +958,9 @@ export class MistDocument {
             }
             else if (info.type === BasicType.Color) {
                 kind = vscode.CompletionItemKind.Color;
+            }
+            else if (info.type === Event) {
+                kind = vscode.CompletionItemKind.Event;
             }
             else {
                 kind = vscode.CompletionItemKind.Property;
@@ -1030,10 +1047,66 @@ export class MistDocument {
         }
         
         let document = this.document;
+        let wordRange = document.getWordRangeAtPosition(position);
+        if (wordRange == null || wordRange.start == wordRange.end) {
+            return;
+        }
         let location = json.getLocation(document.getText(), document.offsetAt(position));
         this.parseTemplate();
-        let properties = this.getProperties(this.rootNode, location);
+
+        let expression = this.getExpressionAtLocation(location, wordRange.end);
+        let isFunction = document.getText(new vscode.Range(wordRange.end, wordRange.end.translate(0, 1))) === '(';
+        if (expression != null) {
+            expression = getCurrentExpression(expression);
+            let vars = this.allVariables(location);
+            let obj;
+            if (!isFunction) {
+                obj = this.getExpressionReturnType(expression, vars);
+            }
+            if (obj) {
+                if (obj instanceof Property) {
+                    return new vscode.Hover(obj.comment);
+                    // item.detail = `${obj.getType()} ${s}`;
+                }
+                else {
+                    let desc = JSON.stringify(obj, (k, v) => (v instanceof Property) ? v.comment : v, '\t');
+                    return new vscode.Hover({language: 'mist', value: desc});
+                }
+            }
+            else {
+                let {prefix: prefix, function: func} = getPrefix(expression);
+                let funInfo;
+                if (prefix) {
+                    obj = this.getExpressionReturnType(prefix, vars);
+                    if (obj) {
+                        let prop = this.propertiesForObject(obj)[func];
+                        if (prop) {
+                            let contents: any[] = [{language: 'c', value: `${prop.type} ${func}`}];
+                            let doc = prop.comment;
+                            if (doc.length > 0) {
+                                contents.push(doc);
+                            }
+                            return new vscode.Hover(contents);
+                        }
+
+                        funInfo = this.functionsForObject(obj)[func];
+                    }
+                }
+                else {
+                    funInfo = functions.global[func];
+                }
+                if (funInfo) {
+                    let contents: any[] = [{language: 'c', value: this.functionsDetail(func, funInfo)}];
+                    let doc = this.functionDoc(funInfo[0]);
+                    if (doc.length > 0) {
+                        contents.push(doc);
+                    }
+                    return new vscode.Hover(contents);
+                }
+            }
+        }
         
+        let properties = this.getProperties(this.rootNode, location);
         let node = findNodeAtLocation(this.rootNode, location.path);
         if (location.isAtPropertyKey) {
             if (node.type === 'property') {
@@ -1070,20 +1143,7 @@ export class MistDocument {
                 let funs;
                 if (signatureInfo.prefix) {
                     let obj = this.allVariables(location);
-                    let keys = signatureInfo.prefix.split('.');
-                    for (let key of keys) {
-                        if (isObject(obj)) {
-                            obj = obj[key];
-                        }
-                        else {
-                            obj = null;
-                            break;
-                        }
-                        
-                        if (!obj) {
-                            break;
-                        }
-                    }
+                    obj = this.getExpressionReturnType(signatureInfo.prefix, obj);
                     funs = this.functionsForObject(obj);
                 }
                 else {

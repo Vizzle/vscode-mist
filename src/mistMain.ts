@@ -16,11 +16,13 @@ import * as vscode from 'vscode';
 import { workspace, commands, Disposable, ExtensionContext, TextEditor, TextEditorEdit } from 'vscode';
 import * as httpServer from 'http-server';
 import { MistSignatureHelpProvider } from './signatureHelpProvider';
+import { StatusBarManager } from './statusBarManager';
 
 export function activate(context: ExtensionContext) {
     let server: MistServer = new MistServer(context);
     context.subscriptions.push(server);
     
+    setupStatusBarManager(context);
     setupMistDocument(context);
     registerConvertor(context);
     registerMistServer(context);
@@ -32,6 +34,13 @@ export function activate(context: ExtensionContext) {
     registerDiagnosticProvider(context, server);
     registerFormatter(context);
     registerColorDecorations(context);
+}
+
+function setupStatusBarManager(context: ExtensionContext) {
+    StatusBarManager.initialize();
+    context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(editor => {
+        StatusBarManager.onDidChangeActiveTextEditor(editor);
+    }));
 }
 
 function setupMistDocument(context: ExtensionContext) {
