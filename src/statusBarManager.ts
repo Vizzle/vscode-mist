@@ -28,7 +28,11 @@ export class StatusBarManager {
     private static updateDataItemForDocument(doc: MistDocument) {
         let datas = doc.getDatas();
         if (doc.getData()) {
-            this.dataItem.text = '$(file-text) ' + doc.getData().description();
+            let text = '$(file-text) ' + doc.getData().description();
+            if (datas.length > 1) {
+                text += ` (共 ${datas.length} 处)`
+            }
+            this.dataItem.text = text;
             this.dataItem.command = 'mist.selectData';
         }
         else if (datas && datas.length > 0) {
@@ -36,7 +40,7 @@ export class StatusBarManager {
             this.dataItem.command = 'mist.selectData';
         }
         else {
-            this.dataItem.text = '$(file-text) [No Data]';
+            this.dataItem.text = '$(file-text) 未找到数据';
             this.dataItem.command = null;
         }
     }

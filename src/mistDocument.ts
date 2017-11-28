@@ -6,6 +6,8 @@ import * as fs from 'fs'
 import { parseJson, getPropertyNode, getNodeValue } from './utils/json'
 import { functions } from './functions';
 import { Properties, PropertyInfo, Event, BasicType } from "./properties";
+import { ImageHelper } from "./imageHelper";
+import { Lexer, LexerErrorCode } from "./lexer";
 
 enum ExpType {
     Void,
@@ -452,6 +454,13 @@ export class MistDocument {
     private onDidChangeTextDocument(event: TextDocumentChangeEvent) {
         this.template = null;
         this.rootNode = null;
+    }
+
+    public dir() {
+        if (this.document.fileName) {
+            return path.dirname(this.document.fileName);
+        }
+        return vscode.workspace.rootPath;
     }
 
     private parseTemplate() {
@@ -902,50 +911,64 @@ export class MistDocument {
         let location = json.getLocation(document.getText(), document.offsetAt(position));
         this.parseTemplate();
 
-        let expression = this.getExpressionAtLocation(location, position);
-        if (expression !== null) {
-            let obj = this.allVariables(location);
-            var items = []
-            let exp = getCurrentExpression(expression);
-            let {prefix: prefix, function: func} = getPrefix(exp);
-            if (prefix) {
-                obj = this.getExpressionReturnType(prefix, obj);
-            }
-            else {
-                if (document.getText(new vscode.Range(position.translate(0,-1), position)) == '.') {
+        if (!location.isAtPropertyKey) {
+            let expression = this.getExpressionAtLocation(location, position);
+            if (expression !== null) {
+                let tokens = [];
+                json.ParseErrorCode
+                let error = Lexer.allTokens(expression, tokens);
+                if (error === LexerErrorCode.UnclosedString) {
                     return [];
                 }
-                items = items.concat(['true', 'false', 'null', 'nil'].map(s => new CompletionItem(s, vscode.CompletionItemKind.Keyword)));
-                items = items.concat(this.completionItemForFunctions(functions.global));
-            }
-            if (obj === null) {
-                return [];
-            }
-            
-            items = items.concat(this.completionItemForFunctions(this.functionsForObject(obj)));
-            items = items.concat(this.completionItemForProperties(this.propertiesForObject(obj)));
-            if (isObject(obj)) {
-                items = items.concat(Object.keys(obj).filter(isId).map(s => {
-                    let item = new vscode.CompletionItem(s, vscode.CompletionItemKind.Variable);
-                    let value = obj[s];
-                    if (value instanceof Property) {
-                        item.detail = `${value.getType()} ${s}`;
-                        item.documentation = value.comment;
+                let obj = this.allVariables(location);
+                var items = []
+                let exp = getCurrentExpression(expression);
+                let {prefix: prefix, function: func} = getPrefix(exp);
+                if (prefix) {
+                    obj = this.getExpressionReturnType(prefix, obj);
+                }
+                else {
+                    if (document.getText(new vscode.Range(position.translate(0,-1), position)) == '.') {
+                        return [];
                     }
-                    else {
-                        item.documentation = JSON.stringify(obj[s], (k, v) => (v instanceof Property) ? v.comment : v, '\t');
-                    }
-                    
-                    // if (!isId(s)) {
-                    //     let wordRange = document.getWordRangeAtPosition(position);
-                    //     let start = wordRange ? wordRange.start : position;
-                    //     item.range = new vscode.Range(start.translate(0, -1), position.translate(0, 1));
-                    //     item.insertText = `['${s}']`;
-                    // }
-                    return item;
-                }));
+                    items = items.concat(['true', 'false', 'null', 'nil'].map(s => new CompletionItem(s, vscode.CompletionItemKind.Keyword)));
+                    items = items.concat(this.completionItemForFunctions(functions.global));
+                }
+                if (obj === null) {
+                    return [];
+                }
+                
+                items = items.concat(this.completionItemForFunctions(this.functionsForObject(obj)));
+                items = items.concat(this.completionItemForProperties(this.propertiesForObject(obj)));
+                if (isObject(obj)) {
+                    items = items.concat(Object.keys(obj).filter(isId).map(s => {
+                        let item = new vscode.CompletionItem(s, vscode.CompletionItemKind.Variable);
+                        let value = obj[s];
+                        if (value instanceof Property) {
+                            item.detail = `${value.getType()} ${s}`;
+                            item.documentation = value.comment;
+                        }
+                        else {
+                            item.documentation = JSON.stringify(obj[s], (k, v) => (v instanceof Property) ? v.comment : v, '\t');
+                        }
+                        
+                        // if (!isId(s)) {
+                        //     let wordRange = document.getWordRangeAtPosition(position);
+                        //     let start = wordRange ? wordRange.start : position;
+                        //     item.range = new vscode.Range(start.translate(0, -1), position.translate(0, 1));
+                        //     item.insertText = `['${s}']`;
+                        // }
+                        return item;
+                    }));
+                }
+                return items;
             }
-            return items;
+            else {
+                let nodePath = this.nodePath(location.path);
+                if (nodePath.length >= 2 && nodePath[0] === 'style' && (nodePath[1] === 'image' || nodePath[1] === 'error-image' || nodePath[1] === 'background-image')) {
+                    return ImageHelper.provideCompletionItems(this, token);
+                }
+            }
         }
 
         let properties = this.getProperties(this.rootNode, location);

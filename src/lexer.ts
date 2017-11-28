@@ -17,6 +17,29 @@ export enum TokenType {
     Unknown,
 }
 
+export enum LexerErrorCode {
+    None,
+    UnclosedString,
+    UnclosedComment,
+    InvalidNumber,
+    InvalidEscape,
+    InvalidUnicode,
+    InvalidCharacter,
+}
+
+export function errorMessage(errorCode: LexerErrorCode): string {
+    const errors = [
+        "no error",
+        "unclosed string literal",
+        "'*/' expected",
+        "invalid number format",
+        "invalid escaped character in string",
+        "invalid unicode sequence in string",
+        "invalid characters in string. control characters must be escaped"
+    ]
+    return errors[errorCode];
+}
+
 export class Token {
     type: TokenType | string;
     offset: number;
@@ -38,7 +61,7 @@ export class Lexer {
     private pointer: number;
     private c: string;
     private line: number;
-    public error: string;
+    public error: LexerErrorCode;
     public token: Token;
 
     public constructor(source: string) {
@@ -58,15 +81,15 @@ export class Lexer {
         if (this.token.type === null || this.error) {
             this.token = null;
         }
+        return this.token;
     }
 
-    public static allTokens(source: string) {
+    public static allTokens(source: string, tokens: any[]) {
         let lexer = new Lexer(source);
-        var tokens = [];
-        while (lexer.next(), lexer.token) {
+        while (lexer.next()) {
             tokens.push(lexer.token);
         }
-        return tokens;
+        return lexer.error;
     }
 
     private _nextChar() {
@@ -180,7 +203,7 @@ export class Lexer {
                             }
                         } while (this.c != null);
                         if (!closed) {
-                            this.error = "'*/' expected";
+                            this.error = LexerErrorCode.UnclosedComment;
                         }
                         continue;
                     } else {
@@ -355,7 +378,7 @@ export class Lexer {
             return;
         }
         
-        this.error = "illegal number format";
+        this.error = LexerErrorCode.InvalidNumber;
     }
 
     private static unicodeRE = /^[a-fA-F0-9]{4}/;
@@ -381,12 +404,12 @@ export class Lexer {
             let c = this.c;
             switch (c) {
                 case null:
-                    this.error = "unclosed string literal";
+                    this.error = LexerErrorCode.UnclosedString;
                     return;
                 case '\n':
                 case '\r':
                     this._newline();
-                    this.error = "unclosed string literal";
+                    this.error = LexerErrorCode.UnclosedString;
                     return;
                 case '\\':
                 {
@@ -430,17 +453,17 @@ export class Lexer {
                                    this.pointer += 4;
                                 }
                                 else {
-                                    this.error = "invalid unicode sequence in string";
+                                    this.error = LexerErrorCode.InvalidUnicode;
                                 }
                             }
                             break;
                         }
                         default:
                             if (this.c == '\n' || this.c == null) {
-                                this.error = "unclosed string literal";
+                                this.error = LexerErrorCode.UnclosedString;
                             }
                             else {
-                                this.error = "invalid escaped character in string";
+                                this.error = LexerErrorCode.InvalidEscape;
                             }
                             continue;
                     }
@@ -452,7 +475,7 @@ export class Lexer {
                 }
                 default:
                     if (iscntrl(this.c)) {
-                        this.error = "invalid characters in string. control characters must be escaped";
+                        this.error = LexerErrorCode.InvalidCharacter;
                     }
                     segment_len++;
                     this._nextChar();
