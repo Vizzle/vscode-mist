@@ -119,7 +119,7 @@ function getImageFiles(dir: string): ImageInfo[] {
             if (f.endsWith('.imageset')) {
                 let info: ImageInfo = {
                     file: file,
-                    name: f.slice(0, -9),
+                    name: f.replace(/\.[^/.]+$/, ''),
                     at: null
                 }
                 images.push(info);

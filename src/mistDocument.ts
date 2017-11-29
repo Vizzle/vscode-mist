@@ -537,6 +537,8 @@ export class MistDocument {
         let path = [...location.path];
         let node = this.nodeAtPath(path);
         let vars = {};
+        let inVars = path.length > 0 && path[0] === 'vars';
+        let inRepeat = path.length > 0 && path[0] === 'repeat';
         while (node) {
             let nodeVars = node.property('vars');
             if (nodeVars) {
@@ -549,14 +551,16 @@ export class MistDocument {
                         vars = {...vars, ...nodeVars[i]};
                     }
                 }
-                else if (isObject(nodeVars) && path[0] != 'vars') {
+                else if (isObject(nodeVars) && !inVars) {
                     vars = {...nodeVars, ...vars};
                 }
             }
-            if (node.property('repeat') && path[0] != 'repeat') {
+            if (node.property('repeat') && !inRepeat) {
                 vars = {'_index_': new Property('NSUInteger', '当前 `repeat` 元素索引'), '_item_': new Property('unknown', '当前 `repeat` 元素'), ...vars};
             }
             node = node.parent;
+            inVars = false;
+            inRepeat = false;
         }
         return vars;
     }
@@ -1086,7 +1090,7 @@ export class MistDocument {
             if (!isFunction) {
                 obj = this.getExpressionReturnType(expression, vars);
             }
-            if (obj) {
+            if (obj !== null) {
                 if (obj instanceof Property) {
                     return new vscode.Hover(obj.comment);
                     // item.detail = `${obj.getType()} ${s}`;
