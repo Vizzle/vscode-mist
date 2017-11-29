@@ -346,7 +346,7 @@ function isArray(obj: any) {
 }
 
 function isObject(obj: any) {
-    return typeof(obj) === 'object' && obj.constructor === Object;
+    return obj && typeof(obj) === 'object' && obj.constructor === Object;
 }
 
 let ID_RE = /^[_a-zA-Z]\w*$/;
@@ -632,6 +632,9 @@ export class MistDocument {
     }
 
     private objectType(obj: any) {
+        if (obj === undefined || obj === null) {
+            return null;
+        }
         const typeMap = {
             "string": "NSString",
             "number": "NSNumber",
@@ -907,6 +910,9 @@ export class MistDocument {
                 // }
             }
         }
+        if (vars === undefined) {
+            vars = null;
+        }
         return vars;
     }
 
@@ -930,6 +936,11 @@ export class MistDocument {
                 let {prefix: prefix, function: func} = getPrefix(exp);
                 if (prefix) {
                     obj = this.getExpressionReturnType(prefix, obj);
+                    if (obj === null) {
+                        return [];
+                    }
+                    items = items.concat(this.completionItemForFunctions(this.functionsForObject(obj)));
+                    items = items.concat(this.completionItemForProperties(this.propertiesForObject(obj)));
                 }
                 else {
                     if (document.getText(new vscode.Range(position.translate(0,-1), position)) == '.') {
@@ -938,12 +949,7 @@ export class MistDocument {
                     items = items.concat(['true', 'false', 'null', 'nil'].map(s => new CompletionItem(s, vscode.CompletionItemKind.Keyword)));
                     items = items.concat(this.completionItemForFunctions(functions.global));
                 }
-                if (obj === null) {
-                    return [];
-                }
                 
-                items = items.concat(this.completionItemForFunctions(this.functionsForObject(obj)));
-                items = items.concat(this.completionItemForProperties(this.propertiesForObject(obj)));
                 if (isObject(obj)) {
                     items = items.concat(Object.keys(obj).filter(isId).map(s => {
                         let item = new vscode.CompletionItem(s, vscode.CompletionItemKind.Variable);
@@ -1086,7 +1092,7 @@ export class MistDocument {
         if (expression != null) {
             expression = getCurrentExpression(expression);
             let vars = this.allVariables(location);
-            let obj;
+            let obj = null;
             if (!isFunction) {
                 obj = this.getExpressionReturnType(expression, vars);
             }
