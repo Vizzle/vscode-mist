@@ -1,19 +1,32 @@
-import { fail } from "assert";
-
 
 export enum TokenType {
+    None,
     String,
     Number,
     Boolean,
     Null,
     Id,
-    And,
-    Or,
-    Equal,
-    NotEqual,
-    GreaterOrEqaul,
-    LessOrEqaul,
     Arrow,
+
+    // operators
+    Add, Sub, Mul, Div, Mod,
+    And, Or,
+    Equal, NotEqual,
+    GreaterThan, LessThan, GreaterOrEqual, LessOrEqual,
+    Not,
+
+    // punctuations
+    OpenParen,
+    OpenBracket,
+    OpenBrace,
+    CloseParen,
+    CloseBracket,
+    CloseBrace,
+    Dot,
+    Question,
+    Colon,
+    Comma,
+
     Unknown,
 }
 
@@ -25,41 +38,128 @@ export enum LexerErrorCode {
     InvalidEscape,
     InvalidUnicode,
     InvalidCharacter,
+    UnknownToken,
 }
 
-export function errorMessage(errorCode: LexerErrorCode): string {
-    const errors = [
-        "no error",
-        "unclosed string literal",
-        "'*/' expected",
-        "invalid number format",
-        "invalid escaped character in string",
-        "invalid unicode sequence in string",
-        "invalid characters in string. control characters must be escaped"
-    ]
-    return errors[errorCode];
-}
+const errors = [
+    "no error",
+    "unclosed string literal",
+    "'*/' expected",
+    "invalid number format",
+    "invalid escaped character in string",
+    "invalid unicode sequence in string",
+    "invalid characters in string. control characters must be escaped",
+    "unknown token",
+];
 
 export class Token {
-    type: TokenType | string;
+    type: TokenType;
     offset: number;
     length: number;
     value: any;
 }
 
-let isalpha = c => (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
-let isdigit = c => (c >= '0' && c <= '9');
-let isalnum = c => (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9');
-let iscntrl = c => c.charCodeAt(0) < 32;
+enum CharCode {
+    Null = 0x0,
+    Tab = 0x9,
+    LineFeed = 0xA,
+    CarriageReturn = 0xD,
+    Space = 0x20,
+    Exclamation = 0x21,
+    DoubleQuote = 0x22,
+    Percent = 0x25,
+    Ampersand = 0x26,
+    SingleQuote = 0x27,
+    OpenParen = 0x28,
+    CloseParen = 0x29,
+    Asterisk = 0x2A,
+    Plus = 0x2B,
+    Comma = 0x2C,
+    Minus = 0x2D,
+    Dot = 0x2E,
+    Slash = 0x2F,
+    _0 = 0x30,
+    _1 = 0x31,
+    _9 = 0x39,
+    Colon = 0x3A,
+    LessThan = 0x3C,
+    Equals = 0x3D,
+    GreaterThan = 0x3E,
+    Question = 0x3F,
+    A = 0x41,
+    B,
+    C,
+    D,
+    E,
+    F,
+    G,
+    H,
+    I,
+    J,
+    K,
+    L,
+    M,
+    N,
+    O,
+    P,
+    Q,
+    R,
+    S,
+    T,
+    U,
+    V,
+    W,
+    X,
+    Y,
+    Z,
+    OpenBracket = 0x5B,
+    Backslash = 0x5C,
+    CloseBracket = 0x5D,
+    _ = 0x5F,
+    a = 0x61,
+    b,
+    c,
+    d,
+    e,
+    f,
+    g,
+    h,
+    i,
+    j,
+    k,
+    l,
+    m,
+    n,
+    o,
+    p,
+    q,
+    r,
+    s,
+    t,
+    u,
+    v,
+    w,
+    x,
+    y,
+    z,
+    OpenBrace = 0x7B,
+    Bar = 0x7C,
+    CloseBrace = 0x7D,
+}
 
-let isNewLine = c => c == '\r' || c == '\n';
-let isQuote = c => c == '\'' || c == '"';
+let isalpha = c => (c >= CharCode.a && c <= CharCode.z) || (c >= CharCode.A && c <= CharCode.Z);
+let isdigit = c => (c >= CharCode._0 && c <= CharCode._9);
+let isalnum = c => (c >= CharCode.a && c <= CharCode.z) || (c >= CharCode.A && c <= CharCode.Z) || (c >= CharCode._0 && c <= CharCode._9);
+let iscntrl = c => c < 32;
+
+let isNewLine = c => c === CharCode.LineFeed || c === CharCode.CarriageReturn;
+let isQuote = c => c === CharCode.SingleQuote || c === CharCode.DoubleQuote;
 
 export class Lexer {
     public source: string;
     private length: number;
     private pointer: number;
-    private c: string;
+    private c: number;
     private line: number;
     public error: LexerErrorCode;
     public token: Token;
@@ -74,14 +174,18 @@ export class Lexer {
         this._nextChar();
     }
 
+    public static errorMessage(errorCode: LexerErrorCode): string {
+        return errors[errorCode];
+    }
+
     public next() {
         this.token = new Token();
         this.token.type = this._next();
         this.token.length = this.pointer - this.token.offset;
-        if (this.token.type === null || this.error) {
-            this.token = null;
+        if (this.error) {
+            this.token.type = TokenType.None;
         }
-        return this.token;
+        return this.token.type !== TokenType.None;
     }
 
     public static allTokens(source: string, tokens: any[]) {
@@ -94,105 +198,110 @@ export class Lexer {
 
     private _nextChar() {
         this.pointer++;
-        this.c = this.pointer >= this.length ? null : this.source[this.pointer];
+        let c = this.source.charCodeAt(this.pointer);
+        if (isNaN(c)) c = 0;
+        this.c = c;
+        return c;
     }
 
     private _newline() {
         let old = this.c;
         this._nextChar();
-        if (isNewLine(this.c) && this.c != old) {
+        if (isNewLine(this.c) && this.c !== old) {
             this._nextChar();
         }
         this.line++;
     }
 
-    private _next() {
+    private _next(): TokenType {
         for(;;) {
             this.token.offset = this.pointer;
             
             let c = this.c;
             switch (c) {
-                case null:
-                    return null;
-                case ' ':
-                case '\t':
+                case CharCode.Null:
+                    return TokenType.None;
+                case CharCode.Space:
+                case CharCode.Tab:
                     this._nextChar();
                     continue;
-                case '\n':
-                case '\r':
+                case CharCode.LineFeed:
+                case CharCode.CarriageReturn:
+                    this._newline();
                     continue;
-                case '&':
+                case CharCode.Ampersand:
                     this._nextChar();
-                    if (this.c == '&') {
+                    if (this.c === CharCode.Ampersand) {
                         this._nextChar();
                         return TokenType.And;
                     }
                     else {
                         TokenType.Unknown
                     }
-                case '|':
+                case CharCode.Bar:
                     this._nextChar();
-                    if (this.c == '|') {
+                    if (this.c === CharCode.Bar) {
                         this._nextChar();
                         return TokenType.Or;
                     }
                     else {
                         TokenType.Unknown
                     }
-                case '=':
+                case CharCode.Equals:
                     this._nextChar();
-                    if (this.c == '=') {
+                    if (this.c === CharCode.Equals) {
                         this._nextChar();
                         return TokenType.Equal;
                     }
                     else {
                         TokenType.Unknown
                     }
-                case '!':
+                case CharCode.Exclamation:
                     this._nextChar();
-                    if (this.c == '=') {
+                    if (this.c === CharCode.Equals) {
                         this._nextChar();
                         return TokenType.NotEqual;
                     }
                     else {
-                        return '!';
+                        return TokenType.Not;
                     }
-                case '>':
+                case CharCode.GreaterThan:
                     this._nextChar();
-                    if (this.c == '=') {
+                    if (this.c === CharCode.Equals) {
                         this._nextChar();
-                        return TokenType.GreaterOrEqaul;
+                        return TokenType.GreaterOrEqual;
                     }
                     else {
-                        return '>';
+                        return TokenType.GreaterThan;
                     }
-                case '<':
+                case CharCode.LessThan:
                     this._nextChar();
-                    if (this.c == '=') {
+                    if (this.c === CharCode.Equals) {
                         this._nextChar();
-                        return TokenType.LessOrEqaul;
+                        return TokenType.LessOrEqual;
                     }
                     else {
-                        return '<';
+                        return TokenType.LessThan;
                     }
-                case '/':
+                case CharCode.Slash:
                     this._nextChar();
-                    if (this.c == '/') { // single line comment
+                    if (this.c === CharCode.Slash) { // single line comment
+                        let c: CharCode;
                         do {
-                            this._nextChar();
-                        } while (!isNewLine(this.c) && this.c != null);
+                            c = this._nextChar();
+                        } while (!isNewLine(c) && c !== CharCode.Null);
                         continue;
-                    } else if (this.c == '*') { // multi line comment
+                    } else if (this.c === CharCode.Asterisk) { // multi line comment
                         var closed = false;
                         do {
                             this._nextChar();
                             if (isNewLine(this.c)) {
                                 this._newline();
                             }
-                            else if (this.c == '*') {
+                            else if (this.c === CharCode.Asterisk) {
                                 this._nextChar();
                                 this.c = this.c;
-                                if (this.c == '/') {
+                                if (this.c === CharCode.Slash) {
                                     closed = true;
                                     this._nextChar();
                                     break;
@@ -201,47 +310,68 @@ export class Lexer {
                                     continue;
                                 }
                             }
-                        } while (this.c != null);
+                        } while (this.c !== CharCode.Null);
                         if (!closed) {
                             this.error = LexerErrorCode.UnclosedComment;
                         }
                         continue;
                     } else {
-                        return '/';
+                        return TokenType.Div;
                     }
-                case '-':
+                case CharCode.Minus:
                     this._nextChar();
-                    if (this.c == '>') {
+                    if (this.c === CharCode.GreaterThan) {
                         this._nextChar();
                         return TokenType.Arrow;
                     }
                     else {
-                        return '-';
+                        return TokenType.Sub;
                     }
-                case '+':
-                case '*':
-                case '%':
-                case '(':
-                case ')':
-                case '[':
-                case ']':
-                case '{':
-                case '}':
-                case '.':
-                case '?':
-                case ':':
-                case ',':
-                {
-                    let type = this.c;
+                case CharCode.Plus:
                     this._nextChar();
-                    return type;
-                }
+                    return TokenType.Add;
+                case CharCode.Asterisk:
+                    this._nextChar();
+                    return TokenType.Mul;
+                case CharCode.Percent:
+                    this._nextChar();
+                    return TokenType.Mod;
+                case CharCode.OpenParen:
+                    this._nextChar();
+                    return TokenType.OpenParen;
+                case CharCode.CloseParen:
+                    this._nextChar();
+                    return TokenType.CloseParen;
+                case CharCode.OpenBracket:
+                    this._nextChar();
+                    return TokenType.OpenBracket;
+                case CharCode.CloseBracket:
+                    this._nextChar();
+                    return TokenType.CloseBracket;
+                case CharCode.OpenBrace:
+                    this._nextChar();
+                    return TokenType.OpenBrace;
+                case CharCode.CloseBrace:
+                    this._nextChar();
+                    return TokenType.CloseBrace;
+                case CharCode.Dot:
+                    this._nextChar();
+                    return TokenType.Dot;
+                case CharCode.Question:
+                    this._nextChar();
+                    return TokenType.Question;
+                case CharCode.Colon:
+                    this._nextChar();
+                    return TokenType.Colon;
+                case CharCode.Comma:
+                    this._nextChar();
+                    return TokenType.Comma;
                 default:
-                    if (this.c == '_' || isalpha(this.c)) {
+                    if (this.c === CharCode._ || isalpha(this.c)) {
                         let start = this.pointer;
                         do {
                             this._nextChar();
-                            if (!(this.c == '_' || isalnum(this.c))) {
+                            if (!(this.c === CharCode._ || isalnum(this.c))) {
                                 break;
                             }
                         } while (this.c);
@@ -269,7 +399,8 @@ export class Lexer {
                         this._readString();
                         return TokenType.String;
                     } else {
-                        TokenType.Unknown;
+                        this.error = LexerErrorCode.UnknownToken;
+                        return TokenType.Unknown;
                     }
             }
         }
@@ -292,14 +423,14 @@ export class Lexer {
         var state = NumberState.Start;
         let start = this.pointer;
         
-        while (state != NumberState.Success && state != NumberState.Error) {
+        while (state !== NumberState.Success && state !== NumberState.Error) {
             switch (state) {
                 case NumberState.Start:
-                    if (this.c == '0') {
+                    if (this.c === CharCode._0) {
                         state = NumberState.Dot;
                         this._nextChar();
                     }
-                    else if (this.c >= '1' && this.c <= '9') {
+                    else if (this.c >= CharCode._1 && this.c <= CharCode._9) {
                         state = NumberState.Nonzero;
                         this._nextChar();
                     }
@@ -308,7 +439,7 @@ export class Lexer {
                     }
                     break;
                 case NumberState.Nonzero:
-                    if (this.c >= '0' && this.c <= '9') {
+                    if (this.c >= CharCode._0 && this.c <= CharCode._9) {
                         this._nextChar();
                     }
                     else {
@@ -316,7 +447,7 @@ export class Lexer {
                     }
                     break;
                 case NumberState.Dot:
-                    if (this.c == '.') {
+                    if (this.c === CharCode.Dot) {
                         state = NumberState.FractionalStart;
                         this._nextChar();
                     }
@@ -325,7 +456,7 @@ export class Lexer {
                     }
                     break;
                 case NumberState.FractionalStart:
-                    if (this.c >= '0' && this.c <= '9') {
+                    if (this.c >= CharCode._0 && this.c <= CharCode._9) {
                         state = NumberState.Fractional;
                         this._nextChar();
                     }
@@ -334,7 +465,7 @@ export class Lexer {
                     }
                     break;
                 case NumberState.Fractional:
-                    if (this.c >= '0' && this.c <= '9') {
+                    if (this.c >= CharCode._0 && this.c <= CharCode._9) {
                         this._nextChar();
                     }
                     else {
@@ -342,7 +473,7 @@ export class Lexer {
                     }
                     break;
                 case NumberState.ExponentMark:
-                    if (this.c == 'E' || this.c == 'e') {
+                    if (this.c === CharCode.E || this.c === CharCode.e) {
                         state = NumberState.ExponentSign;
                         this._nextChar();
                     }
@@ -351,7 +482,7 @@ export class Lexer {
                     }
                     break;
                 case NumberState.ExponentSign:
-                    if (this.c == '+' || this.c == '-') {
+                    if (this.c === CharCode.Plus || this.c === CharCode.Minus) {
                         state = NumberState.ExponentValue;
                         this._nextChar();
                     }
@@ -360,7 +491,7 @@ export class Lexer {
                     }
                     break;
                 case NumberState.ExponentValue:
-                    if (this.c >= '0' && this.c <= '9') {
+                    if (this.c >= CharCode._0 && this.c <= CharCode._9) {
                         this._nextChar();
                     }
                     else {
@@ -373,7 +504,7 @@ export class Lexer {
             }
         }
         
-        if (state == NumberState.Success) {
+        if (state === NumberState.Success) {
             this.token.value = parseFloat(this.source.substring(start, this.pointer));
             return;
         }
@@ -400,50 +531,50 @@ export class Lexer {
             segment_start = this.pointer + 1;
         };
         
-        while (this.c != quote) {
+        while (this.c !== quote) {
             let c = this.c;
             switch (c) {
-                case null:
+                case CharCode.Null:
                     this.error = LexerErrorCode.UnclosedString;
                     return;
-                case '\n':
-                case '\r':
+                case CharCode.LineFeed:
+                case CharCode.CarriageReturn:
                     this._newline();
                     this.error = LexerErrorCode.UnclosedString;
                     return;
-                case '\\':
+                case CharCode.Backslash:
                 {
                     this._nextChar();
                     var esc = null;
                     switch (this.c) {
-                        case '"':
+                        case CharCode.DoubleQuote:
                             esc = '"';
                             break;
-                        case '\'':
+                        case CharCode.SingleQuote:
                             esc = '\'';
                             break;
-                        case '\\':
+                        case CharCode.Backslash:
                             esc = '\\';
                             break;
-                        case '/':
+                        case CharCode.Slash:
                             esc = '/';
                             break;
-                        case 'b':
+                        case CharCode.b:
                             esc = '\b';
                             break;
-                        case 'f':
+                        case CharCode.f:
                             esc = '\f';
                             break;
-                        case 'n':
+                        case CharCode.n:
                             esc = '\n';
                             break;
-                        case 'r':
+                        case CharCode.r:
                             esc = '\r';
                             break;
-                        case 't':
+                        case CharCode.t:
                             esc = '\t';
                             break;
-                        case 'u':
+                        case CharCode.u:
                         {
                             if (this.pointer + 4 < this.length) {
                                 Lexer.unicodeRE.lastIndex = 0;
@@ -459,7 +590,7 @@ export class Lexer {
                             break;
                         }
                         default:
-                            if (this.c == '\n' || this.c == null) {
+                            if (this.c === CharCode.LineFeed || this.c === CharCode.Null) {
                                 this.error = LexerErrorCode.UnclosedString;
                             }
                             else {
@@ -482,7 +613,7 @@ export class Lexer {
                     break;
             }
         }
-        // assert(this.c == quote);
+        // assert(this.c === quote);
         this._nextChar();
         if (ret.length > 0) {
             pushCurrentSegment();

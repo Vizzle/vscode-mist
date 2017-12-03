@@ -5,6 +5,7 @@ import * as json from 'jsonc-parser'
 import * as cp from 'child_process'
 import * as net from 'net'
 import MistServer from './mistServer'
+import { Parser } from './parser';
 
 export default class MistDiagnosticProvider {
     private diagnosticCollection: vscode.DiagnosticCollection;
@@ -127,35 +128,18 @@ export default class MistDiagnosticProvider {
             }
         });
 
-        let mistexpPromise = this.server.send("checkExp", exps.map(e => e.exp).join('\x1e')).then(str => {
-            let result = str.split('\x1e');
-            let errors = exps.map((v, i) => [v, result[i]] ).filter(v => v[1].length > 0).map(v => {
-                let match = /^\[(\d+), (\d+)\] (.+)$/.exec(v[1]);
-                let error: Error;
-                if (match) {
-                    error = {
-                        type: vscode.DiagnosticSeverity.Error,
-                        desc: match[3],
-                        offset: parseInt(match[1]),
-                        length: Math.max(1, parseInt(match[2])),
-                    };
-                }
-                else {
-                    error = {
-                        type: vscode.DiagnosticSeverity.Error,
-                        desc: v[1],
-                        offset: 0,
-                        length: v[0].length,
-                    };
-                }
-                let originOffset = v[0].offset + v[0].offsets[error.offset];
-                let originLength = v[0].offsets[error.offset + error.length] - v[0].offsets[error.offset];
-                error.offset = originOffset;
-                error.length = originLength;
-                return error;
-            });
-            return errors;
-        }).catch(err => <Error[]>[]);
+        let mistexpPromise = exps.map(e => {
+            let { errorOffset: offset, errorLength: length, errorMessage: error} = Parser.parse(e.exp);
+            if (error) {
+                return <Error>{
+                    type: vscode.DiagnosticSeverity.Error,
+                    desc: error,
+                    offset: e.offset + e.offsets[offset],
+                    length: e.offsets[offset + length] - e.offsets[offset]
+                };
+            }
+            return null;
+        }).filter(e => e);
         
         Promise.all([errors, mistexpPromise]).then(values => {
             let diagnostics = values.reduce((p, c, i, a) => {

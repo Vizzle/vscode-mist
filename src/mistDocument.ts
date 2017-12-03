@@ -1,4 +1,4 @@
-import { Uri, TextDocument, TextDocumentChangeEvent, CompletionItem } from "vscode";
+import { Uri, TextDocument, TextDocumentChangeEvent, CompletionItem, Hover } from "vscode";
 import * as vscode from "vscode";
 import * as json from 'jsonc-parser'
 import * as path from 'path'
@@ -8,6 +8,8 @@ import { functions } from './functions';
 import { Properties, PropertyInfo, Event, BasicType } from "./properties";
 import { ImageHelper } from "./imageHelper";
 import { Lexer, LexerErrorCode } from "./lexer";
+import { Type, IType, Method, Parameter, Property, ArrayType, UnionType, ObjectType, IntersectionType } from "./type";
+import { ExpressionContext, Parser, None, ExpressionNode, LiteralNode } from "./parser";
 
 enum ExpType {
     Void,
@@ -38,11 +40,11 @@ function nameOfType(type: ExpType) {
 let MIST_EXP_RE = /\$\{.*?\}/mg;
 // let MIST_EXP_PREFIX_RE = /([_a-zA-Z0-9.]+)\.([_a-zA-Z][_a-zA-Z0-9]*)?$/;
 
-class Property {
-    type: string | { [property: string]: Property };
+class Property1 {
+    type: string | { [property: string]: Property1 };
     comment: string;
 
-    constructor(type: string | { [property: string]: Property }, comment: string = null) {
+    constructor(type: string | { [property: string]: Property1 }, comment: string = null) {
         this.type = type;
         this.comment = comment;
     }
@@ -57,31 +59,76 @@ class Property {
     }
 }
 
-let BUILTIN_VARS = {
-    "_width_": new Property("CGFloat", "屏幕宽度"),
-    "_height_": new Property("CGFloat", "屏幕高度"),
-    "_mistitem_": new Property("VZMistItem", "模版对应的 item 对象"),
-    "system": {
-        "name": new Property("NSString*", "系统名称"),
-        "version": new Property("NSString*", "系统版本"),
-        "deviceName": new Property("NSString*", "设备名称")
-    },
-    "screen": {
-        "width": new Property("CGFloat", "屏幕宽度"),
-        "height": new Property("CGFloat", "屏幕高度"),
-        "scale": new Property("CGFloat", "屏幕像素密度"),
-        "statusBarHeight": new Property("CGFloat", "状态栏高度"),
-        "isPlus": new Property("BOOL", "是否是大屏（iPhone 6/6s/7/8 Plus）"),
-        "isSmall": new Property("BOOL", "是否是小屏（iPhone 4/4s/5/5s/SE）"),
-        "isX": new Property("BOOL", "是否是 iPhone X"),
-        "safeAera": new Property("UIEdgeInsets", "安全区域"),
-    },
-    "app": {
-        "isAlipay": new Property("BOOL", "是否是支付宝客户端"),
-        "isKoubei": new Property("BOOL", "是否是口碑客户端"),
-    }
-};
+class Variable {
+    name: string;
+    type: IType;
+    value: any;
+    computed: any;
+    description: string;
 
+    constructor(name: string, value: any, description?: string) {
+        this.name = name;
+        let a = [[100, 18], [50, 20], [80, 14], [130, 23], [70, 17], [60, 26], [80, 19], [50, 21], [80, 23], [70, 18], [80, 20]];
+        
+        if (value instanceof IType) {
+            this.type = value;
+            this.value = None;
+        }
+        else {
+            this.value = value;
+        }
+        this.description = description;
+    }
+
+    static unique(vars: Variable[]) {
+        let reversed = [...vars].reverse();
+        return vars.filter((v, i) => reversed.findIndex(n => n.name === v.name) === vars.length - i - 1);
+    }
+}
+
+class StringConcatExpressionNode extends ExpressionNode {
+    expressions: ExpressionNode[];
+
+    constructor(expressions: ExpressionNode[]) {
+        super();
+        this.expressions = expressions;
+    }
+
+    compute(context: ExpressionContext) {
+        let computed = this.expressions.map(e => e.compute(context));
+        if (computed.some(v => v === None)) return None;
+        return computed.join('');
+    }
+
+    getType(context: ExpressionContext): IType {
+        return Type.String;
+    }
+}
+
+let BUILTIN_VARS = [
+    new Variable("_width_", Type.Number, "屏幕宽度"),
+    new Variable("_height_", Type.Number, "屏幕高度"),
+    new Variable("_mistitem_", Type.registerType(new Type('VZMistItem')), "模版对应的 item 对象"),
+    new Variable("system", Type.registerType(new Type('system')).registerPropertys({
+        "name": new Property(Type.String, "系统名称"),
+        "version": new Property(Type.String, "系统版本"),
+        "deviceName": new Property(Type.String, "设备名称")
+    }), "系统信息"),
+    new Variable("screen", Type.registerType(new Type('screen')).registerPropertys({
+        "width": new Property(Type.Number, "屏幕宽度"),
+        "height": new Property(Type.Number, "屏幕高度"),
+        "scale": new Property(Type.Number, "屏幕像素密度"),
+        "statusBarHeight": new Property(Type.Number, "状态栏高度"),
+        "isPlus": new Property(Type.Boolean, "是否是大屏（iPhone 6/6s/7/8 Plus）"),
+        "isSmall": new Property(Type.Boolean, "是否是小屏（iPhone 4/4s/5/5s/SE）"),
+        "isX": new Property(Type.Boolean, "是否是 iPhone X"),
+        "safeAera": new Property(Type.registerType(new Type('UIEdgeInsets')), "安全区域"),
+    }), "屏幕属性"),
+    new Variable("app", Type.registerType(new Type('screen')).registerPropertys({
+        "isAlipay": new Property(Type.Boolean, "是否是支付宝客户端"),
+        "isKoubei": new Property(Type.Boolean, "是否是口碑客户端"),
+    }), "应用属性"),
+];
 
 class MistData {
     template: string;
@@ -213,7 +260,7 @@ export function getCurrentExpression(exp: string) {
     var index = exp.length - 1;
     var stop = false;
     var braceCount = {};
-    let braceDict = {'{': '}', '(': ')', '[': ']'};
+    const braceDict = {'{': '}', '(': ')', '[': ']'};
     while (index >= 0) {
         var c = exp[index];
         switch (c) {
@@ -285,6 +332,59 @@ export function getPrefix(exp: string): {prefix: string, function: string} {
     }
 }
 
+// (1, xx(2, 3), 3) => 3
+export function getFunctionParamsCount(exp: string) {
+    var index = 1;
+    var stop = false;
+    var braceCount = {};
+    var commaCount = 0;
+    let braceDict = {'}': '{', ')': '(', ']': '['};
+    while (index < exp.length) {
+        var c = exp[index];
+        switch (c) {
+            case ',':
+                if (Object.keys(braceCount).every(k => braceCount[k] == 0)) {
+                    commaCount++;
+                }
+                break;
+            case '(':
+            case '{':
+            case '[':
+                braceCount[c] = (braceCount[c]||0) + 1;
+                break;
+            case '\'':
+            case '"':
+                let quote = c;
+                while (--index >= 0) {
+                    c = exp[index];
+                    if (c == quote) {
+                        break;
+                    }
+                }
+                break;
+            case ']':
+            case ')':
+            case '}':
+                c = braceDict[c];
+                braceCount[c] = (braceCount[c]||0) - 1;
+                if (braceCount[c] < 0) {
+                    stop = true;
+                }
+        }
+        if (stop) {
+            break;
+        }
+        index++;
+    }
+
+    let paramsCount = commaCount + 1;
+    if (exp.substring(1, index).match(/^\s*$/)) {
+        paramsCount = 0;
+    }
+    
+    return paramsCount;
+}
+
 export function getSignatureInfo(exp: string) {
     var index = exp.length - 1;
     var stop = false;
@@ -342,7 +442,6 @@ export function getSignatureInfo(exp: string) {
 
 function isArray(obj: any) {
     return obj instanceof Array;
-    // return typeof(obj) === 'object' && obj.constructor === Array;
 }
 
 function isObject(obj: any) {
@@ -353,6 +452,169 @@ let ID_RE = /^[_a-zA-Z]\w*$/;
 function isId(str: string) {
     return ID_RE.test(str);
 }
+
+function registerTypes() {
+    const aliases = {
+        "NSString": "string",
+        "NSNumber": "number",
+        "CGFloat": "number",
+        "float": "number",
+        "double": "number",
+        "int": "number",
+        "uint": "number",
+        "NSInteger": "number",
+        "NSUInteger": "number",
+        "BOOL": "boolean",
+        "id": "any",
+        "NSArray": "array",
+        "NSDictionary": "object"
+    }
+    let typeName = name => aliases[name.replace('*', '')] || name;
+    let getType = name => name ? Type.getType(typeName(name)) || Type.registerType(new Type(typeName(name))) : Type.Void;
+    Object.keys(functions).forEach(name => {
+        let funs = functions[name];
+        let typeN = typeName(name);
+        let type = Type.getType(typeN);
+        if (!type) {
+            type = Type.registerType(new Type(typeN));
+        }
+        Object.keys(funs).forEach(fun => {
+            funs[fun].forEach(info => {
+                let doc = info.comment;
+                if (info.deprecated) {
+                    doc = `[Deprecated] ${info.deprecated}\n${doc || ''}`.trim();
+                }
+                type.registerMethod(fun, new Method(getType(info.return), doc, (info.params || []).map(p => new Parameter(p.name, getType(p.type) || Type.Any))));
+            });
+        });
+    });
+
+    const properties = {
+        "NSString": {
+            "length": {
+                "type": "NSUInteger",
+                "comment": "字符串长度"
+            }
+        },
+        "NSArray": {
+            "count": {
+                "type": "NSUInteger",
+                "comment": "数组元素数量"
+            }
+        },
+        "NSDictionary": {
+            "count": {
+                "type": "NSUInteger",
+                "comment": "字典元素数量"
+            }
+        },
+        "VZMistItem": {
+            "tplController": {
+                "type": "VZMistTemplateController", 
+                "comment": "模版关联的 template controller"
+            }
+        },
+        "CGPoint": {
+            "x": {
+                "type": "CGFloat"
+            },
+            "y": {
+                "type": "CGFloat"
+            }
+        },
+        "CGSize": {
+            "width": {
+                "type": "CGFloat"
+            },
+            "height": {
+                "type": "CGFloat"
+            }
+        },
+        "CGRect": {
+            "origin": {
+                "type": "CGPoint"
+            },
+            "size": {
+                "type": "CGSize"
+            },
+            "x": {
+                "type": "CGFloat"
+            },
+            "y": {
+                "type": "CGFloat"
+            },
+            "width": {
+                "type": "CGFloat"
+            },
+            "height": {
+                "type": "CGFloat"
+            }
+        },
+        "UIEdgeInsets": {
+            "top": {
+                "type": "CGFloat"
+            },
+            "left": {
+                "type": "CGFloat"
+            },
+            "bottom": {
+                "type": "CGFloat"
+            },
+            "right": {
+                "type": "CGFloat"
+            }
+        },
+        "NSRange": {
+            "location": {
+                "type": "NSUInteger"
+            },
+            "length": {
+                "type": "NSUInteger"
+            }
+        },
+        "CGVector": {
+            "dx": {
+                "type": "CGFloat"
+            },
+            "dy": {
+                "type": "CGFloat"
+            }
+        },
+        "UIOffset": {
+            "horizontal": {
+                "type": "CGFloat"
+            },
+            "vertical": {
+                "type": "CGFloat"
+            }
+        },
+    };
+
+    Object.keys(properties).forEach(name => {
+        let props = properties[name];
+        name = typeName(name);
+        let type = Type.getType(name);
+        if (!type) {
+            console.error(`type '${name}' not found`);
+            return;
+        }
+        Object.keys(props).forEach(prop => {
+            let info = props[prop];
+            let propType: IType;
+            let comment: string;
+            if (typeof(info.type) === 'string') {
+                propType = getType(info.type);
+                comment = info.comment;
+            }
+            else if (typeof(info) === 'object') {
+                propType = Type.typeof(info);
+            }
+            type.registerProperty(prop, new Property(propType, comment));
+        })
+    });
+}
+
+registerTypes();
 
 export class MistDocument {
     static documents: { [path: string]: MistDocument } = {}
@@ -404,12 +666,7 @@ export class MistDocument {
 
     public static getDocumentByUri(uri: Uri) {
         let path = uri.fsPath;
-        let document = MistDocument.documents[path];
-        // if (!document) {
-        //     document = new MistDocument(path);
-        //     MistDocument.documents[path] = document;
-        // }
-        return document;
+        return MistDocument.documents[path];
     }
 
     public static initialize() {
@@ -474,6 +731,26 @@ export class MistDocument {
         }
     }
 
+    // "abc ${expression1} ${a + max(a, b.c|) + d} xxx" -> ") + d"
+    private getTrailingExpressionAtLocation(location: json.Location, position: vscode.Position) {
+        let document = this.document;
+        if (!location.isAtPropertyKey && location.previousNode.type == 'string') {
+            let start = location.previousNode.offset + 1;
+            let end = location.previousNode.offset + location.previousNode.length - 1;
+            let str = document.getText(new vscode.Range(document.positionAt(start), document.positionAt(end)));
+            let pos = document.offsetAt(position) - start;
+            let match;
+            MIST_EXP_RE.lastIndex = 0;
+            while (match = MIST_EXP_RE.exec(str)) {
+                if (pos >= match.index + 2 && pos <= match.index + match[0].length - 1) {
+                    let str = match[0].slice(pos - match.index, -1);
+                    return json.parse(`"${str}"`);
+                }
+            }
+        }
+        return null;
+    }
+
     // "abc ${expression1} ${a + max(a, b.c|) + d} xxx" -> "a + max(a, b.c"
     private getExpressionAtLocation(location: json.Location, position: vscode.Position) {
         let document = this.document;
@@ -486,7 +763,8 @@ export class MistDocument {
             MIST_EXP_RE.lastIndex = 0;
             while (match = MIST_EXP_RE.exec(str)) {
                 if (pos >= match.index + 2 && pos <= match.index + match[0].length - 1) {
-                    return match[0].substring(2, pos - match.index);
+                    let str = match[0].substring(2, pos - match.index);
+                    return json.parse(`"${str}"`);
                 }
             }
         }
@@ -533,13 +811,129 @@ export class MistDocument {
         return node;
     }
 
-    private varsAtLocation(location: json.Location) {
+    private parseExpressionInString(source: string) {
+        const re = /\$\{(.*?)\}/mg;
+        re.lastIndex = 0;
+        let match: RegExpExecArray;
+        let index = 0;
+        let parts: ExpressionNode[] = [];
+        while (match = re.exec(source)) {
+            let exp = match[1];
+            let { expression: node, errorMessage: error } = Parser.parse(exp);
+            if (error || !node) {
+                node = new LiteralNode(None);
+            }
+            if (match.index === 0 && re.lastIndex === source.length) {
+                return node;
+            }
+            else {
+                if (match.index > index) {
+                    parts.push(new LiteralNode(source.slice(index, match.index)));
+                }
+                parts.push(node);
+                index = re.lastIndex;
+            }
+        }
+        if (parts.length === 0) {
+            return null;
+        }
+        if (index < source.length) {
+            parts.push(new LiteralNode(source.slice(index)));
+        }
+        return new StringConcatExpressionNode(parts);
+    }
+
+    private parseExpressionInObject(obj: any) {
+        if (typeof(obj) === 'string') {
+            let exp = this.parseExpressionInString(obj);
+            if (exp) {
+                return exp;
+            }
+            return obj;
+        }
+        else if (obj instanceof Array) {
+            return obj.map(o => this.parseExpressionInObject(o));
+        }
+        else if (obj && obj !== None && typeof(obj) === 'object') {
+            return Object.keys(obj).reduce((p, c) => { p[c] = this.parseExpressionInObject(obj[c]); return p; }, {});
+        }
+        return obj;
+    }
+
+    private computeExpressionValueInObject(obj: any, context: ExpressionContext) {
+        if (obj instanceof ExpressionNode) {
+            return obj.compute(context);
+        }
+        else if (obj instanceof Array) {
+            return obj.map(o => this.computeExpressionValueInObject(o, context));
+        }
+        else if (obj && obj !== None && typeof(obj) === 'object') {
+            return Object.keys(obj).reduce((p, c) => { p[c] = this.computeExpressionValueInObject(obj[c], context); return p; }, {});
+        }
+        return obj;
+    }
+
+    private computeExpressionTypeInObject(obj: any, context: ExpressionContext) {
+        if (obj instanceof ExpressionNode) {
+            return obj.getType(context);
+        }
+        else if (obj instanceof Array) {
+            return new ArrayType(IntersectionType.type(obj.map(o => this.computeExpressionTypeInObject(o, context))));
+        }
+        else if (obj && obj !== None && typeof(obj) === 'object') {
+            return new ObjectType(Object.keys(obj).reduce((p, c) => { p[c] = this.computeExpressionTypeInObject(obj[c], context); return p; }, {}));
+        }
+        return Type.typeof(obj);
+    }
+
+    private hasExpression(obj: any) {
+        if (obj instanceof ExpressionNode) {
+            return true;
+        }
+        else if (obj instanceof Array) {
+            return obj.some(o => this.hasExpression(o));
+        }
+        else if (obj && obj !== None && typeof(obj) === 'object') {
+            return Object.keys(obj).some(k => this.hasExpression(obj[k]));
+        }
+        return false;
+    }
+
+    private varsAtLocation(location: json.Location): {
+        vars: Variable[],
+        valueContext: ExpressionContext,
+        typeContext: ExpressionContext
+    } {
+        let vars: Variable[] = [];
+        vars.push(...BUILTIN_VARS);
+        let push = (key, value) => vars.push(new Variable(key, value));
+        let pushDict = dict => Object.keys(dict).forEach(key => push(key, dict[key]));
+        
+        let data = this.getData() ? this.getData().data : {};
+
+        if (location.path[0] !== 'data' && this.template.data instanceof Object) {
+            data = {...data, ...this.template.data};
+        }
+        pushDict(data);
+
+        if (Object.keys(data).length === 0) data = Type.Object;
+        vars.push(new Variable('_data_', data, '模版关联的数据'));
+
+        if (location.path[0] !== 'data' && location.path[0] !== 'state') {
+            vars.push(new Variable('state', this.template.state || Type.Object, '模版状态'));
+        }
+        
         let path = [...location.path];
         let node = this.nodeAtPath(path);
-        let vars = {};
         let inVars = path.length > 0 && path[0] === 'vars';
         let inRepeat = path.length > 0 && path[0] === 'repeat';
+        let nodeStack = [];
         while (node) {
+            nodeStack.push(node);
+            node = node.parent;
+        }
+        while (nodeStack.length > 0) {
+            let node = nodeStack.pop();
             let nodeVars = node.property('vars');
             if (nodeVars) {
                 if (isArray(nodeVars)) {
@@ -548,220 +942,64 @@ export class MistDocument {
                         count = path[1] as number;
                     }
                     for (var i = 0; i < count; i++) {
-                        vars = {...vars, ...nodeVars[i]};
+                        pushDict(nodeVars[i]);
                     }
                 }
-                else if (isObject(nodeVars) && !inVars) {
-                    vars = {...nodeVars, ...vars};
+                else if (isObject(nodeVars) && !(inVars && nodeStack.length == 0)) {
+                    pushDict(nodeVars);
                 }
             }
-            if (node.property('repeat') && !inRepeat) {
-                vars = {'_index_': new Property('NSUInteger', '当前 `repeat` 元素索引'), '_item_': new Property('unknown', '当前 `repeat` 元素'), ...vars};
+            if (node.property('repeat') && !(inRepeat && nodeStack.length == 0)) {
+                vars.push(new Variable('_index_', Type.Number, '当前 `repeat` 元素索引'));
+                vars.push(new Variable('_item_', Type.Any, '当前 `repeat` 元素'));
             }
-            node = node.parent;
-            inVars = false;
-            inRepeat = false;
-        }
-        return vars;
-    }
-
-    private allVariables(location: json.Location) {
-        // styles 里暂时不能使用data和state
-        if (location.path[0] === 'styles') {
-            return {};
         }
 
-        let data = (this.getData() ? this.getData().data : {}) || {};
-        if (location.path[0] !== 'data' && this.template.data instanceof Object) {
-            data = {...data, ...this.template.data};
-        }
-        let vars: any = {...BUILTIN_VARS, ...data, '_data_': data};
-        if (location.path[0] !== 'data' && location.path[0] !== 'state') {
-            vars = {...vars, 'state': this.template.state || new Property("NSDictionary", "状态")};
-        }
-        return {...vars, ...this.varsAtLocation(location)};
-    }
+        let typeContext = new ExpressionContext();
+        let valueContext = new ExpressionContext();
+        vars.forEach(v => {
+            let isExp = false;
+            let parsed = this.parseExpressionInObject(v.value);
+            if (this.hasExpression(parsed)) {
+                isExp = true;
+                v.computed = this.computeExpressionValueInObject(parsed, valueContext);
 
-    private functionName(name: string, info: any) {
-        return `${info.return || 'void'} ${name}(${(info.params || []).map(p => `${p.type} ${p.name}`).join(', ')})`
-    }
-
-    private functionsDetail(name: string, infos: any[]) {
-        let detail = this.functionName(name, infos[0]);
-        if (infos.length > 1) {
-            detail += ` (+${infos.length - 1} overload${infos.length > 2 ? 's' : ''})`
-        }
-        return detail;
-    }
-
-    private functionDoc(info: any) {
-        var doc: string = info.comment || '';
-        if (info.deprecated) {
-            doc = `[Deprecated] ${info.deprecated}\n${doc}`;
-        }
-        return doc.trim();
-    }
-
-    private completionItemForFunctions(functions: {}) {
-        return Object.keys(functions).map(s => {
-            let item = new vscode.CompletionItem(s, vscode.CompletionItemKind.Function);
-            let funInfo = functions[s][0];
-            let params = funInfo.params || [];
-            let noParams = params.length == 0 && functions[s].length == 1;
-            item.insertText = new vscode.SnippetString(s + (noParams ? '()' : '($0)'));
-            if (!noParams) {
-                item.command = {
-                    title: 'Trigger Signature Help',
-                    command: "editor.action.triggerParameterHints"
-                };
+                if (!v.type) {
+                    v.type = this.computeExpressionTypeInObject(parsed, typeContext);
+                }
             }
-            item.documentation = this.functionDoc(funInfo);
-            item.detail = this.functionsDetail(s, functions[s]);
-            return item;
+            valueContext.push(v.name, isExp ? v.computed : v.value);
+            if (!v.type) {
+                v.type = Type.typeof(v.value) || Type.Any;
+            }
+            typeContext.push(v.name, v.type);
         });
+
+        return {
+            vars: Variable.unique(vars),
+            valueContext: valueContext,
+            typeContext: typeContext   
+        };
     }
 
-    private completionItemForProperties(properties: {}) {
-        return Object.keys(properties).map(s => {
-            let item = new vscode.CompletionItem(s, vscode.CompletionItemKind.Property);
-            let info = properties[s];
-            item.documentation = info.comment || '';
-            item.detail = `${info.type} ${s}`;
-            return item;
-        });
-    }
-
-    private objectType(obj: any) {
-        if (obj === undefined || obj === null) {
+    private expressionTypeWithContext(expression: string, context: ExpressionContext) {
+        let { expression: node, errorMessage: error } = Parser.parse(expression);
+        if (error || !node) {
             return null;
         }
-        const typeMap = {
-            "string": "NSString",
-            "number": "NSNumber",
-            "object": "NSDictionary",
-            "array": "NSArray"
-        };
-        let type: string;
-        if (obj instanceof Property) {
-            type = obj.getType().replace('*', '');
+        else {
+            return node.getType(context);
         }
-        else if (isArray(obj)) {
-            type = "NSArray";
-        }
-        else if (isObject(obj)) {
-            type = "NSDictionary";
+    }
+
+    private expressionValueWithContext(expression: string, context: ExpressionContext) {
+        let { expression: node, errorMessage: error } = Parser.parse(expression);
+        if (error || !node) {
+            return null;
         }
         else {
-            type = typeof(obj);
+            return node.compute(context);
         }
-
-        return typeMap[type] || type || 'unknown';
-    }
-
-    private functionsForObject(obj: any) {
-        return functions[this.objectType(obj)] || {};
-    }
-
-    private propertiesForObject(obj: any) {
-        const properties = {
-            "NSString": {
-                "length": {
-                    "type": "NSUInteger",
-                    "comment": "字符串长度"
-                }
-            },
-            "NSArray": {
-                "count": {
-                    "type": "NSUInteger",
-                    "comment": "数组元素数量"
-                }
-            },
-            "NSDictionary": {
-                "count": {
-                    "type": "NSUInteger",
-                    "comment": "字典元素数量"
-                }
-            },
-            "VZMistItem": {
-                "tplController": new Property("VZMistTemplateController", "模版关联的 template controller")
-            },
-            "CGPoint": {
-                "x": {
-                    "type": "CGFloat"
-                },
-                "y": {
-                    "type": "CGFloat"
-                }
-            },
-            "CGSize": {
-                "width": {
-                    "type": "CGFloat"
-                },
-                "height": {
-                    "type": "CGFloat"
-                }
-            },
-            "CGRect": {
-                "origin": {
-                    "type": "CGPoint"
-                },
-                "size": {
-                    "type": "CGSize"
-                },
-                "x": {
-                    "type": "CGFloat"
-                },
-                "y": {
-                    "type": "CGFloat"
-                },
-                "width": {
-                    "type": "CGFloat"
-                },
-                "height": {
-                    "type": "CGFloat"
-                }
-            },
-            "UIEdgeInsets": {
-                "top": {
-                    "type": "CGFloat"
-                },
-                "left": {
-                    "type": "CGFloat"
-                },
-                "bottom": {
-                    "type": "CGFloat"
-                },
-                "right": {
-                    "type": "CGFloat"
-                }
-            },
-            "NSRange": {
-                "location": {
-                    "type": "NSUInteger"
-                },
-                "length": {
-                    "type": "NSUInteger"
-                }
-            },
-            "CGVector": {
-                "dx": {
-                    "type": "CGFloat"
-                },
-                "dy": {
-                    "type": "CGFloat"
-                }
-            },
-            "UIOffset": {
-                "horizontal": {
-                    "type": "CGFloat"
-                },
-                "vertical": {
-                    "type": "CGFloat"
-                }
-            },
-        };
-        
-        return properties[this.objectType(obj)] || {};
     }
 
     private getPropertiesWithPath(properties, path: json.Segment[]) {
@@ -785,9 +1023,6 @@ export class MistDocument {
     }
 
     private getProperties(rootNode: json.Node, location: json.Location) {
-        // console.log(location);
-        // console.log(this.nodePath(location));
-
         let properties = {};
         let currentPath = location.path.length > 0 ? location.path[location.path.length - 1] : '';
 
@@ -882,40 +1117,6 @@ export class MistDocument {
         return properties;
     }
 
-    private getExpressionReturnType(exp: string, vars: any) {
-        if (exp) {
-            let keys = exp.split('.');
-            for (let key of keys) {
-                if (vars instanceof Property) {
-                    if (isObject(vars.type)) {
-                        vars = vars.type[key];
-                    }
-                    else {
-                        vars = null;
-                        break;
-                    }
-                }
-                else {
-                    if (isObject(vars)) {
-                        vars = vars[key];
-                    }
-                    else {
-                        vars = null;
-                        break;
-                    }
-                }
-                
-                // if (!(vars instanceof Object)) {
-                //     break;
-                // }
-            }
-        }
-        if (vars === undefined) {
-            vars = null;
-        }
-        return vars;
-    }
-
     public provideCompletionItems(position: vscode.Position, token: vscode.CancellationToken) {
         let document = this.document;
         let location = json.getLocation(document.getText(), document.offsetAt(position));
@@ -924,52 +1125,76 @@ export class MistDocument {
         if (!location.isAtPropertyKey) {
             let expression = this.getExpressionAtLocation(location, position);
             if (expression !== null) {
-                let tokens = [];
-                json.ParseErrorCode
-                let error = Lexer.allTokens(expression, tokens);
+                let { lexerError: error } = Parser.parse(expression);
                 if (error === LexerErrorCode.UnclosedString) {
                     return [];
                 }
-                let obj = this.allVariables(location);
                 var items = []
                 let exp = getCurrentExpression(expression);
                 let {prefix: prefix, function: func} = getPrefix(exp);
+                let type: IType;
+                let ctx = this.varsAtLocation(location);        
                 if (prefix) {
-                    obj = this.getExpressionReturnType(prefix, obj);
-                    if (obj === null) {
-                        return [];
-                    }
-                    items = items.concat(this.completionItemForFunctions(this.functionsForObject(obj)));
-                    items = items.concat(this.completionItemForProperties(this.propertiesForObject(obj)));
+                    type = this.expressionTypeWithContext(prefix, ctx.typeContext);
                 }
                 else {
                     if (document.getText(new vscode.Range(position.translate(0,-1), position)) == '.') {
                         return [];
                     }
+                    type = Type.Global;
                     items = items.concat(['true', 'false', 'null', 'nil'].map(s => new CompletionItem(s, vscode.CompletionItemKind.Keyword)));
-                    items = items.concat(this.completionItemForFunctions(functions.global));
+
+                    ctx.vars.forEach(v => {
+                        let item = new CompletionItem(v.name, vscode.CompletionItemKind.Field);
+                        item.detail = v.value !== None ? `"${v.name}": ${JSON.stringify(v.value,null,'\t')}` : `${v.name}: ${v.type.getName()}`;
+                        let doc = [];
+                        if (v.computed != None) {
+                            doc.push(JSON.stringify(v.computed,null,'\t'));
+                        }
+                        else if (v.type && v.value === None) {
+                            doc.push(v.type.getName());
+                        }
+                        if (v.description) {
+                            doc.push(v.description);
+                        }
+                        item.documentation = doc.join('\n\n');
+                        items.push(item);
+                    })
                 }
-                
-                if (isObject(obj)) {
-                    items = items.concat(Object.keys(obj).filter(isId).map(s => {
-                        let item = new vscode.CompletionItem(s, vscode.CompletionItemKind.Variable);
-                        let value = obj[s];
-                        if (value instanceof Property) {
-                            item.detail = `${value.getType()} ${s}`;
-                            item.documentation = value.comment;
+                if (type) {
+                    let properties = type.getAllProperties();
+                    let methods = type.getAllMethods();
+                    items = items.concat(Object.keys(properties).filter(isId).map(k => {
+                        let p = properties[k];
+                        let item = new vscode.CompletionItem(k, type === Type.Global ? vscode.CompletionItemKind.Constant : vscode.CompletionItemKind.Property);
+                        if (p.description) {
+                            item.documentation = p.description;
                         }
-                        else {
-                            item.documentation = JSON.stringify(obj[s], (k, v) => (v instanceof Property) ? v.comment : v, '\t');
+                        if (p.type) {
+                            item.detail = this.propertyName(k, p);
                         }
-                        
-                        // if (!isId(s)) {
-                        //     let wordRange = document.getWordRangeAtPosition(position);
-                        //     let start = wordRange ? wordRange.start : position;
-                        //     item.range = new vscode.Range(start.translate(0, -1), position.translate(0, 1));
-                        //     item.insertText = `['${s}']`;
-                        // }
                         return item;
                     }));
+                    items = items.concat(Object.keys(methods).map(k => {
+                        let m = methods[k];
+                        let item = new vscode.CompletionItem(k, vscode.CompletionItemKind.Method);
+                        let funInfo = m[0];
+                        let params = funInfo.params || [];
+                        let noParams = params.length == 0 && m.length == 1;
+                        item.insertText = new vscode.SnippetString(k + (noParams ? '()' : '($0)'));
+                        if (!noParams) {
+                            item.command = {
+                                title: 'Trigger Signature Help',
+                                command: "editor.action.triggerParameterHints"
+                            };
+                        }
+                        if (m[0].description) {
+                            item.documentation = m[0].description;
+                        }
+                        item.detail = this.methodName(k, m[0], m.length);
+                        return item;
+                    }));
+                    return items;
                 }
                 return items;
             }
@@ -1041,6 +1266,15 @@ export class MistDocument {
         });
     }
 
+    private propertyName(name: string, property: Property) {
+        return `${property.ownerType !== Type.Global ? '(property) ' : ''}${property.ownerType && property.ownerType !== Type.Global ? property.ownerType.getName() + '.' : ''}${name}: ${property.type.getName()}`;
+    }
+
+    private methodName(name: string, method: Method, count: number) {
+        let returnType = method.type ? method.type.getName() : 'void';
+        return `${method.ownerType !== Type.Global ? '(method) ' : ''}${method.ownerType && method.ownerType !== Type.Global ? method.ownerType.getName() + '.' : ''}${name}(${(method.params || []).map(p => `${p.name}: ${p.type.getName()}`).join(', ')}): ${returnType}${count > 1 ? ` (+${count - 1} overload${count > 2 ? 's' : ''})` : ''}`
+    }
+
     public provideHover(position: vscode.Position, token: vscode.CancellationToken): vscode.ProviderResult<vscode.Hover> {
         function findNodeAtLocation(root: json.Node, path: json.JSONPath): json.Node {
             if (!root) {
@@ -1088,55 +1322,62 @@ export class MistDocument {
         this.parseTemplate();
 
         let expression = this.getExpressionAtLocation(location, wordRange.end);
-        let isFunction = document.getText(new vscode.Range(wordRange.end, wordRange.end.translate(0, 1))) === '(';
         if (expression != null) {
             expression = getCurrentExpression(expression);
-            let vars = this.allVariables(location);
-            let obj = null;
-            if (!isFunction) {
-                obj = this.getExpressionReturnType(expression, vars);
+            let isFunction = document.getText(new vscode.Range(wordRange.end, wordRange.end.translate(0, 1))) === '(';
+            let contents: vscode.MarkedString[] = [];
+            let ctx = this.varsAtLocation(location);
+            let {prefix: prefix, function: func} = getPrefix(expression);
+            let type: IType;
+            if (prefix) {
+                type = this.expressionTypeWithContext(prefix, ctx.typeContext);
             }
-            if (obj !== null) {
-                if (obj instanceof Property) {
-                    return new vscode.Hover(obj.comment);
-                    // item.detail = `${obj.getType()} ${s}`;
-                }
-                else {
-                    let desc = JSON.stringify(obj, (k, v) => (v instanceof Property) ? v.comment : v, '\t');
-                    return new vscode.Hover({language: 'mist', value: desc});
+            else if (!isFunction) {
+                let v = ctx.vars.find(v => v.name === func);
+                if (v) {
+                    if (v.value !== None) {
+                        contents.push({ language: 'mist', value: `"${v.name}": ${JSON.stringify(v.value,null,'\t')}` });
+                    }
+                    if (v.computed !== None) {
+                        contents.push({ language: 'json', value: JSON.stringify(v.computed,null,'\t') });
+                    }
+                    if (v.type) {
+                        contents.push({ language: 'typescript', value: v.type.getName() });
+                    }
+                    if (v.description) {
+                        contents.push(v.description);
+                    }
                 }
             }
             else {
-                let {prefix: prefix, function: func} = getPrefix(expression);
-                let funInfo;
-                if (prefix) {
-                    obj = this.getExpressionReturnType(prefix, vars);
-                    if (obj) {
-                        let prop = this.propertiesForObject(obj)[func];
-                        if (prop) {
-                            let contents: any[] = [{language: 'c', value: `${prop.type} ${func}`}];
-                            let doc = prop.comment;
-                            if (doc.length > 0) {
-                                contents.push(doc);
-                            }
-                            return new vscode.Hover(contents);
+                type = Type.Global;
+            }
+            if (type) {
+                if (isFunction) {
+                    let fun = type.getMethods(func);
+                    if (fun && fun.length > 0) {
+                        let current;
+                        if (fun.length > 1) {
+                            let paramsCount = getFunctionParamsCount(this.getTrailingExpressionAtLocation(location, wordRange.end));
+                            current = fun.find(f => f.params.length === paramsCount);
                         }
-
-                        funInfo = this.functionsForObject(obj)[func];
+                        contents.push({language: 'typescript', value: this.methodName(func, current || fun[0], fun.length)});
                     }
                 }
                 else {
-                    funInfo = functions.global[func];
-                }
-                if (funInfo) {
-                    let contents: any[] = [{language: 'c', value: this.functionsDetail(func, funInfo)}];
-                    let doc = this.functionDoc(funInfo[0]);
-                    if (doc.length > 0) {
-                        contents.push(doc);
+                    let value = this.expressionValueWithContext(expression, ctx.valueContext);
+                    if (value !== None && value !== undefined) {
+                        contents.push({ language: 'json', value: JSON.stringify(value,null,'\t') });
                     }
-                    return new vscode.Hover(contents);
+                    let prop = type.getProperty(func);
+                    if (prop) {
+                        contents.push({language: 'typescript', value: this.propertyName(func, prop)});
+                    }
                 }
+                
             }
+            
+            return new Hover(contents);
         }
         
         let properties = this.getProperties(this.rootNode, location);
@@ -1173,25 +1414,25 @@ export class MistDocument {
         if (expression) {
             let signatureInfo = getSignatureInfo(expression);
             if (signatureInfo) {
-                let funs;
+                let type: IType;
                 if (signatureInfo.prefix) {
-                    let obj = this.allVariables(location);
-                    obj = this.getExpressionReturnType(signatureInfo.prefix, obj);
-                    funs = this.functionsForObject(obj);
+                    let ctx = this.varsAtLocation(location);
+                    type = this.expressionTypeWithContext(signatureInfo.prefix, ctx.typeContext);
                 }
                 else {
-                    funs = functions.global;
+                    type = Type.Global;
                 }
-                let fun;
-                if (funs) {
-                    fun = funs[signatureInfo.function];
+                if (!type) {
+                    return null;
                 }
+
+                let fun = type.getMethods(signatureInfo.function);
                 if (fun) {
                     let signatureHelp = new vscode.SignatureHelp();
                     signatureHelp.signatures = fun.map(f => {
-                        let signature = new vscode.SignatureInformation(this.functionName(signatureInfo.function, f) , "documentation");
-                        signature.parameters = (f.params || []).map(p => new vscode.ParameterInformation(`${p.type} ${p.name}`));
-                        signature.documentation = this.functionDoc(f);
+                        let signature = new vscode.SignatureInformation(this.methodName(signatureInfo.function, f, fun.length));
+                        signature.parameters = (f.params || []).map(p => new vscode.ParameterInformation(`${p.name}: ${p.type.getName()}`));
+                        signature.documentation = f.description;
                         return signature;
                     });
                     signatureHelp.activeSignature = 0;

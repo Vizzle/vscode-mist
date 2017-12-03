@@ -177,7 +177,7 @@ export default class MistServer {
                 this.pool[id] = {resolve: resolve, reject: reject};
                 setTimeout(this.reject.bind(this, id, "request timed out"), 2000);
 
-                console.log(`${id} send ${op} ${data}`);
+                // console.log(`${id} send ${op} ${data}`);
             }
             else {
                 reject("Mist Language Server is not ready");
