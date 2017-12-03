@@ -899,14 +899,35 @@ export class MistDocument {
         return false;
     }
 
-    private varsAtLocation(location: json.Location): {
+    private contextAtLocation(location: json.Location): {
         vars: Variable[],
         valueContext: ExpressionContext,
         typeContext: ExpressionContext
     } {
         let vars: Variable[] = [];
-        vars.push(...BUILTIN_VARS);
-        let push = (key, value) => vars.push(new Variable(key, value));
+        let typeContext = new ExpressionContext();
+        let valueContext = new ExpressionContext();
+
+        let pushVariable = v => {
+            vars.push(v);
+            let isExp = false;
+            let parsed = this.parseExpressionInObject(v.value);
+            if (this.hasExpression(parsed)) {
+                isExp = true;
+                v.computed = this.computeExpressionValueInObject(parsed, valueContext);
+
+                if (!v.type) {
+                    v.type = this.computeExpressionTypeInObject(parsed, typeContext);
+                }
+            }
+            valueContext.push(v.name, isExp ? v.computed : v.value);
+            if (!v.type) {
+                v.type = Type.typeof(v.value) || Type.Any;
+            }
+            typeContext.push(v.name, v.type);
+        };
+        BUILTIN_VARS.forEach(pushVariable);
+        let push = (key, value) => pushVariable(new Variable(key, value));
         let pushDict = dict => Object.keys(dict).forEach(key => push(key, dict[key]));
         
         let data = this.getData() ? this.getData().data : {};
@@ -917,10 +938,10 @@ export class MistDocument {
         pushDict(data);
 
         if (Object.keys(data).length === 0) data = Type.Object;
-        vars.push(new Variable('_data_', data, '模版关联的数据'));
+        pushVariable(new Variable('_data_', data, '模版关联的数据'));
 
         if (location.path[0] !== 'data' && location.path[0] !== 'state') {
-            vars.push(new Variable('state', this.template.state || Type.Object, '模版状态'));
+            pushVariable(new Variable('state', this.template.state || Type.Object, '模版状态'));
         }
         
         let path = [...location.path];
@@ -950,30 +971,14 @@ export class MistDocument {
                 }
             }
             if (node.property('repeat') && !(inRepeat && nodeStack.length == 0)) {
-                vars.push(new Variable('_index_', Type.Number, '当前 `repeat` 元素索引'));
-                vars.push(new Variable('_item_', Type.Any, '当前 `repeat` 元素'));
+                pushVariable(new Variable('_index_', Type.Number, '当前 `repeat` 元素索引'));
+                let repeat = this.parseExpressionInObject(node.property('repeat'));
+                let repeatType = this.computeExpressionTypeInObject(repeat, typeContext);
+                let valueType = repeatType instanceof ArrayType ? repeatType.getElementsType()
+                    : repeatType === Type.Number ? Type.Null : Type.Any; 
+                pushVariable(new Variable('_item_', valueType, '当前 `repeat` 元素'));
             }
         }
-
-        let typeContext = new ExpressionContext();
-        let valueContext = new ExpressionContext();
-        vars.forEach(v => {
-            let isExp = false;
-            let parsed = this.parseExpressionInObject(v.value);
-            if (this.hasExpression(parsed)) {
-                isExp = true;
-                v.computed = this.computeExpressionValueInObject(parsed, valueContext);
-
-                if (!v.type) {
-                    v.type = this.computeExpressionTypeInObject(parsed, typeContext);
-                }
-            }
-            valueContext.push(v.name, isExp ? v.computed : v.value);
-            if (!v.type) {
-                v.type = Type.typeof(v.value) || Type.Any;
-            }
-            typeContext.push(v.name, v.type);
-        });
 
         return {
             vars: Variable.unique(vars),
@@ -1133,7 +1138,7 @@ export class MistDocument {
                 let exp = getCurrentExpression(expression);
                 let {prefix: prefix, function: func} = getPrefix(exp);
                 let type: IType;
-                let ctx = this.varsAtLocation(location);        
+                let ctx = this.contextAtLocation(location);        
                 if (prefix) {
                     type = this.expressionTypeWithContext(prefix, ctx.typeContext);
                 }
@@ -1326,7 +1331,7 @@ export class MistDocument {
             expression = getCurrentExpression(expression);
             let isFunction = document.getText(new vscode.Range(wordRange.end, wordRange.end.translate(0, 1))) === '(';
             let contents: vscode.MarkedString[] = [];
-            let ctx = this.varsAtLocation(location);
+            let ctx = this.contextAtLocation(location);
             let {prefix: prefix, function: func} = getPrefix(expression);
             let type: IType;
             if (prefix) {
@@ -1416,7 +1421,7 @@ export class MistDocument {
             if (signatureInfo) {
                 let type: IType;
                 if (signatureInfo.prefix) {
-                    let ctx = this.varsAtLocation(location);
+                    let ctx = this.contextAtLocation(location);
                     type = this.expressionTypeWithContext(signatureInfo.prefix, ctx.typeContext);
                 }
                 else {

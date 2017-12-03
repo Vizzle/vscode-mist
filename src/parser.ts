@@ -150,16 +150,10 @@ function boolValue(obj: any): boolean {
     switch (typeof(obj)) {
         case 'number':
             return obj != 0;
-        case 'string':
-            const re = /^\s*[YyTt1-9]/;
-            if (re.test(obj)) {
-                return true;
-            }
-            else {
-                return !!parseInt(obj);
-            }
+        case 'boolean':
+            return obj;
         default:
-            return !!obj;
+            return obj !== null && obj !== undefined;
     }
 }
 
@@ -503,19 +497,23 @@ class FunctionExpressionNode extends ExpressionNode {
     }
 
     getType(context: ExpressionContext): IType {
+        let targetType: IType;
         if (this.target) {
-            let targetType = this.target.getType(context);
-            if (this.parameters) {
-                let type = targetType.getMethod(this.action, this.parameters.length);
-                return type ? type.type : Type.Any;
-            }
-            else {
-                let p = targetType.getProperty(this.action);
-                return p ? p.type : Type.Any;
-            }
+            targetType = this.target.getType(context);
+        }
+        else if (this.parameters) {
+            targetType = Type.Global;
         }
         else {
-            // TODO global functions
+            return Type.Any;
+        }
+        if (this.parameters) {
+            let method = targetType.getMethod(this.action, this.parameters.length);
+            return method ? method.type : Type.Any;
+        }
+        else {
+            let p = targetType.getProperty(this.action);
+            return p ? p.type : Type.Any;
         }
     }
 }

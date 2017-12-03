@@ -196,6 +196,7 @@ export class Type extends IType {
     public static Boolean = Type.registerType(new Type('boolean'));
     public static String = Type.registerType(new Type('string'));
     public static Any = Type.registerType(new Type('any'));
+    public static Null = Type.registerType(new Type('null'));
     public static Void = Type.registerType(new Type('void'));
     public static Global = Type.registerType(new Type('global'));
     public static Array = Type.registerType(new Type('array')).registerPropertys({
@@ -229,6 +230,7 @@ export class IntersectionType extends CombinedType {
         }
         let ts = types.map(t => t instanceof IntersectionType ? t.types : [t]).reduce((p, c) => p.concat(c));
         ts = [...new Set(ts)];
+        ts = ts.filter((t, i) => ts.findIndex(s => IType.isSame(t, s)) === i);
         if (ts.length == 0) {
             return Type.Any;
         }
