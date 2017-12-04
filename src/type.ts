@@ -88,7 +88,7 @@ export abstract class IType {
             return obj;
         }
         if (obj === undefined || obj === null) {
-            return null;
+            return Type.Any;
         }
         let type = typeof(obj);
         if (type === 'string' || type === 'number' || type === 'boolean') {
@@ -228,7 +228,10 @@ export class IntersectionType extends CombinedType {
         if (types.length === 0) {
             return Type.Any;
         }
-        let ts = types.map(t => t instanceof IntersectionType ? t.types : [t]).reduce((p, c) => p.concat(c));
+        let ts = types.map(t => t instanceof IntersectionType ? t.types : [t]).reduce((p, c) => p.concat(c), []);
+        if (ts.indexOf(Type.Any) >= 0) {
+            return Type.Any;
+        }
         ts = [...new Set(ts)];
         ts = ts.filter((t, i) => ts.findIndex(s => IType.isSame(t, s)) === i);
         if (ts.length == 0) {
@@ -248,7 +251,7 @@ export class IntersectionType extends CombinedType {
 
     public getAllProperties(): { [name: string]: Property } {
         let propertiesList = this.types.map(t => t.getAllProperties());
-        let names = [...new Set(propertiesList.map(ps => Object.keys(ps)).reduce((p, c) => p.concat(c)))];
+        let names = [...new Set(propertiesList.map(ps => Object.keys(ps)).reduce((p, c) => p.concat(c), []))];
         let properties = {};
         names.forEach(n => {
             let ps = propertiesList.map(ps => ps[n]).filter(p => p);
@@ -284,10 +287,10 @@ export class IntersectionType extends CombinedType {
 
     public getAllMethods(): { [name: string]: Method[] } {
         let methodsList = this.types.map(t => t.getAllMethods());
-        let names = [...new Set(methodsList.map(ms => Object.keys(ms)).reduce((p, c) => p.concat(c)))];
+        let names = [...new Set(methodsList.map(ms => Object.keys(ms)).reduce((p, c) => p.concat(c), []))];
         let methods = {};
         names.forEach(name => {
-            let ms = methodsList.map(ms => ms[name]).filter(p => p).reduce((p, c) => p.concat(c));
+            let ms = methodsList.map(ms => ms[name]).filter(p => p).reduce((p, c) => p.concat(c), []);
             ms = ms.reduce((p, c) => {
                 let index = p.findIndex(n => Method.isSame(c, n));
                 if (index >= 0) {
@@ -308,7 +311,7 @@ export class IntersectionType extends CombinedType {
     }
 
     public getMethods(name: string): Method[] {
-        let ms = this.types.map(t => t.getMethods(name)).filter(p => p).reduce((p, c) => p.concat(c));
+        let ms = this.types.map(t => t.getMethods(name)).filter(p => p).reduce((p, c) => p.concat(c), []);
         ms = ms.reduce((p, c) => {
             let index = p.findIndex(name => Method.isSame(c, name));
             if (index >= 0) {
@@ -334,7 +337,10 @@ export class UnionType extends CombinedType {
         if (types.length === 0) {
             return Type.Any;
         }
-        let ts = types.map(t => t instanceof UnionType ? t.types : [t]).reduce((p, c) => p.concat(c));
+        let ts = types.map(t => t instanceof UnionType ? t.types : [t]).reduce((p, c) => p.concat(c), []);
+        if (ts.indexOf(Type.Any) >= 0) {
+            return Type.Any;
+        }
         ts = [...new Set(ts)];
         ts = ts.filter((t, i) => ts.findIndex(s => IType.isSame(t, s)) === i);
         if (ts.length == 0) {
@@ -354,7 +360,7 @@ export class UnionType extends CombinedType {
 
     public getAllProperties(): { [name: string]: Property } {
         let propertiesList = this.types.map(t => t.getAllProperties());
-        let names = [...new Set(propertiesList.map(ps => Object.keys(ps)).reduce((p, c) => p.concat(c)))];
+        let names = [...new Set(propertiesList.map(ps => Object.keys(ps)).reduce((p, c) => p.concat(c), []))];
         let properties = {};
         names.forEach(n => {
             let ps = propertiesList.map(ps => ps[n]).filter(p => p);
@@ -384,7 +390,7 @@ export class UnionType extends CombinedType {
 
     public getAllMethods(): { [name: string]: Method[] } {
         let methodsList = this.types.map(t => t.getAllMethods());
-        let names = methodsList.map(ms => Object.keys(ms)).reduce((p, c) => p.filter(m => c.indexOf(m) >= 0));
+        let names = methodsList.map(ms => Object.keys(ms)).reduce((p, c) => p.filter(m => c.indexOf(m) >= 0, []));
         let methods = {};
         names.forEach(name => {
             let msList = methodsList.map(ms => ms[name]).filter(p => p);

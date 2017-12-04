@@ -277,8 +277,19 @@ class ConditionalExpressionNode extends ExpressionNode {
         return r ? (this.truePart ? this.truePart.compute(context) : r) : this.falsePart.compute(context);
     }
 
+    private static isNull(exp: ExpressionNode) {
+        return exp instanceof LiteralNode && exp.value === null;
+    }
+
     getType(context: ExpressionContext): IType {
-        return UnionType.type([(this.truePart || this.condition).getType(context), this.falsePart.getType(context)]);
+        let truePart = this.truePart || this.condition;
+        if (ConditionalExpressionNode.isNull(truePart)) {
+            return this.falsePart.getType(context);
+        }
+        if (ConditionalExpressionNode.isNull(this.falsePart)) {
+            return truePart.getType(context);
+        }
+        return UnionType.type([truePart.getType(context), this.falsePart.getType(context)]);
     }
 }
 
@@ -344,6 +355,16 @@ class BinaryExpressionNode extends ExpressionNode {
         let value2 = this.oprand2.compute(context);
 
         if (value1 === None || value2 === None) {
+            if (BinaryOp.And === this.operator) {
+                if (value1 === false || value2 === false) {
+                    return false;
+                }
+            }
+            else if (BinaryOp.Or === this.operator) {
+                if (value1 === true || value2 === true) {
+                    return true;
+                }
+            }
             return None;
         }
     

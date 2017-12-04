@@ -158,7 +158,7 @@ class MistData {
                         let node = obj.children.find(c => c.children[0].value == k);
                         return node ? node.children[1] : null;
                     }
-                    let templateKeys = ["blockId", "template", "templateId"];
+                    let templateKeys = ["templateId", "template", "blockId"];
                     let dataNode, key;
                     if ((dataNode = valueForKey('data')) && (key = templateKeys.find(k => !!valueForKey(k)))) {
                         let data = new MistData();
@@ -956,6 +956,14 @@ export class MistDocument {
         while (nodeStack.length > 0) {
             let node = nodeStack.pop();
             let nodeVars = node.property('vars');
+            if (node.property('repeat') && !(inRepeat && nodeStack.length == 0)) {
+                pushVariable(new Variable('_index_', Type.Number, '当前 `repeat` 元素索引'));
+                let repeat = this.parseExpressionInObject(node.property('repeat'));
+                let repeatType = this.computeExpressionTypeInObject(repeat, typeContext);
+                let valueType = repeatType instanceof ArrayType ? repeatType.getElementsType()
+                    : repeatType === Type.Number ? Type.Null : Type.Any; 
+                pushVariable(new Variable('_item_', valueType, '当前 `repeat` 元素'));
+            }
             if (nodeVars) {
                 if (isArray(nodeVars)) {
                     var count = nodeVars.length;
@@ -969,14 +977,6 @@ export class MistDocument {
                 else if (isObject(nodeVars) && !(inVars && nodeStack.length == 0)) {
                     pushDict(nodeVars);
                 }
-            }
-            if (node.property('repeat') && !(inRepeat && nodeStack.length == 0)) {
-                pushVariable(new Variable('_index_', Type.Number, '当前 `repeat` 元素索引'));
-                let repeat = this.parseExpressionInObject(node.property('repeat'));
-                let repeatType = this.computeExpressionTypeInObject(repeat, typeContext);
-                let valueType = repeatType instanceof ArrayType ? repeatType.getElementsType()
-                    : repeatType === Type.Number ? Type.Null : Type.Any; 
-                pushVariable(new Variable('_item_', valueType, '当前 `repeat` 元素'));
             }
         }
 

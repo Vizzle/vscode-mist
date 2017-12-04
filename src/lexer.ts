@@ -378,6 +378,7 @@ export class Lexer {
                         let len = this.pointer - start;
                         let str = this.source.substr(start, len);
                         if (str === 'null' || str === 'nil') {
+                            this.token.value = null;
                             return TokenType.Null;
                         }
                         else if (str === 'true') {
