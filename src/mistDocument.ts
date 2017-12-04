@@ -1368,6 +1368,12 @@ export class MistDocument {
                         }
                         contents.push({language: 'typescript', value: this.methodName(func, current || fun[0], fun.length)});
                     }
+                    else {
+                        let prop = type.getProperty(func);
+                        if (prop) {
+                            contents.push({language: 'typescript', value: this.propertyName(func, prop)});
+                        }
+                    }
                 }
                 else {
                     let value = this.expressionValueWithContext(expression, ctx.valueContext);
@@ -1377,6 +1383,12 @@ export class MistDocument {
                     let prop = type.getProperty(func);
                     if (prop) {
                         contents.push({language: 'typescript', value: this.propertyName(func, prop)});
+                    }
+                    else {
+                        let fun = type.getMethod(func, 0);
+                        if (fun && fun.type && fun.type != Type.Void) {
+                            contents.push({language: 'typescript', value: this.methodName(func, fun, type.getMethods(func).length)});
+                        }
                     }
                 }
                 
@@ -1432,7 +1444,7 @@ export class MistDocument {
                 }
 
                 let fun = type.getMethods(signatureInfo.function);
-                if (fun) {
+                if (fun && fun.length > 0) {
                     let signatureHelp = new vscode.SignatureHelp();
                     signatureHelp.signatures = fun.map(f => {
                         let signature = new vscode.SignatureInformation(this.methodName(signatureInfo.function, f, fun.length));

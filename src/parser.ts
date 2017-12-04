@@ -554,8 +554,8 @@ class LambdaExpressionNode extends ExpressionNode {
     }
 
     getType(context: ExpressionContext): IType {
-        // TODO lambda
-        return null;
+        // return Type.getType('id(^)(id)');
+        return Type.Any;
     }
 }
 

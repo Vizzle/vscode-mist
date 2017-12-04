@@ -59,7 +59,11 @@ export abstract class IType {
     public abstract getAllMethods(): { [name: string]: Method[] };
     public abstract getMethods(name: string): Method[];
     public getMethod(name: string, paramsCount: number): Method {
-        return this.getMethods(name).find(m => m.params.length == paramsCount);
+        let methods = this.getMethods(name);
+        if (methods) {
+            return methods.find(m => m.params.length == paramsCount);
+        }
+        return null;
     }
     public static isSame(a: IType, b: IType) {
         if (a === b) {
