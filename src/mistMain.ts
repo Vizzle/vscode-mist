@@ -32,6 +32,7 @@ export function activate(context: ExtensionContext) {
     registerCompletionProvider(context);
     registerSignatureHelpProvider(context);
     registerDiagnosticProvider(context, server);
+    registerValidateWorkspace(context);
     registerFormatter(context);
     registerColorDecorations(context);
 }
@@ -380,28 +381,45 @@ function registerSignatureHelpProvider(context: ExtensionContext) {
     context.subscriptions.push(vscode.languages.registerSignatureHelpProvider({ language: 'mist' }, signatureHelpProvider, '(', ','));
 }
 
+let diagnosticProvider: MistDiagnosticProvider;
+
 function registerDiagnosticProvider(context: ExtensionContext, server: MistServer) {
-    let diagnosticProvider = new MistDiagnosticProvider(context, server);
+    diagnosticProvider = new MistDiagnosticProvider(context, server);
     context.subscriptions.push(diagnosticProvider);
 
     context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(event => {
-        if (event.document.languageId === 'mist') {
-            diagnosticProvider.onChange(event.document);
-        }
+        diagnosticProvider.onChange(event.document);
     }));
 
     context.subscriptions.push(vscode.workspace.onDidOpenTextDocument(document => {
-        if (document.languageId === 'mist') {
-            diagnosticProvider.onChange(document);
-        }
+        diagnosticProvider.onChange(document);
     }));
 
     context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(document => {
-        if (document.languageId === 'mist') {
-            diagnosticProvider.onChange(document);
-        }
+        diagnosticProvider.onChange(document);
     }));
 
+}
+
+function registerValidateWorkspace(context: ExtensionContext) {
+    context.subscriptions.push(commands.registerCommand('mist.validateWorkspace', () => {
+        if (!vscode.workspace.rootPath) {
+            vscode.window.showWarningMessage("未打开文件夹");
+            return;
+        }
+
+        vscode.workspace.findFiles("*.mist").then(files => {
+            if (files.length == 0) {
+                vscode.window.showWarningMessage("没有找到 .mist 模版文件");
+                return;
+            }
+
+            let promises = files.map(uri => vscode.workspace.openTextDocument(uri).then(doc => diagnosticProvider.validate(doc)));
+            Promise.all(promises).then(() => {
+                vscode.commands.executeCommand("workbench.action.problems.focus");
+            });
+        });
+    }));
 }
 
 function registerFormatter(context: ExtensionContext) {

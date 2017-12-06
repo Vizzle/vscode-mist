@@ -238,6 +238,23 @@ export class IntersectionType extends CombinedType {
         }
         ts = [...new Set(ts)];
         ts = ts.filter((t, i) => ts.findIndex(s => IType.isSame(t, s)) === i);
+        let objectTypes: ObjectType[] = ts.filter(t => t instanceof ObjectType) as ObjectType[];
+        if (objectTypes.length >= 2) {
+            let newObjectType = new ObjectType(objectTypes.reduce((p, c) => {
+                let map = c.getMap();
+                Object.keys(map).forEach(k => {
+                    if (k in p) {
+                        p[k] = UnionType.type([p[k], map[k]]);
+                    }
+                    else {
+                        p[k] = map[k];
+                    }
+                });
+                return p;
+            }, {}));
+            ts = ts.filter(t => !(t instanceof ObjectType));
+            ts.push(newObjectType);
+        }
         if (ts.length == 0) {
             return Type.Any;
         }
@@ -483,6 +500,10 @@ export class ObjectType extends IType {
     public constructor(map: { [key: string]: IType }) {
         super();
         this.map = map;
+    }
+
+    public getMap(): { [key: string]: IType } {
+        return this.map;
     }
 
     public getName(): string {

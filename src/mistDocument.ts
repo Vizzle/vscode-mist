@@ -103,6 +103,10 @@ class StringConcatExpressionNode extends ExpressionNode {
     getType(context: ExpressionContext): IType {
         return Type.String;
     }
+
+    check(context: ExpressionContext) {
+        return this.expressions.reduce((p, c) => p.concat(c.check(context)), []);
+    }
 }
 
 let BUILTIN_VARS = [
@@ -129,6 +133,107 @@ let BUILTIN_VARS = [
         "isKoubei": new Property(Type.Boolean, "是否是口碑客户端"),
     }), "应用属性"),
 ];
+
+export class JsonStringError {
+    description: string;
+    offset: number;
+    length: number;
+    constructor(description: string, offset: number, length: number) {
+        this.description = description;
+        this.offset = offset;
+        this.length = length;
+    }
+}
+
+export class JsonString {
+    source: string;
+    parsed: string;
+    errors: JsonStringError[];
+    escapes: {
+        parsedIndex: number,
+        sourceIndex: number,
+        sourceEnd: number
+    }[];
+
+    constructor(source: string) {
+        this.source = source;
+        this.errors = [];
+        this.parse();
+    }
+
+    sourceIndex(parsedIndex: number): number {
+        if (this.escapes.length === 0) return parsedIndex;
+        let i = this.escapes.findIndex(e => e.parsedIndex >= parsedIndex);
+        if (i >= 0) return this.escapes[i].sourceIndex - this.escapes[i].parsedIndex + parsedIndex;
+
+        let last = this.escapes[this.escapes.length - 1];
+        return parsedIndex - last.parsedIndex - 1 + last.sourceEnd;
+    }
+
+    parsedIndex(sourceIndex: number): number {
+        if (this.escapes.length === 0) return sourceIndex;
+        let i = this.escapes.findIndex(e => e.sourceIndex >= sourceIndex);
+        if (i >= 0) return this.escapes[i].parsedIndex - this.escapes[i].sourceIndex + sourceIndex;
+        
+        let last = this.escapes[this.escapes.length - 1];
+        if (sourceIndex < last.sourceEnd) {
+            return last.parsedIndex;
+        }
+        return sourceIndex - last.sourceEnd + last.parsedIndex + 1;
+    }
+
+    private parse() {
+        let origin = this.source;
+        let parsed = '';
+        let start = 0;
+        this.escapes = [];
+        for (let i = 0; i < origin.length;) {
+            let c = origin.charAt(i);
+            if (c == '\\' && i < origin.length - 1) {
+                if (i > start) parsed += origin.substring(start, i);
+                c = origin.charAt(i + 1);
+                let sourceIndex = i;
+                let parsedIndex = parsed.length;
+                switch (c) {
+                    case '"': parsed += '"'; break;
+                    case '\\': parsed += '\\'; break;
+                    case '/': parsed += '/'; break;
+                    case 'b': parsed += '\b'; break;
+                    case 'f': parsed += '\f'; break;
+                    case 'n': parsed += '\n'; break;
+                    case 'r': parsed += '\r'; break;
+                    case 't': parsed += '\t'; break;
+                    case 'u':
+                        let match = origin.substr(i + 2, 4).match(/^[0-9A-Fa-f]*/);
+                        let hex = match[0];
+                        if (hex.length !== 4) {
+                            this.errors.push(new JsonStringError('Invalid unicode sequence in string', i, 2 + hex.length));
+                        }
+                        else {
+                            parsed += String.fromCharCode(parseInt(hex, 16));
+                        }
+                        i += hex.length;
+                        break;
+                    default:
+                        this.errors.push(new JsonStringError('Invalid escape character in string', i, 2));
+                        break;
+                }
+                i += 2;
+                start = i;
+                this.escapes.push({
+                    sourceIndex: sourceIndex,
+                    sourceEnd: i,
+                    parsedIndex: parsedIndex
+                });
+            }
+            else {
+                i++;
+            }
+        }
+        if (origin.length > start) parsed += origin.substring(start);
+        this.parsed = parsed;
+    }
+}
 
 class MistData {
     template: string;
@@ -616,6 +721,39 @@ function registerTypes() {
 
 registerTypes();
 
+class Cache<T> {
+    private maxCount: number;
+    private dict: { [key: string]: T };
+    private keys: string[];
+
+    constructor(maxCount: number) {
+        this.maxCount = maxCount;
+        this.dict = {};
+        this.keys = [];
+    }
+
+    get(key: string): T {
+        if (key in this.dict) {
+            let index = this.keys.indexOf(key);
+            this.keys.splice(index, 1);
+            this.keys.push(key);
+            return this.dict[key];
+        }
+        
+        return null;
+    }
+
+    set(key: string, value: T) {
+        if (!(key in this.dict)) {
+            this.keys.push(key);
+            if (this.keys.length > this.maxCount) {
+                this.keys.splice(0, 1);
+            }
+        }
+        this.dict[key] = value;
+    }
+}
+
 export class MistDocument {
     static documents: { [path: string]: MistDocument } = {}
 
@@ -626,9 +764,11 @@ export class MistDocument {
     private rootNode: json.Node;
     private nodeTree: MistNode;
     private template: any;
+    private expCache: Cache<any>;
 
     constructor(document: TextDocument) {
         this.document = document;
+        this.expCache = new Cache(200);
     }
 
     public clearDatas() {
@@ -811,6 +951,15 @@ export class MistDocument {
         return node;
     }
 
+    private parse(exp: string) {
+        let parsed = this.expCache.get(exp);
+        if (!parsed) {
+            parsed = Parser.parse(exp);
+            this.expCache.set(exp, parsed);
+        }
+        return parsed;
+    }
+
     private parseExpressionInString(source: string) {
         const re = /\$\{(.*?)\}/mg;
         re.lastIndex = 0;
@@ -819,7 +968,7 @@ export class MistDocument {
         let parts: ExpressionNode[] = [];
         while (match = re.exec(source)) {
             let exp = match[1];
-            let { expression: node, errorMessage: error } = Parser.parse(exp);
+            let { expression: node, errorMessage: error } = this.parse(exp);
             if (error || !node) {
                 node = new LiteralNode(None);
             }
@@ -926,19 +1075,22 @@ export class MistDocument {
             }
             typeContext.push(v.name, v.type);
         };
-        BUILTIN_VARS.forEach(pushVariable);
         let push = (key, value) => pushVariable(new Variable(key, value));
         let pushDict = dict => Object.keys(dict).forEach(key => push(key, dict[key]));
         
+        BUILTIN_VARS.forEach(pushVariable);
+        
         let data = this.getData() ? this.getData().data : {};
 
-        if (location.path[0] !== 'data' && this.template.data instanceof Object) {
+        pushDict(data);
+        pushVariable(new Variable('_data_', Object.keys(data).length === 0 ? Type.Object : data, '模版关联的数据'));
+
+        if (this.template.data instanceof Object) {
             data = {...data, ...this.template.data};
         }
         pushDict(data);
 
-        if (Object.keys(data).length === 0) data = Type.Object;
-        pushVariable(new Variable('_data_', data, '模版关联的数据'));
+        pushVariable(new Variable('_data_', Object.keys(data).length === 0 ? Type.Object : data, '模版关联的数据'));
 
         if (location.path[0] !== 'data' && location.path[0] !== 'state') {
             pushVariable(new Variable('state', this.template.state || Type.Object, '模版状态'));
@@ -988,7 +1140,7 @@ export class MistDocument {
     }
 
     private expressionTypeWithContext(expression: string, context: ExpressionContext) {
-        let { expression: node, errorMessage: error } = Parser.parse(expression);
+        let { expression: node, errorMessage: error } = this.parse(expression);
         if (error || !node) {
             return null;
         }
@@ -998,7 +1150,7 @@ export class MistDocument {
     }
 
     private expressionValueWithContext(expression: string, context: ExpressionContext) {
-        let { expression: node, errorMessage: error } = Parser.parse(expression);
+        let { expression: node, errorMessage: error } = this.parse(expression);
         if (error || !node) {
             return null;
         }
@@ -1130,7 +1282,7 @@ export class MistDocument {
         if (!location.isAtPropertyKey) {
             let expression = this.getExpressionAtLocation(location, position);
             if (expression !== null) {
-                let { lexerError: error } = Parser.parse(expression);
+                let { lexerError: error } = this.parse(expression);
                 if (error === LexerErrorCode.UnclosedString) {
                     return [];
                 }
@@ -1460,5 +1612,202 @@ export class MistDocument {
         }
 
         return null;
+    }
+
+    private findExpressionsInString(stringNode: json.Node): {
+        string: JsonString,
+        offset: number
+    }[] {
+        let position = this.document.positionAt(stringNode.offset);
+        let rawString = this.document.getText(new vscode.Range(position, position.translate(0, stringNode.length)));
+        const re = /\$\{(.*?)\}/mg;
+        re.lastIndex = 0;
+        let results = [];
+        let match: RegExpExecArray;
+        while (match = re.exec(rawString)) {
+            results.push({
+                string: new JsonString(match[1]),
+                offset: match.index + 2
+            });
+        }
+        return results;
+    }
+
+    public validate(): vscode.Diagnostic[] {
+        this.parseTemplate();
+        let vars: Variable[] = [];
+        let typeContext = new ExpressionContext();
+        let valueContext = new ExpressionContext();
+
+        let diagnostics = [];
+
+        let pushVariable = v => {
+            vars.push(v);
+            let isExp = false;
+            let parsed = this.parseExpressionInObject(v.value);
+            if (this.hasExpression(parsed)) {
+                isExp = true;
+                v.computed = this.computeExpressionValueInObject(parsed, valueContext);
+
+                if (!v.type) {
+                    v.type = this.computeExpressionTypeInObject(parsed, typeContext);
+                }
+            }
+            valueContext.push(v.name, isExp ? v.computed : v.value);
+            if (!v.type) {
+                v.type = Type.typeof(v.value) || Type.Any;
+            }
+            typeContext.push(v.name, v.type);
+        };
+        let push = (key, value) => pushVariable(new Variable(key, value));
+        let pop = key => {
+            typeContext.pop(key);
+            valueContext.pop(key);
+        };
+        let pushDict = dict => Object.keys(dict).forEach(key => push(key, dict[key]));
+
+        let range = (offset, length) => {
+            let start = this.document.positionAt(offset);
+            let end = this.document.positionAt(offset + length);
+            return new vscode.Range(start, end);
+        }
+        let nodeRange = (node: json.Node) => {
+            return range(node.offset, node.length);
+        }
+
+        let validate = (node: json.Node) => {
+            if (!node) return;
+            if (node.type === 'object') {
+                node.children.forEach(child => {
+                    if (child.children.length >= 2) {
+                        validate(child.children[1]);
+                    }
+                });
+            }
+            else if (node.type === 'array') {
+                node.children.forEach(validate);
+            }
+            else if (node.type === 'string') {
+                let expressions = this.findExpressionsInString(node);
+                expressions.forEach(exp => {
+                    if (exp.string.errors.length > 0) {
+                        return;
+                    }
+                    let { expression: expNode, errorMessage: error, errorOffset: offset, errorLength: length } = this.parse(exp.string.parsed);
+                    if (error) {
+                        let start = exp.string.sourceIndex(offset);
+                        let end = exp.string.sourceIndex(offset + length);
+                        diagnostics.push(new vscode.Diagnostic(range(start + exp.offset + node.offset, end - start), error, vscode.DiagnosticSeverity.Error));
+                    }
+                    else {
+                        let errors = expNode.check(typeContext);
+                        if (errors && errors.length > 0) {
+                            diagnostics.push(...errors.map(e => {
+                                let start = exp.string.sourceIndex(e.offset);
+                                let end = exp.string.sourceIndex(e.offset + e.length);
+                                return new vscode.Diagnostic(range(start + exp.offset + node.offset, end - start), e.description, vscode.DiagnosticSeverity.Warning);
+                            }));
+                        }
+                    }
+                });
+            }
+        }
+
+        let assertNoExp = (node: json.Node) => {
+            if (node && node.type === 'string') {
+                let expressions = this.findExpressionsInString(node);
+                if (expressions.length > 0) {
+                    diagnostics.push(new vscode.Diagnostic(nodeRange(node), '该属性不支持使用表达式', vscode.DiagnosticSeverity.Error));
+                }
+            }
+        }
+        
+        ['controller', 'identifier', 'async-display', 'cell-height-animation', 'reuse-identifier'].forEach(p => assertNoExp(json.findNodeAtLocation(this.rootNode, [p])));
+        
+        BUILTIN_VARS.forEach(pushVariable);
+
+        let data = this.getData() ? this.getData().data : {};
+
+        pushDict(data);
+        pushVariable(new Variable('_data_', Object.keys(data).length === 0 ? Type.Object : data, '模版关联的数据'));
+
+        if (this.template.data instanceof Object) {
+            validate(json.findNodeAtLocation(this.rootNode, ['data']));
+            data = {...data, ...this.template.data};
+        }
+        pushDict(data);
+
+        pushVariable(new Variable('_data_', Object.keys(data).length === 0 ? Type.Object : data, '模版关联的数据'));
+
+        validate(json.findNodeAtLocation(this.rootNode, ['state']));
+        pushVariable(new Variable('state', this.template.state || Type.Object, '模版状态'));
+        
+        let validateNode = (node: MistNode) => {
+            if (!node) return;
+            if (node.node.type === 'string') {
+                let expressions = this.findExpressionsInString(node.node);
+                if (expressions.length === 1 && expressions[0].offset === 3 && expressions[0].string.source.length === node.node.length - 5) {
+                    
+                }
+                else {
+                    diagnostics.push(new vscode.Diagnostic(nodeRange(node.node), '`node` 必须为 `object` 类型', vscode.DiagnosticSeverity.Error));
+                    return;
+                }
+                validate(node.node);
+                return;
+            }
+            else if (node.node.type !== 'object') {
+                diagnostics.push(new vscode.Diagnostic(nodeRange(node.node), '`node` 必须为 `object` 类型', vscode.DiagnosticSeverity.Error));
+                return;
+            }
+            let pushed = [];
+            let repeatNode = getPropertyNode(node.node, 'repeat');
+            if (repeatNode) {
+                validate(repeatNode);
+                pushVariable(new Variable('_index_', Type.Number, '当前 `repeat` 元素索引'));
+                let repeat = this.parseExpressionInObject(json.getNodeValue(repeatNode));
+                let repeatType = this.computeExpressionTypeInObject(repeat, typeContext);
+                let valueType = repeatType instanceof ArrayType ? repeatType.getElementsType()
+                    : repeatType === Type.Number ? Type.Null : Type.Any; 
+                pushVariable(new Variable('_item_', valueType, '当前 `repeat` 元素'));
+                pushed.push('_item_', '_index_');
+            }
+            let varsNode = getPropertyNode(node.node, 'vars');
+            if (varsNode) {
+                if (varsNode.type === 'array') {
+                    varsNode.children.forEach(c => {
+                        if (c.type !== 'object') {
+                            diagnostics.push(new vscode.Diagnostic(nodeRange(c), '必须为 `object` 类型', vscode.DiagnosticSeverity.Error));
+                            return;
+                        }
+                        validate(c);
+                        let vars = json.getNodeValue(c);
+                        pushDict(vars);
+                        pushed.push(...Object.keys(vars));
+                    });
+                }
+                else if (varsNode.type === 'object') {
+                    let vars = json.getNodeValue(varsNode);
+                    validate(varsNode);
+                    pushDict(vars);
+                    pushed.push(...Object.keys(vars));
+                }
+                else {
+                    diagnostics.push(new vscode.Diagnostic(nodeRange(varsNode), '`vars` 属性只能为 `object` 或 `array`', vscode.DiagnosticSeverity.Error));
+                }
+            }
+            const list = ['repeat', 'vars', 'children'];
+            let otherNodes = node.node.children.filter(n => n.children.length == 2 && list.indexOf(n.children[0].value) < 0).map(n => n.children[1]);
+            otherNodes.forEach(validate);
+
+            if (node.children) {
+                node.children.forEach(validateNode);
+            }
+            pushed.forEach(pop);
+        };
+
+        validateNode(this.nodeTree);
+        
+        return diagnostics;
     }
 }
