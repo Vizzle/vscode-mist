@@ -363,6 +363,7 @@ function registerCompletionProvider(context: ExtensionContext) {
     let completionProvider = new MistCompletionProvider();
     context.subscriptions.push(vscode.languages.registerCompletionItemProvider({ language: 'mist' }, completionProvider));
     context.subscriptions.push(vscode.languages.registerHoverProvider({ language: 'mist' }, completionProvider));
+    context.subscriptions.push(vscode.languages.registerDefinitionProvider({ language: 'mist' }, completionProvider));
     context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(event => {
         if (event.textEditor.document.languageId === 'mist') {
             completionProvider.selectionDidChange(event.textEditor);

@@ -67,6 +67,7 @@ class Variable {
     description: string;
     incomplete: boolean;
     node: json.Node;
+    uri: vscode.Uri;
 
     constructor(name: string, value: any, description?: string, incomplete: boolean = false) {
         this.name = name;
@@ -83,8 +84,9 @@ class Variable {
         this.incomplete = incomplete;
     }
 
-    setNode(node: json.Node) {
+    setNode(node: json.Node, uri: string = null) {
         this.node = node;
+        this.uri = uri ? vscode.Uri.file(uri) : null;
         return this;
     }
 
@@ -92,6 +94,15 @@ class Variable {
         let reversed = [...vars].reverse();
         return vars.filter((v, i) => reversed.findIndex(n => n.name === v.name) === vars.length - i - 1);
     }
+}
+
+function findLastIndex<T>(list: T[], predicate: (element: T) => boolean): number {
+    for (var i = list.length - 1; i >= 0; i--) {
+        if (predicate(list[i])) {
+            return i;
+        }
+    }
+    return -1;
 }
 
 class StringConcatExpressionNode extends ExpressionNode {
@@ -247,6 +258,7 @@ class MistData {
     template: string;
     file: string;
     data: {};
+    node: json.Node;
     start: number;
     end: number;
     index: number;
@@ -282,6 +294,7 @@ class MistData {
                         data.start = obj.offset;
                         data.end = obj.offset + obj.length;
                         data.data = getNodeValue(dataNode);
+                        data.node = dataNode;
                         results.push(data);
                     }
                     else {
@@ -1054,7 +1067,7 @@ export class MistDocument {
             let exp = match[1];
             let { expression: node, errorMessage: error } = this.parse(exp);
             if (error || !node) {
-                node = new LiteralNode(None);
+                node = new LiteralNode(null);
             }
             if (match.index === 0 && re.lastIndex === source.length) {
                 return node;
@@ -1167,20 +1180,41 @@ export class MistDocument {
         };
         let push = (key, value) => pushVariable(new Variable(key, value));
         let pushDict = dict => Object.keys(dict).forEach(key => push(key, dict[key]));
+        let pushVarsDict = (node: json.Node) => {
+            if (!node) return [];
+            let pushed = [];
+            node.children.forEach(c => {
+                if (c.children.length == 2) {
+                    let key = c.children[0].value;
+                    pushVariable(new Variable(key, getNodeValue(c.children[1])).setNode(c));
+                    pushed.push(key);
+                }
+            });
+            return pushed;
+        }
         
         BUILTIN_VARS.forEach(pushVariable);
         
-        let data = this.getData() ? this.getData().data : {};
+        let data = this.getData();
+        let dataDict = data ? data.data : {};
 
-        pushDict(data);
-        pushVariable(new Variable('_data_', data, '模版关联的数据', true));
+        if (data) {
+            data.node.children.forEach(c => {
+                if (c.children.length == 2) {
+                    let key = c.children[0].value;
+                    pushVariable(new Variable(key, getNodeValue(c.children[1])).setNode(c, data.file));
+                }
+            });
+        }
+        
+        pushVariable(new Variable('_data_', dataDict, '模版关联的数据', true));
 
         if (this.template.data instanceof Object) {
-            data = {...data, ...this.template.data};
+            dataDict = {...dataDict, ...this.template.data};
         }
-        pushDict(data);
+        pushVarsDict(json.findNodeAtLocation(this.rootNode, ['data']));
 
-        pushVariable(new Variable('_data_', data, '模版关联的数据', true));
+        pushVariable(new Variable('_data_', dataDict, '模版关联的数据', true));
 
         if (location.path[0] !== 'data' && location.path[0] !== 'state') {
             pushVariable(new Variable('state', this.template.state || null, '模版状态', true));
@@ -1198,28 +1232,28 @@ export class MistDocument {
         while (nodeStack.length > 0) {
             let node = nodeStack.pop();
             if (!(inRepeat && nodeStack.length === 0)) {
-                if (node.property('repeat')) {
+                let repeatNode = getPropertyNode(node.node, 'repeat');
+                if (repeatNode) {
                     pushVariable(new Variable('_index_', Type.Number, '当前 `repeat` 元素索引'));
-                    let repeat = this.parseExpressionInObject(node.property('repeat'));
+                    let repeat = this.parseExpressionInObject(json.getNodeValue(repeatNode));
                     let repeatType = this.computeExpressionTypeInObject(repeat, typeContext);
                     let valueType = repeatType instanceof ArrayType ? repeatType.getElementsType()
                         : repeatType === Type.Number ? Type.Null : Type.Any; 
                     pushVariable(new Variable('_item_', valueType, '当前 `repeat` 元素'));
                 }
-
-                let nodeVars = node.property('vars');
-                if (nodeVars) {
-                    if (isArray(nodeVars)) {
-                        var count = nodeVars.length;
+                let varsNode = getPropertyNode(node.node, 'vars');
+                if (varsNode) {
+                    if (varsNode.type === 'array') {
+                        var count = varsNode.children.length;
                         if (path.length >= 2 && path[0] === 'vars' && typeof(path[1]) === 'number') {
                             count = path[1] as number;
                         }
                         for (var i = 0; i < count; i++) {
-                            pushDict(nodeVars[i]);
+                            pushVarsDict(varsNode.children[i]);
                         }
                     }
-                    else if (isObject(nodeVars) && !(inVars && nodeStack.length == 0)) {
-                        pushDict(nodeVars);
+                    else if (varsNode.type === 'object') {
+                        pushVarsDict(varsNode);
                     }
                 }
             }
@@ -1667,6 +1701,42 @@ export class MistDocument {
         return null;
     }
 
+    public provideDefinition(position: vscode.Position, token: vscode.CancellationToken): vscode.ProviderResult<vscode.Definition> {
+        let document = this.document;
+        let wordRange = document.getWordRangeAtPosition(position);
+        if (wordRange == null || wordRange.start == wordRange.end) {
+            return null;
+        }
+        let location = json.getLocation(document.getText(), document.offsetAt(position));
+        this.parseTemplate();
+
+        let expression = this.getExpressionAtLocation(location, wordRange.end);
+        if (!expression) {
+            return null;
+        }
+        expression = getCurrentExpression(expression);
+        let {prefix: prefix, function: name} = getPrefix(expression);
+        if (prefix) {
+            return null;
+        }
+        let isFunction = document.getText(new vscode.Range(wordRange.end, wordRange.end.translate(0, 1))) === '(';
+        if (isFunction) {
+            return null;
+        }
+        let ctx = this.contextAtLocation(location);
+        let index = findLastIndex(ctx.vars, v => v.name === name);
+        if (index >= 0) {
+            let v = ctx.vars[index];
+            if (v.node) {
+                let uri = v.uri || this.document.uri;
+                return vscode.workspace.openTextDocument(uri).then(doc => {
+                    return new vscode.Location(uri, new vscode.Range(doc.positionAt(v.node.offset), doc.positionAt(v.node.offset + v.node.length)));
+                });
+            }
+        }
+        return null;
+    }
+
     public provideSignatureHelp(position: vscode.Position, token: vscode.CancellationToken): vscode.SignatureHelp | Thenable<vscode.SignatureHelp> {
         let document = this.document;
         let location = json.getLocation(document.getText(), document.offsetAt(position));
@@ -1734,15 +1804,6 @@ export class MistDocument {
 
         let diagnostics = [];
 
-        function findLastIndex<T>(list: T[], predicate: (element: T) => boolean): number {
-            for (var i = list.length - 1; i >= 0; i--) {
-                if (predicate(list[i])) {
-                    return i;
-                }
-            }
-            return -1;
-        }
-
         let pushVariable = (v: Variable) => {
             vars.push(v);
             let isExp = false;
@@ -1770,7 +1831,7 @@ export class MistDocument {
             if (index >= 0) {
                 if (!typeContext.isAccessed(key)) {
                     let v = vars[index];
-                    if (v.node) {
+                    if (v.node && !v.uri) {
                         let node = v.node.children[0];
                         diagnostics.push(new vscode.Diagnostic(nodeRange(node), `未引用的变量 \`${key}\``, vscode.DiagnosticSeverity.Warning));
                     }
@@ -1786,7 +1847,7 @@ export class MistDocument {
             node.children.forEach(c => {
                 if (c.children.length == 2) {
                     let key = c.children[0].value;
-                    pushVariable(new Variable(key, c.children[1].value).setNode(c));
+                    pushVariable(new Variable(key, getNodeValue(c.children[1])).setNode(c));
                     pushed.push(key);
                 }
             });
@@ -1920,7 +1981,6 @@ export class MistDocument {
                     });
                 }
                 else if (varsNode.type === 'object') {
-                    let vars = json.getNodeValue(varsNode);
                     validate(varsNode);
                     pushed.push(...pushVarsDict(varsNode));
                 }

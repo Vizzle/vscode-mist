@@ -4,7 +4,10 @@
 import * as vscode from 'vscode';
 import { MistDocument } from './mistDocument';
 
-export default class MistCompletionProvider implements vscode.CompletionItemProvider {
+export default class MistCompletionProvider implements vscode.CompletionItemProvider, vscode.HoverProvider, vscode.DefinitionProvider {
+    provideDefinition(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken): vscode.ProviderResult<vscode.Definition> {
+        return MistDocument.getDocumentByUri(document.uri).provideDefinition(position, token);
+    }
     
     provideHover(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken): vscode.ProviderResult<vscode.Hover> {
         return MistDocument.getDocumentByUri(document.uri).provideHover(position, token);

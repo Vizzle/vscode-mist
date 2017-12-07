@@ -19,6 +19,7 @@ export class StatusBarManager {
                 return item;
             });
             vscode.window.showQuickPick(items).then(r => {
+                if (!r) return;
                 doc.setData(r.detail, r.description ? parseInt(r.description.substr(1)) - 1 : 0);
                 this.updateDataItemForDocument(doc);
             });
