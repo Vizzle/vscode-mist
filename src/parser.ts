@@ -114,7 +114,7 @@ export class ExpressionContext {
     get(key: string): any {
         let array = this.table[key];
         if (array && array.length > 0) {
-            return array[0];
+            return array[array.length - 1];
         }
         return null;
     }
@@ -169,15 +169,23 @@ function isEqual(a: any, b: any): boolean {
     return false;
 }
 
-class ExpressionError {
+export enum ExpressionErrorLevel {
+    Error,
+    Warning,
+    Info,
+}
+
+export class ExpressionError {
     description: string;
     offset: number;
     length: number;
+    level: ExpressionErrorLevel;
 
-    constructor(node: ExpressionNode, description: string) {
+    constructor(node: ExpressionNode, description: string, level: ExpressionErrorLevel = ExpressionErrorLevel.Error) {
         this.offset = node.offset;
         this.length = node.length;
         this.description = description;
+        this.level = level
     }
 }
 
@@ -243,10 +251,17 @@ class IdentifierNode extends ExpressionNode {
     }
 
     getType(context: ExpressionContext): IType {
-        return IType.typeof(context.get(this.identifier)) || Type.Any;
+        let type = IType.typeof(context.get(this.identifier)) || Type.Any;
+        if (type === Type.Null) {
+            type = Type.Any;
+        }
+        return type;
     }
     
     check(context: ExpressionContext) {
+        if (context.get(this.identifier) === Type.Null) {
+            return [new ExpressionError(this, `当前范围不存在符号 \`${this.identifier}\``)];
+        }
         return [];
     }
 }
@@ -729,7 +744,7 @@ class FunctionExpressionNode extends ExpressionNode {
         else {
             let p = targetType.getProperty(this.action.identifier);
             if (!p && !targetType.getMethod(this.action.identifier, 0)) {
-                errors.push(new ExpressionError(this.action, `${targetType === Type.Global ? '' : `类型 \`${targetType.getName()}\` 上`}不存在属性 \`${this.action.identifier}\``));
+                errors.push(new ExpressionError(this.action, `${targetType === Type.Global ? '' : `类型 \`${targetType.getName()}\` 上`}不存在属性 \`${this.action.identifier}\``, ExpressionErrorLevel.Warning));
             }
         }
 
@@ -760,6 +775,15 @@ class LambdaExpressionNode extends ExpressionNode {
         return this.expression.check(context);
     }
 }
+
+export type ParseResult = {
+    expression?: ExpressionNode,
+    parserError?: ParserErrorCode,
+    lexerError?: LexerErrorCode,
+    errorMessage?: string,
+    errorOffset?: number,
+    errorLength?: number,
+};
 
 export class Parser {
     private lexer: Lexer;
@@ -961,7 +985,7 @@ export class Parser {
                 closeParen = this.requireOperator(TokenType.CloseParen, ParserErrorCode.CloseParenExpected);
                 if (!closeParen) return null;
             }
-            let length = closeParen ? closeParen.offset + closeParen.length - operand1.offset : operand1.length;
+            let length = closeParen ? closeParen.offset + closeParen.length - operand1.offset : (action.offset + action.length - operand1.offset);
             let fun = new FunctionExpressionNode(operand1, action, parameters).setRange(operand1.offset, length);
             return this.parsePostfixExpression2(fun);
         }
@@ -1129,14 +1153,7 @@ export class Parser {
         return null;
     }
 
-    public static parse(code: string): {
-        expression?: ExpressionNode,
-        parserError?: ParserErrorCode,
-        lexerError?: LexerErrorCode,
-        errorMessage?: string,
-        errorOffset?: number,
-        errorLength?: number,
-    } {
+    public static parse(code: string): ParseResult {
         if (code === null || code === undefined) {
             code = '';
         }

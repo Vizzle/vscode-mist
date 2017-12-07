@@ -9,7 +9,7 @@ import { Properties, PropertyInfo, Event, BasicType } from "./properties";
 import { ImageHelper } from "./imageHelper";
 import { Lexer, LexerErrorCode } from "./lexer";
 import { Type, IType, Method, Parameter, Property, ArrayType, UnionType, ObjectType, IntersectionType } from "./type";
-import { ExpressionContext, Parser, None, ExpressionNode, LiteralNode } from "./parser";
+import { ExpressionContext, Parser, None, ExpressionNode, LiteralNode, ParseResult, ExpressionErrorLevel } from "./parser";
 
 enum ExpType {
     Void,
@@ -65,8 +65,10 @@ class Variable {
     value: any;
     computed: any;
     description: string;
+    incomplete: boolean;
+    node: json.Node;
 
-    constructor(name: string, value: any, description?: string) {
+    constructor(name: string, value: any, description?: string, incomplete: boolean = false) {
         this.name = name;
         let a = [[100, 18], [50, 20], [80, 14], [130, 23], [70, 17], [60, 26], [80, 19], [50, 21], [80, 23], [70, 18], [80, 20]];
         
@@ -78,6 +80,12 @@ class Variable {
             this.value = value;
         }
         this.description = description;
+        this.incomplete = incomplete;
+    }
+
+    setNode(node: json.Node) {
+        this.node = node;
+        return this;
     }
 
     static unique(vars: Variable[]) {
@@ -112,7 +120,7 @@ class StringConcatExpressionNode extends ExpressionNode {
 let BUILTIN_VARS = [
     new Variable("_width_", Type.Number, "屏幕宽度"),
     new Variable("_height_", Type.Number, "屏幕高度"),
-    new Variable("_mistitem_", Type.registerType(new Type('VZMistItem')), "模版对应的 item 对象"),
+    new Variable("_mistitem_", Type.Any, "模版对应的 item 对象"),
     new Variable("system", Type.registerType(new Type('system')).registerPropertys({
         "name": new Property(Type.String, "系统名称"),
         "version": new Property(Type.String, "系统版本"),
@@ -570,6 +578,7 @@ function registerTypes() {
         "NSInteger": "number",
         "NSUInteger": "number",
         "BOOL": "boolean",
+        "bool": "boolean",
         "id": "any",
         "NSArray": "array",
         "NSDictionary": "object"
@@ -599,6 +608,40 @@ function registerTypes() {
             "length": {
                 "type": "NSUInteger",
                 "comment": "字符串长度"
+            },
+            "intValue": {
+                "type": "int",
+                "comment": "字符串的整数值"
+            },
+            "doubleValue": {
+                "type": "double",
+                "comment": "字符串的浮点数值"
+            },
+            "floatValue": {
+                "type": "float",
+                "comment": "字符串的浮点数值"
+            },
+            "boolValue": {
+                "type": "boolean",
+                "comment": "字符串的布尔值"
+            }
+        },
+        "number": {
+            "intValue": {
+                "type": "int",
+                "comment": "数字的整数值"
+            },
+            "doubleValue": {
+                "type": "double",
+                "comment": "数字的浮点数值"
+            },
+            "floatValue": {
+                "type": "float",
+                "comment": "数字的浮点数值"
+            },
+            "boolValue": {
+                "type": "boolean",
+                "comment": "数字的布尔值"
             }
         },
         "NSArray": {
@@ -754,6 +797,47 @@ class Cache<T> {
     }
 }
 
+class TrackExpressionContext extends ExpressionContext {
+    private accessed: { [key: string]: boolean[] };
+
+    constructor() {
+        super();
+        this.accessed = {};
+    }
+
+    get(key: string) {
+        let list = this.accessed[key];
+        if (list && list.length > 0) {
+            list[list.length - 1] = true;
+        }
+        return super.get(key);
+    }
+
+    push(key: string, value: any) {
+        let list = this.accessed[key];
+        if (!list) {
+            list = [];
+            this.accessed[key] = list;
+        }
+        list.push(false);
+        super.push(key, value);
+    }
+
+    pop(key: string) {
+        let list = this.accessed[key];
+        list.pop();
+        return super.get(key);
+    }
+
+    isAccessed(key: string): boolean {
+        let list = this.accessed[key];
+        if (list && list.length > 0) {
+            return list[list.length - 1];
+        }
+        return true;
+    }
+}
+
 export class MistDocument {
     static documents: { [path: string]: MistDocument } = {}
 
@@ -764,7 +848,7 @@ export class MistDocument {
     private rootNode: json.Node;
     private nodeTree: MistNode;
     private template: any;
-    private expCache: Cache<any>;
+    private expCache: Cache<ParseResult>;
 
     constructor(document: TextDocument) {
         this.document = document;
@@ -951,7 +1035,7 @@ export class MistDocument {
         return node;
     }
 
-    private parse(exp: string) {
+    private parse(exp: string): ParseResult {
         let parsed = this.expCache.get(exp);
         if (!parsed) {
             parsed = Parser.parse(exp);
@@ -1014,10 +1098,13 @@ export class MistDocument {
             return obj.compute(context);
         }
         else if (obj instanceof Array) {
-            return obj.map(o => this.computeExpressionValueInObject(o, context));
+            let list = obj.map(o => this.computeExpressionValueInObject(o, context));
+            return list.some(v => v === None) ? None : list;
         }
         else if (obj && obj !== None && typeof(obj) === 'object') {
-            return Object.keys(obj).reduce((p, c) => { p[c] = this.computeExpressionValueInObject(obj[c], context); return p; }, {});
+            let values = Object.keys(obj).map(k => this.computeExpressionValueInObject(obj[k], context));
+            if (values.some(v => v === None)) return None;
+            return Object.keys(obj).reduce((p, c, i) => { p[c] = values[i]; return p; }, {});
         }
         return obj;
     }
@@ -1057,7 +1144,7 @@ export class MistDocument {
         let typeContext = new ExpressionContext();
         let valueContext = new ExpressionContext();
 
-        let pushVariable = v => {
+        let pushVariable = (v: Variable) => {
             vars.push(v);
             let isExp = false;
             let parsed = this.parseExpressionInObject(v.value);
@@ -1073,6 +1160,9 @@ export class MistDocument {
             if (!v.type) {
                 v.type = Type.typeof(v.value) || Type.Any;
             }
+            if (v.incomplete && v.type instanceof ObjectType) {
+                v.type.setIndexType();
+            }
             typeContext.push(v.name, v.type);
         };
         let push = (key, value) => pushVariable(new Variable(key, value));
@@ -1083,17 +1173,17 @@ export class MistDocument {
         let data = this.getData() ? this.getData().data : {};
 
         pushDict(data);
-        pushVariable(new Variable('_data_', Object.keys(data).length === 0 ? Type.Object : data, '模版关联的数据'));
+        pushVariable(new Variable('_data_', data, '模版关联的数据', true));
 
         if (this.template.data instanceof Object) {
             data = {...data, ...this.template.data};
         }
         pushDict(data);
 
-        pushVariable(new Variable('_data_', Object.keys(data).length === 0 ? Type.Object : data, '模版关联的数据'));
+        pushVariable(new Variable('_data_', data, '模版关联的数据', true));
 
         if (location.path[0] !== 'data' && location.path[0] !== 'state') {
-            pushVariable(new Variable('state', this.template.state || Type.Object, '模版状态'));
+            pushVariable(new Variable('state', this.template.state || null, '模版状态', true));
         }
         
         let path = [...location.path];
@@ -1107,27 +1197,30 @@ export class MistDocument {
         }
         while (nodeStack.length > 0) {
             let node = nodeStack.pop();
-            let nodeVars = node.property('vars');
-            if (node.property('repeat') && !(inRepeat && nodeStack.length == 0)) {
-                pushVariable(new Variable('_index_', Type.Number, '当前 `repeat` 元素索引'));
-                let repeat = this.parseExpressionInObject(node.property('repeat'));
-                let repeatType = this.computeExpressionTypeInObject(repeat, typeContext);
-                let valueType = repeatType instanceof ArrayType ? repeatType.getElementsType()
-                    : repeatType === Type.Number ? Type.Null : Type.Any; 
-                pushVariable(new Variable('_item_', valueType, '当前 `repeat` 元素'));
-            }
-            if (nodeVars) {
-                if (isArray(nodeVars)) {
-                    var count = nodeVars.length;
-                    if (path.length >= 2 && path[0] === 'vars' && typeof(path[1]) === 'number') {
-                        count = path[1] as number;
-                    }
-                    for (var i = 0; i < count; i++) {
-                        pushDict(nodeVars[i]);
-                    }
+            if (!(inRepeat && nodeStack.length === 0)) {
+                if (node.property('repeat')) {
+                    pushVariable(new Variable('_index_', Type.Number, '当前 `repeat` 元素索引'));
+                    let repeat = this.parseExpressionInObject(node.property('repeat'));
+                    let repeatType = this.computeExpressionTypeInObject(repeat, typeContext);
+                    let valueType = repeatType instanceof ArrayType ? repeatType.getElementsType()
+                        : repeatType === Type.Number ? Type.Null : Type.Any; 
+                    pushVariable(new Variable('_item_', valueType, '当前 `repeat` 元素'));
                 }
-                else if (isObject(nodeVars) && !(inVars && nodeStack.length == 0)) {
-                    pushDict(nodeVars);
+
+                let nodeVars = node.property('vars');
+                if (nodeVars) {
+                    if (isArray(nodeVars)) {
+                        var count = nodeVars.length;
+                        if (path.length >= 2 && path[0] === 'vars' && typeof(path[1]) === 'number') {
+                            count = path[1] as number;
+                        }
+                        for (var i = 0; i < count; i++) {
+                            pushDict(nodeVars[i]);
+                        }
+                    }
+                    else if (isObject(nodeVars) && !(inVars && nodeStack.length == 0)) {
+                        pushDict(nodeVars);
+                    }
                 }
             }
         }
@@ -1636,12 +1729,21 @@ export class MistDocument {
     public validate(): vscode.Diagnostic[] {
         this.parseTemplate();
         let vars: Variable[] = [];
-        let typeContext = new ExpressionContext();
+        let typeContext = new TrackExpressionContext();
         let valueContext = new ExpressionContext();
 
         let diagnostics = [];
 
-        let pushVariable = v => {
+        function findLastIndex<T>(list: T[], predicate: (element: T) => boolean): number {
+            for (var i = list.length - 1; i >= 0; i--) {
+                if (predicate(list[i])) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        let pushVariable = (v: Variable) => {
             vars.push(v);
             let isExp = false;
             let parsed = this.parseExpressionInObject(v.value);
@@ -1657,14 +1759,39 @@ export class MistDocument {
             if (!v.type) {
                 v.type = Type.typeof(v.value) || Type.Any;
             }
+            if (v.incomplete && v.type instanceof ObjectType) {
+                v.type.setIndexType();
+            }
             typeContext.push(v.name, v.type);
         };
         let push = (key, value) => pushVariable(new Variable(key, value));
         let pop = key => {
+            let index = findLastIndex(vars, v => v.name === key);
+            if (index >= 0) {
+                if (!typeContext.isAccessed(key)) {
+                    let v = vars[index];
+                    if (v.node) {
+                        let node = v.node.children[0];
+                        diagnostics.push(new vscode.Diagnostic(nodeRange(node), `未引用的变量 \`${key}\``, vscode.DiagnosticSeverity.Warning));
+                    }
+                }
+                vars.splice(index, 1);
+            }
             typeContext.pop(key);
             valueContext.pop(key);
         };
         let pushDict = dict => Object.keys(dict).forEach(key => push(key, dict[key]));
+        let pushVarsDict = (node: json.Node) => {
+            let pushed = [];
+            node.children.forEach(c => {
+                if (c.children.length == 2) {
+                    let key = c.children[0].value;
+                    pushVariable(new Variable(key, c.children[1].value).setNode(c));
+                    pushed.push(key);
+                }
+            });
+            return pushed;
+        }
 
         let range = (offset, length) => {
             let start = this.document.positionAt(offset);
@@ -1705,7 +1832,10 @@ export class MistDocument {
                             diagnostics.push(...errors.map(e => {
                                 let start = exp.string.sourceIndex(e.offset);
                                 let end = exp.string.sourceIndex(e.offset + e.length);
-                                return new vscode.Diagnostic(range(start + exp.offset + node.offset, end - start), e.description, vscode.DiagnosticSeverity.Warning);
+                                return new vscode.Diagnostic(range(start + exp.offset + node.offset, end - start), e.description, 
+                                    e.level === ExpressionErrorLevel.Info ? vscode.DiagnosticSeverity.Information :
+                                    e.level === ExpressionErrorLevel.Warning ? vscode.DiagnosticSeverity.Warning :
+                                    vscode.DiagnosticSeverity.Error);
                             }));
                         }
                     }
@@ -1729,7 +1859,7 @@ export class MistDocument {
         let data = this.getData() ? this.getData().data : {};
 
         pushDict(data);
-        pushVariable(new Variable('_data_', Object.keys(data).length === 0 ? Type.Object : data, '模版关联的数据'));
+        pushVariable(new Variable('_data_', data, '模版关联的数据', true));
 
         if (this.template.data instanceof Object) {
             validate(json.findNodeAtLocation(this.rootNode, ['data']));
@@ -1737,10 +1867,15 @@ export class MistDocument {
         }
         pushDict(data);
 
-        pushVariable(new Variable('_data_', Object.keys(data).length === 0 ? Type.Object : data, '模版关联的数据'));
+        pushVariable(new Variable('_data_', data, '模版关联的数据', true));
+
+        pushDict({
+            '_item_': Type.Null,
+            '_index_': Type.Null,
+        });
 
         validate(json.findNodeAtLocation(this.rootNode, ['state']));
-        pushVariable(new Variable('state', this.template.state || Type.Object, '模版状态'));
+        pushVariable(new Variable('state', this.template.state || null, '模版状态', true));
         
         let validateNode = (node: MistNode) => {
             if (!node) return;
@@ -1781,16 +1916,13 @@ export class MistDocument {
                             return;
                         }
                         validate(c);
-                        let vars = json.getNodeValue(c);
-                        pushDict(vars);
-                        pushed.push(...Object.keys(vars));
+                        pushed.push(...pushVarsDict(c));
                     });
                 }
                 else if (varsNode.type === 'object') {
                     let vars = json.getNodeValue(varsNode);
                     validate(varsNode);
-                    pushDict(vars);
-                    pushed.push(...Object.keys(vars));
+                    pushed.push(...pushVarsDict(varsNode));
                 }
                 else {
                     diagnostics.push(new vscode.Diagnostic(nodeRange(varsNode), '`vars` 属性只能为 `object` 或 `array`', vscode.DiagnosticSeverity.Error));

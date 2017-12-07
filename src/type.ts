@@ -84,7 +84,6 @@ export abstract class IType {
         if (a instanceof ObjectType && b instanceof ObjectType) {
             return ObjectType.isSame(a, b);
         }
-        console.log('type', new Type('test').constructor);
         return false;
     }
     public static typeof(obj: any): IType {
@@ -244,7 +243,7 @@ export class IntersectionType extends CombinedType {
                 let map = c.getMap();
                 Object.keys(map).forEach(k => {
                     if (k in p) {
-                        p[k] = UnionType.type([p[k], map[k]]);
+                        p[k] = IntersectionType.type([p[k], map[k]]);
                     }
                     else {
                         p[k] = map[k];
@@ -254,6 +253,12 @@ export class IntersectionType extends CombinedType {
             }, {}));
             ts = ts.filter(t => !(t instanceof ObjectType));
             ts.push(newObjectType);
+        }
+        let arrayTypes: ArrayType[] = ts.filter(t => t instanceof ArrayType) as ArrayType[];
+        if (arrayTypes.length >= 2) {
+            let newArrayType = new ArrayType(IntersectionType.type(arrayTypes.map(t => t.getElementsType())));
+            ts = ts.filter(t => !(t instanceof ArrayType));
+            ts.push(newArrayType);
         }
         if (ts.length == 0) {
             return Type.Any;
@@ -488,6 +493,7 @@ export class ArrayType extends IType {
 
 export class ObjectType extends IType {
     private map: { [key: string]: IType };
+    private indexType: { name: string, type: IType };
 
     static properties = {
         
@@ -497,9 +503,15 @@ export class ObjectType extends IType {
         
     }
 
-    public constructor(map: { [key: string]: IType }) {
+    public constructor(map: { [key: string]: IType }, indexType?: { name: string, type: IType }) {
         super();
         this.map = map;
+        this.indexType = indexType;
+    }
+
+    public setIndexType(name: string = 'key', type: IType = Type.Any) {
+        this.indexType = { name: name, type: type };
+        return this;
     }
 
     public getMap(): { [key: string]: IType } {
@@ -508,11 +520,16 @@ export class ObjectType extends IType {
 
     public getName(): string {
         let keys = Object.keys(this.map);
-        if (keys.length == 0) {
+        if (keys.length == 0 && !this.indexType) {
             return '{}';
         }
+        let props = keys.map(k => `"${k}": ${this.map[k].getName()};`);
+        if (this.indexType) {
+            props.splice(0, 0, `[${this.indexType.name}: string]: ${this.indexType.type.getName()};`);
+        }
+
         return `{
-    ${keys.map(k => `"${k}": ${this.map[k].getName()};`).join('\n').replace(/\n/mg, '\n    ')}
+    ${props.join('\n').replace(/\n/mg, '\n    ')}
 }`;
     }
 
@@ -523,6 +540,9 @@ export class ObjectType extends IType {
     public getProperty(name: string): Property {
         if (name in this.map) {
             return new Property(this.map[name]);
+        }
+        if (this.indexType) {
+            return new Property(this.indexType.type);
         }
         return null;
     }
