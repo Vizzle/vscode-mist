@@ -10,6 +10,7 @@ import { ImageHelper } from "./imageHelper";
 import { Lexer, LexerErrorCode } from "./lexer";
 import { Type, IType, Method, Parameter, Property, ArrayType, UnionType, ObjectType, IntersectionType } from "./type";
 import { ExpressionContext, Parser, None, ExpressionNode, LiteralNode, ParseResult, ExpressionErrorLevel } from "./parser";
+import Snippets from "./snippets";
 
 enum ExpType {
     Void,
@@ -991,7 +992,7 @@ export class MistDocument {
     // "abc ${expression1} ${a + max(a, b.c|) + d} xxx" -> "a + max(a, b.c"
     private getExpressionAtLocation(location: json.Location, position: vscode.Position) {
         let document = this.document;
-        if (!location.isAtPropertyKey && location.previousNode.type == 'string') {
+        if (!location.isAtPropertyKey && location.previousNode && location.previousNode.type == 'string') {
             let start = location.previousNode.offset + 1;
             let end = location.previousNode.offset + location.previousNode.length - 1;
             let str = document.getText(new vscode.Range(document.positionAt(start), document.positionAt(end)));
@@ -1032,7 +1033,7 @@ export class MistDocument {
             return path.slice(start);
         }
         
-        return [];
+        return null;
     }
 
     private nodeAtPath(path: json.Segment[]) {
@@ -1484,7 +1485,7 @@ export class MistDocument {
             }
             else {
                 let nodePath = this.nodePath(location.path);
-                if (nodePath.length >= 2 && nodePath[0] === 'style' && (nodePath[1] === 'image' || nodePath[1] === 'error-image' || nodePath[1] === 'background-image')) {
+                if (nodePath && nodePath.length >= 2 && nodePath[0] === 'style' && (nodePath[1] === 'image' || nodePath[1] === 'error-image' || nodePath[1] === 'background-image')) {
                     return ImageHelper.provideCompletionItems(this, token);
                 }
             }
@@ -1492,7 +1493,7 @@ export class MistDocument {
 
         let properties = this.getProperties(this.rootNode, location);
         
-        return Object.keys(properties).map(p => {
+        let propertyItems = Object.keys(properties).map(p => {
             let info: PropertyInfo = properties[p];
             let kind;
             if (info.type === BasicType.Enum) {
@@ -1548,6 +1549,37 @@ export class MistDocument {
             }
             return item;
         });
+
+        if (!location.previousNode) {
+            let nodePath = this.nodePath(location.path);
+            if (!nodePath) return propertyItems;
+            let snippets: any = Snippets.nodeSnippets;
+            if (nodePath.length == 0) {
+                let trialingText = this.document.getText(new vscode.Range(position, position.translate(3, 0)));
+                let needTrialingComma = /^\s*\{/m.test(trialingText);
+                snippets = Object.keys(snippets).reduce((p, c) => {
+                    p[c] = '{\n  ' + snippets[c].replace(/\n/mg, '\n  ') + '\n}';
+                    if (needTrialingComma) p[c] += ',';
+                    return p;
+                }, {});
+            }
+            else if (nodePath.length == 1 && location.isAtPropertyKey) {
+                let node = this.nodeAtPath(location.path);
+                if (node.node.children.length > 0) {
+                    return propertyItems;
+                }
+            }
+            else {
+                return propertyItems;
+            }
+            propertyItems.push(...Object.keys(snippets).map(name => {
+                let item = new CompletionItem(name, vscode.CompletionItemKind.Snippet);
+                item.insertText = new vscode.SnippetString(snippets[name]);
+                return item;
+            }));
+        }
+
+        return propertyItems;
     }
 
     private propertyName(name: string, property: Property) {
