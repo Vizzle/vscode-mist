@@ -350,7 +350,7 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
     </div>
     </div>
 
-    <script src="file://${this.context.extensionPath}/src/flex/FlexLayout.js"></script>
+    <script src="file://${this.context.extensionPath}/out/src/flex/FlexLayout.js"></script>
         <script>
 var flex = FlexLayout;
 
