@@ -65,7 +65,7 @@ export default class MistNodeTreeProvider implements vscode.TreeDataProvider<jso
 
 	private parseTree(): void {
 		this.tree = null;
-		this.editor = vscode.window.activeTextEditor;
+		this.editor = vscode.window.activeTextEditor || vscode.window.visibleTextEditors[0];
 		if (this.editor && this.editor.document && this.editor.document.languageId === 'mist') {
 			let tpl = parseJson(this.editor.document.getText());
 			this.tree = this.getProp(tpl, 'layout');

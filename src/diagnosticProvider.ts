@@ -4,14 +4,13 @@ import * as vscode from 'vscode';
 import * as json from 'jsonc-parser'
 import * as cp from 'child_process'
 import * as net from 'net'
-import MistServer from './mistServer'
 import { MistDocument, JsonString } from './mistDocument';
 
 export default class MistDiagnosticProvider {
     private diagnosticCollection: vscode.DiagnosticCollection;
     private _waiting = false;
 
-    constructor(private context: vscode.ExtensionContext, private server: MistServer) {
+    constructor(private context: vscode.ExtensionContext) {
         this.diagnosticCollection = vscode.languages.createDiagnosticCollection('mist');
         vscode.workspace.textDocuments.forEach(d => this.validate(d));
     }

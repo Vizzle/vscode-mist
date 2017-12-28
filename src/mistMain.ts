@@ -8,7 +8,6 @@ import MistCompletionProvider from './completionProvider'
 import MistDiagnosticProvider from './diagnosticProvider'
 import { format } from './formatter'
 import * as color from './utils/color'
-import MistServer from './mistServer'
 
 import * as fs from 'fs';
 import * as path from 'path';
@@ -19,19 +18,16 @@ import { MistSignatureHelpProvider } from './signatureHelpProvider';
 import { StatusBarManager } from './statusBarManager';
 
 export function activate(context: ExtensionContext) {
-    let server: MistServer = new MistServer(context);
-    context.subscriptions.push(server);
-    
     setupStatusBarManager(context);
     setupMistDocument(context);
     registerConvertor(context);
     registerMistServer(context);
     registerShowData(context);
-    registerPreviewProvider(context, server);
+    registerPreviewProvider(context);
     registerNodeTreeProvider(context);
     registerCompletionProvider(context);
     registerSignatureHelpProvider(context);
-    registerDiagnosticProvider(context, server);
+    registerDiagnosticProvider(context);
     registerValidateWorkspace(context);
     registerFormatter(context);
     registerColorDecorations(context);
@@ -173,8 +169,8 @@ function registerMistServer(context: ExtensionContext) {
     stopServerFunc = stopServer;
 }
 
-function registerPreviewProvider(context: ExtensionContext, server: MistServer) {
-    const contentProvider = new MistContentProvider(context, server);
+function registerPreviewProvider(context: ExtensionContext) {
+    const contentProvider = new MistContentProvider(context);
     const contentProviderRegistration = vscode.workspace.registerTextDocumentContentProvider('mist', contentProvider);
     context.subscriptions.push(contentProviderRegistration);
 
@@ -384,8 +380,8 @@ function registerSignatureHelpProvider(context: ExtensionContext) {
 
 let diagnosticProvider: MistDiagnosticProvider;
 
-function registerDiagnosticProvider(context: ExtensionContext, server: MistServer) {
-    diagnosticProvider = new MistDiagnosticProvider(context, server);
+function registerDiagnosticProvider(context: ExtensionContext) {
+    diagnosticProvider = new MistDiagnosticProvider(context);
     context.subscriptions.push(diagnosticProvider);
 
     context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(event => {

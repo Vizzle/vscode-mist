@@ -69,8 +69,35 @@ function getGroups(content: string) {
 
 class ImageInfo {
     name: string;
-    file: string;
-    at: string[];
+    files: { [scale: number]: string };
+
+    constructor(name: string, files: { [scale: number]: string }) {
+        this.name = name;
+        this.files = files;
+    }
+
+    getFile(scale: number): {
+        scale: number,
+        file: string
+    } {
+        scale = Math.round(scale);
+        if (scale in this.files) {
+            return {
+                scale: scale,
+                file: this.files[scale]
+            };
+        }
+        
+        let scales = Object.keys(this.files);
+        if (scales.length > 0) {
+            let scale = parseInt(scales[scales.length - 1]);
+            return {
+                scale: scale,
+                file: this.files[scale]
+            };
+        }
+        return null;
+    }
 }
 
 function getImageFiles(dir: string): ImageInfo[] {
@@ -117,11 +144,10 @@ function getImageFiles(dir: string): ImageInfo[] {
         files.forEach(f => {
             let file = dir + '/' + f;
             if (f.endsWith('.imageset')) {
-                let info: ImageInfo = {
-                    file: file,
-                    name: f.replace(/\.[^/.]+$/, ''),
-                    at: null
-                }
+                let contentsJson = fs.readFileSync(file + '/Contents.json').toString();
+                let contents = JSON.parse(contentsJson);
+                let imageList: any[] = contents.images || [];
+                let info = new ImageInfo(f.replace(/\.[^/.]+$/, ''), imageList.reduce((p, c) => { p[parseInt(c.scale)] = file + '/' + c.filename; return p; }, {}));
                 images.push(info);
             }
             else if (fs.statSync(file).isDirectory()) {
@@ -134,30 +160,21 @@ function getImageFiles(dir: string): ImageInfo[] {
         files.forEach(f => {
             let file = dir + '/' + f;
             let ext = path.extname(f);
-            if (ext === '.png') {
-                const re = /^(.*?)(?:@(.*))?\.png$/;
+            const extensions = ['.png', '.jpg', '.jpeg', '.gif'];
+            if (extensions.indexOf(ext) >= 0) {
+                const re = /^(.*?)(?:@(.*))?\.\w+$/;
                 let match = f.match(re);
                 if (match) {
                     let name = path.basename(dir) + '/' + match[1];
+                    if (ext !== '.png') name += ext;
                     let info = images.find(info => info.name === name);
+                    let scale = parseInt(match[2] || "1x");
                     if (!info) {
-                        info = {
-                            file: file,
-                            name: name,
-                            at: []
-                        };
+                        info = new ImageInfo(name, {});
                         images.push(info);
                     }
-                    info.at.push(match[2]);
+                    info.files[scale] = file;
                 }
-            }
-            else if (ext === '.gif' || ext === '.jpg' || ext === '.jpeg') {
-                let info: ImageInfo = {
-                    file: file,
-                    name: path.basename(dir) + '/' + f,
-                    at: null
-                }
-                images.push(info);
             }
         });
     }
@@ -173,18 +190,45 @@ function getImageFiles(dir: string): ImageInfo[] {
 }
 
 export class ImageHelper {
+    public static imageUriWithName(document: vscode.TextDocument, name: string, scale: number): {
+        scale: number,
+        file: string
+    } {
+        let dir = document.fileName ? path.dirname(document.fileName) : vscode.workspace.rootPath;
+        if (!dir) {
+            return null;
+        }
+        let images = getImageFiles(dir);
+        let match = name.match(/@(\d)x\.\w+$/);
+        if (match) {
+            name = name.replace(/@(\d)x/, '');
+            scale = parseInt(match[1]);
+        }
+        let image = images.find(i => i.name === name);
+        if (image) {
+            let info = image.getFile(scale);
+            if (info) {
+                if (match && info.scale !== scale) return null;
+                return {
+                    scale: info.scale,
+                    file: vscode.Uri.file(info.file).toString()
+                };
+            }
+        }
+        
+        return null;
+    }
+
     public static provideCompletionItems(document: MistDocument, token: vscode.CancellationToken) {
         let dir = document.dir();
         if (!dir) {
             return [];
         }
-        let images = getImageFiles​​(dir);
+        let images = getImageFiles(dir);
         return images.map(info => {
             let item = new vscode.CompletionItem(info.name, vscode.CompletionItemKind.File);
             item.detail = info.name;
-            if (info.at) {
-                item.documentation = info.at.map(a => `${info.name}@${a}.png`).join('\n');
-            }
+            item.documentation = Object.keys(info.files).map(k => info.files[k]).join('\n');
             return item;
         });
     }

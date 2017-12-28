@@ -195,18 +195,29 @@ export class Type extends IType {
         return this.classMethods[name].find(m => m.params.length == paramsCount);
     }
     
-    public static Number = Type.registerType(new Type('number'));
+    public static Number = Type.registerType(new Type('number')).registerPropertys({
+        "intValue": new Property(Type.Number, "数字的整数值", true, n => Math.floor(n)),
+        "doubleValue": new Property(Type.Number, "数字的浮点数值", true, n => n),
+        "floatValue": new Property(Type.Number, "数字的浮点数值", true, n => n),
+        "boolValue": new Property(Type.Number, "数字的布尔值", true, n => n != 0),
+    });;
     public static Boolean = Type.registerType(new Type('boolean'));
-    public static String = Type.registerType(new Type('string'));
+    public static String = Type.registerType(new Type('string')).registerPropertys({
+        "length": new Property(Type.Number, "字符串长度", true, str => str.length),
+        "intValue": new Property(Type.Number, "字符串的整数值", true, str => parseInt(str)),
+        "doubleValue": new Property(Type.Number, "字符串的浮点数值", true, str => parseFloat(str)),
+        "floatValue": new Property(Type.Number, "字符串的浮点数值", true, str => parseFloat(str)),
+        "boolValue": new Property(Type.Number, "字符串的布尔值", true, (s: string) => /^\s*[TtYy1-9]/.test(s)),
+    });
     public static Any = Type.registerType(new Type('any'));
     public static Null = Type.registerType(new Type('null'));
     public static Void = Type.registerType(new Type('void'));
     public static Global = Type.registerType(new Type('global'));
     public static Array = Type.registerType(new Type('array')).registerPropertys({
-        "count": new Property(Type.getType('number'), "数组元素数量", true),
+        "count": new Property(Type.Number, "数组元素数量", true, list => list.length),
     });
     public static Object = Type.registerType(new Type('object')).registerPropertys({
-        "count": new Property(Type.getType('number'), "字典元素数量", true),
+        "count": new Property(Type.Number, "字典元素数量", true, obj => Object.keys(obj).length),
     });
 }
 

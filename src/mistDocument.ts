@@ -120,6 +120,11 @@ class StringConcatExpressionNode extends ExpressionNode {
         return computed.join('');
     }
 
+    computeValue(context: ExpressionContext) {
+        let computed = this.expressions.map(e => e.computeValue(context)).filter(s => s !== null && s !== undefined);
+        return computed.join('');
+    }
+
     getType(context: ExpressionContext): IType {
         return Type.String;
     }
@@ -255,7 +260,7 @@ export class JsonString {
     }
 }
 
-class MistData {
+export class MistData {
     template: string;
     file: string;
     data: {};
@@ -612,64 +617,12 @@ function registerTypes() {
                 if (info.deprecated) {
                     doc = `[Deprecated] ${info.deprecated}\n${doc || ''}`.trim();
                 }
-                type.registerMethod(fun, new Method(getType(info.return), doc, (info.params || []).map(p => new Parameter(p.name, getType(p.type) || Type.Any))));
+                type.registerMethod(fun, new Method(getType(info.return), doc, (info.params || []).map(p => new Parameter(p.name, getType(p.type) || Type.Any)), info.js));
             });
         });
     });
 
     const properties = {
-        "NSString": {
-            "length": {
-                "type": "NSUInteger",
-                "comment": "字符串长度"
-            },
-            "intValue": {
-                "type": "int",
-                "comment": "字符串的整数值"
-            },
-            "doubleValue": {
-                "type": "double",
-                "comment": "字符串的浮点数值"
-            },
-            "floatValue": {
-                "type": "float",
-                "comment": "字符串的浮点数值"
-            },
-            "boolValue": {
-                "type": "boolean",
-                "comment": "字符串的布尔值"
-            }
-        },
-        "number": {
-            "intValue": {
-                "type": "int",
-                "comment": "数字的整数值"
-            },
-            "doubleValue": {
-                "type": "double",
-                "comment": "数字的浮点数值"
-            },
-            "floatValue": {
-                "type": "float",
-                "comment": "数字的浮点数值"
-            },
-            "boolValue": {
-                "type": "boolean",
-                "comment": "数字的布尔值"
-            }
-        },
-        "NSArray": {
-            "count": {
-                "type": "NSUInteger",
-                "comment": "数组元素数量"
-            }
-        },
-        "NSDictionary": {
-            "count": {
-                "type": "NSUInteger",
-                "comment": "字典元素数量"
-            }
-        },
         "VZMistItem": {
             "tplController": {
                 "type": "VZMistTemplateController", 
@@ -855,7 +808,7 @@ class TrackExpressionContext extends ExpressionContext {
 export class MistDocument {
     static documents: { [path: string]: MistDocument } = {}
 
-    private document: TextDocument;
+    public readonly document: TextDocument;
     private datas: MistData[];
     private dataFile: string;
     private dataIndex: number = 0;
@@ -961,10 +914,12 @@ export class MistDocument {
     private parseTemplate() {
         if (!this.rootNode || !this.template) {
             this.rootNode = parseJson(this.document.getText());
-            this.template = getNodeValue(this.rootNode);
-            let layoutNode = getPropertyNode(this.rootNode, "layout");
-            if (layoutNode) {
-                this.nodeTree = new MistNode(layoutNode);
+            if (this.rootNode) {
+                this.template = getNodeValue(this.rootNode);
+                let layoutNode = getPropertyNode(this.rootNode, "layout");
+                if (layoutNode) {
+                    this.nodeTree = new MistNode(layoutNode);
+                }
             }
         }
     }
@@ -1388,7 +1343,7 @@ export class MistDocument {
         else {
             let info: PropertyInfo = properties[currentPath];
             properties = {};
-            if (info.isEnumProperty()) {
+            if (info && info.isEnumProperty()) {
                 let propertyType = info.type === Properties.colors ? BasicType.Color : BasicType.Enum;
                 if (info.type instanceof Array) {
                     (<Array<string>>info.type).forEach(v => properties[v] = new PropertyInfo(propertyType, ""));
@@ -1830,6 +1785,7 @@ export class MistDocument {
 
     public validate(): vscode.Diagnostic[] {
         this.parseTemplate();
+        if (!this.template) return [];
         let vars: Variable[] = [];
         let typeContext = new TrackExpressionContext();
         let valueContext = new ExpressionContext();
@@ -2033,5 +1989,135 @@ export class MistDocument {
         validateNode(this.nodeTree);
         
         return diagnostics;
+    }
+
+    public bindData(data: any, builtin: any) {
+        this.parseTemplate();
+        let template = this.template;
+        if (!template) return { layout: {} };
+        let parsedTemplate = this.parseExpressionInObject(this.template);
+        let valueContext = new ExpressionContext();
+        let compute = obj => {
+            if (obj instanceof ExpressionNode) {
+                let value = obj.computeValue(valueContext);
+                if (value === None || value === undefined) value = null;
+                return value;
+            }
+            else if (obj instanceof Array) {
+                return obj.map(o => compute(o));
+            }
+            else if (obj && obj !== None && typeof(obj) === 'object') {
+                let values = Object.keys(obj).map(k => compute(obj[k]));
+                return Object.keys(obj).reduce((p, c, i) => { if (values[i] !== null) p[c] = values[i]; return p; }, {});
+            }
+            return obj;
+        }
+        function extract<T> (obj: any, defaultValue: T = null, blacklist: string[] = null): T {
+            if (blacklist) {
+                obj = Object.assign({}, obj);
+                blacklist.forEach(k => delete obj[k]);
+            }
+            let value = compute(obj);
+            if (value === null || value === undefined) {
+                value = defaultValue;
+            }
+            return value;
+        }
+        let styles = extract(parsedTemplate.styles, {}, []);
+
+        valueContext.pushDict(builtin);
+        valueContext.pushDict(data);
+        valueContext.push('_data_', data);
+
+        if ('data' in parsedTemplate) {
+            let tplData = parsedTemplate.data;
+            if (tplData && tplData instanceof (Object)) {
+                let computed = extract(tplData);
+                valueContext.pushDict(computed);
+                data = {...data, ...computed};
+                valueContext.push('_data_', data);
+            }
+        }
+        if ('state' in parsedTemplate) {
+            let state = parsedTemplate.state;
+            if (state && state instanceof (Object)) {
+                let computed = extract(state);
+                valueContext.push('state', computed);
+            }
+        }
+        let rootNode = parsedTemplate.layout;
+        let computeNode = (node: any) => {
+            if (!node) return null;
+            let vars: any[] = node.vars;
+            // delete node.vars;
+            if (isObject(vars)) {
+                vars = [vars];
+            }
+            let pushed: any[] = [];
+            let popAll = () => pushed.forEach(k => valueContext.pop(k));
+            if (vars instanceof Array) {
+                vars.forEach(vs => {
+                    valueContext.pushDict(extract(vs));
+                    pushed.push(...Object.keys(vs));
+                });
+            }
+
+            if (extract(node.gone)) {
+                popAll();
+                return null;
+            }
+            // delete node.gone;
+
+            let classes = extract(node.class, '').split(' ').filter(s => s.length > 0);
+            // delete node.class;
+            if (classes.length > 0) {
+                let style = classes.map(c => styles[c]).filter(c => c).reduce((p, c) => { return { ...p, ...c } }, {});
+                node.style = { ...style, ...node.style };
+            }
+
+            let children = node.children;
+            // delete node.children;
+            node = extract(node, null, ['vars', 'gone', 'class', 'repeat', 'children']);
+            if (children instanceof Array) {
+                let list = [];
+                children.forEach(c => {
+                    if (c instanceof ExpressionNode) {
+                        c = extract(c);
+                    }
+                    if (typeof(c) === 'object') {
+                        if (c.repeat) {
+                            let repeat = extract(c.repeat);
+                            // delete c.repeat;
+                            let count = 1;
+                            let items: any[];
+                            if (typeof(repeat) === 'number') {
+                                count = repeat;
+                            }
+                            else if (repeat instanceof Array) {
+                                count = repeat.length;
+                                items = repeat;
+                            }
+
+                            for (var i = 0; i < count; i++) {
+                                valueContext.push('_index_', i);
+                                valueContext.push('_item_', items ? items[i] : null);
+                                list.push(computeNode({...c}));
+                                valueContext.pop('_index_');
+                                valueContext.pop('_item_');
+                            }
+                        }
+                        else {
+                            list.push(computeNode(c));
+                        }
+                    }
+                });
+                node.children = list.filter(c => c);
+            }
+            popAll();
+            return node;
+        };
+
+        let node = computeNode(rootNode);
+        return { layout: node };
     }
 }

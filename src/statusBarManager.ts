@@ -47,7 +47,7 @@ export class StatusBarManager {
     }
 
     public static onDidChangeActiveTextEditor(editor: vscode.TextEditor) {
-        if (editor.document.languageId === 'mist') {
+        if (editor && editor.document.languageId === 'mist') {
             let doc = MistDocument.getDocumentByUri(editor.document.uri);
             this.updateDataItemForDocument(doc);
             this.dataItem.show();

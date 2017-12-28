@@ -1,3 +1,37 @@
+import * as vscode from 'vscode';
+import { Parser } from './parser';
+
+function _for(start, end, step) {
+  if (step == 0) step = 1;
+  step = Math.abs(step);
+
+  let array = [];
+  let count = Math.ceil((end - start) / step);
+  for (var i = 0; i < count; i++) {
+    array.push(start + step * i);
+  }
+  return array;
+}
+
+function _randomInt(min, max) {
+  min = Math.floor(min);
+  max = Math.floor(max);
+  return Math.floor(Math.random() * (max - min) + min);
+}
+
+function _flatten(_this: any[], recursive: boolean = false) {
+  let array = [];
+  for (var value of _this) {
+    if (value instanceof Array) {
+      array.push(...(recursive ? _flatten(value, true) : value));
+    }
+    else {
+      array.push(value);
+    }
+  }
+  return array;
+}
+
 export let functions = {
   "global": {
     "transform": [
@@ -142,13 +176,15 @@ export let functions = {
             "name": "b"
           }
         ], 
-        "return": "double"
+        "return": "double",
+        "js": Math.pow
       }
     ], 
     "random": [
       {
         "comment": "返回 [0, 1) 的随机数", 
-        "return": "double"
+        "return": "double",
+        "js": Math.random
       }, 
       {
         "params": [
@@ -161,7 +197,8 @@ export let functions = {
             "name": "b"
           }
         ], 
-        "return": "double"
+        "return": "double",
+        "js": (a, b) => a + Math.random() * (b - a)
       }
     ], 
     "sign": [
@@ -173,7 +210,8 @@ export let functions = {
             "name": "a"
           }
         ], 
-        "return": "double"
+        "return": "double",
+        "js": a => Math.sign(a)
       }
     ], 
     "makeScale": [
@@ -210,7 +248,8 @@ export let functions = {
     ], 
     "E": [
       {
-        "return": "double"
+        "return": "double",
+        "js": () => Math.E
       }
     ], 
     "tan": [
@@ -221,7 +260,8 @@ export let functions = {
             "name": "a"
           }
         ], 
-        "return": "double"
+        "return": "double",
+        "js": Math.tan
       }
     ], 
     "size": [
@@ -287,7 +327,8 @@ export let functions = {
             "name": "a"
           }
         ], 
-        "return": "double"
+        "return": "double",
+        "js": Math.log
       }, 
       {
         "params": [
@@ -300,7 +341,8 @@ export let functions = {
             "name": "b"
           }
         ], 
-        "return": "double"
+        "return": "double",
+        "js": (a, b) => Math.log(b) / Math.log(a)
       }
     ], 
     "for": [
@@ -320,7 +362,8 @@ export let functions = {
             "name": "step"
           }
         ], 
-        "return": "NSArray*"
+        "return": "NSArray*",
+        "js": _for
       }, 
       {
         "comment": " 返回 `start` 到 `count - 1` 的数字组成的数组\n\n `for(5, 8)`       =>      `[5, 6, 7]`", 
@@ -334,7 +377,8 @@ export let functions = {
             "name": "end"
           }
         ], 
-        "return": "NSArray*"
+        "return": "NSArray*",
+        "js": (start, end) => _for(start, end, 1)
       }, 
       {
         "comment": " 返回 `0` 到 `count - 1` 的数字组成的数组\n\n `for(5)`       =>      `[0, 1, 2, 3, 4]`", 
@@ -344,7 +388,8 @@ export let functions = {
             "name": "count"
           }
         ], 
-        "return": "NSArray*"
+        "return": "NSArray*",
+        "js": (count) => _for(0, count, 1)
       }
     ], 
     "floor": [
@@ -355,7 +400,8 @@ export let functions = {
             "name": "a"
           }
         ], 
-        "return": "double"
+        "return": "double",
+        "js": Math.floor
       }
     ], 
     "makeTranslation": [
@@ -444,7 +490,8 @@ export let functions = {
             "name": "a"
           }
         ], 
-        "return": "double"
+        "return": "double",
+        "js": Math.sqrt
       }
     ], 
     "transformSet": [
@@ -509,7 +556,8 @@ export let functions = {
             "name": "a"
           }
         ], 
-        "return": "double"
+        "return": "double",
+        "js": Math.abs
       }
     ], 
     "identity": [
@@ -549,12 +597,17 @@ export let functions = {
             "name": "obj"
           }
         ], 
-        "return": "id"
+        "return": "id",
+        "js": obj => {
+          console.log(obj);
+          return obj;
+        }
       }
     ], 
     "PI": [
       {
-        "return": "double"
+        "return": "double",
+        "js": () => Math.PI
       }
     ], 
     "log10": [
@@ -565,7 +618,8 @@ export let functions = {
             "name": "a"
           }
         ], 
-        "return": "double"
+        "return": "double",
+        "js": Math.log10
       }
     ], 
     "sin": [
@@ -576,7 +630,8 @@ export let functions = {
             "name": "a"
           }
         ], 
-        "return": "double"
+        "return": "double",
+        "js": Math.sin
       }
     ], 
     "log2": [
@@ -587,7 +642,8 @@ export let functions = {
             "name": "a"
           }
         ], 
-        "return": "double"
+        "return": "double",
+        "js": Math.log2
       }
     ], 
     "cgcolor": [
@@ -613,7 +669,8 @@ export let functions = {
             "name": "b"
           }
         ], 
-        "return": "double"
+        "return": "double",
+        "js": Math.max
       }
     ], 
     "ceil": [
@@ -624,13 +681,15 @@ export let functions = {
             "name": "a"
           }
         ], 
-        "return": "double"
+        "return": "double",
+        "js": Math.ceil
       }
     ], 
     "randomInt": [
       {
         "comment": "返回一个不小于 0 的随机整数", 
-        "return": "uint"
+        "return": "uint",
+        "js": () => _randomInt(0, 0x100000000)
       }, 
       {
         "comment": "返回 [a, b) 的随机整数", 
@@ -644,7 +703,8 @@ export let functions = {
             "name": "b"
           }
         ], 
-        "return": "int"
+        "return": "int",
+        "js": _randomInt
       }
     ], 
     "rotate": [
@@ -695,7 +755,11 @@ export let functions = {
             "name": "obj"
           }
         ], 
-        "return": "id"
+        "return": "id",
+        "js": obj => {
+          vscode.window.showInformationMessage(JSON.stringify(obj, null, '\t'));
+          return obj;
+        }
       }
     ], 
     "rect": [
@@ -742,7 +806,8 @@ export let functions = {
             "name": "a"
           }
         ], 
-        "return": "double"
+        "return": "double",
+        "js": Math.trunc
       }
     ], 
     "cos": [
@@ -753,7 +818,8 @@ export let functions = {
             "name": "a"
           }
         ], 
-        "return": "double"
+        "return": "double",
+        "js": Math.cos
       }
     ], 
     "translate": [
@@ -798,7 +864,8 @@ export let functions = {
     ], 
     "HUGENUM": [
       {
-        "return": "double"
+        "return": "double",
+        "js": () => 1e50
       }
     ], 
     "min": [
@@ -813,7 +880,8 @@ export let functions = {
             "name": "b"
           }
         ], 
-        "return": "double"
+        "return": "double",
+        "js": Math.min
       }
     ], 
     "range": [
@@ -875,7 +943,8 @@ export let functions = {
             "name": "b"
           }
         ], 
-        "return": "double"
+        "return": "double",
+        "js": (a, b) => a % b
       }
     ], 
     "round": [
@@ -886,7 +955,26 @@ export let functions = {
             "name": "a"
           }
         ], 
-        "return": "double"
+        "return": "double",
+        "js": Math.round
+      }
+    ], 
+    "eval": [
+      {
+        "params": [
+          {
+            "type": "string", 
+            "name": "expression"
+          }
+        ], 
+        "return": "any",
+        "js": (exp, context) => {
+          var { expression: expression } = Parser.parse(exp);
+          if (expression) {
+            return expression.computeValue(context);
+          }
+          return null;
+        }
       }
     ]
   }, 
@@ -904,7 +992,11 @@ export let functions = {
             "name": "value"
           }
         ], 
-        "return": "NSDictionary*"
+        "return": "NSDictionary*",
+        "js": (_this, key, value) => {
+          _this[key] = value;
+          return _this;
+        }
       }
     ]
   }, 
@@ -912,7 +1004,8 @@ export let functions = {
     "trim": [
       {
         "comment": "移除首尾空白字符", 
-        "return": "NSString*"
+        "return": "NSString*",
+        "js": (_this: string) => _this.trim()
       }
     ], 
     "sub_string": [
@@ -929,7 +1022,8 @@ export let functions = {
           }
         ], 
         "return": "NSString*", 
-        "deprecated": "使用 `substring` 代替"
+        "deprecated": "使用 `substring` 代替",
+        "js": (_this: string, start, length) => _this.substr(start, length)
       }
     ], 
     "replace": [
@@ -945,7 +1039,8 @@ export let functions = {
             "name": "replacement"
           }
         ], 
-        "return": "NSString*"
+        "return": "NSString*",
+        "js": (_this: string, target, replacement) => _this.replace(new RegExp(target, "mg"), replacement)
       }
     ], 
     "substring": [
@@ -957,7 +1052,8 @@ export let functions = {
             "name": "start"
           }
         ], 
-        "return": "NSString*"
+        "return": "NSString*",
+        "js": (_this: string, start) => _this.substr(start)
       }, 
       {
         "comment": "返回给定范围内的子串，如果 start 为负数，则表示从后往前数", 
@@ -971,7 +1067,8 @@ export let functions = {
             "name": "length"
           }
         ], 
-        "return": "NSString*"
+        "return": "NSString*",
+        "js": (_this: string, start, length) => _this.substr(start, length)
       }
     ], 
     "split": [
@@ -983,7 +1080,8 @@ export let functions = {
             "name": "separator"
           }
         ], 
-        "return": "NSArray*"
+        "return": "NSArray*",
+        "js": (_this: string, separator) => _this.split(separator)
       }
     ], 
     "replace_with": [
@@ -1000,7 +1098,8 @@ export let functions = {
           }
         ], 
         "return": "NSString*", 
-        "deprecated": "使用 `replace` 代替"
+        "deprecated": "使用 `replace` 代替",
+        "js": (_this: string, target, replacement) => _this.replace(new RegExp(target, "mg"), replacement)
       }
     ], 
     "find": [
@@ -1012,7 +1111,8 @@ export let functions = {
             "name": "str"
           }
         ], 
-        "return": "NSInteger"
+        "return": "NSInteger",
+        "js": (_this: string, str) => _this.indexOf(str)
       }
     ]
   }, 
@@ -1039,7 +1139,8 @@ export let functions = {
             "name": "block"
           }
         ], 
-        "return": "BOOL"
+        "return": "BOOL",
+        "js": (_this: any[], cb: (obj: any) => boolean) => _this.every(cb)
       }
     ], 
     "repeat": [
@@ -1051,13 +1152,21 @@ export let functions = {
             "name": "count"
           }
         ], 
-        "return": "NSArray*"
+        "return": "NSArray*",
+        "js": (_this: any[], count: number) => {
+          let array = [];
+          while (count-- > 0) {
+            array.push(..._this);
+          }
+          return array;
+        }
       }
     ], 
     "last": [
       {
         "comment": " 最后一个元素，没有元素时返回 `nil`\n\n `['a', 'b', 'c'].last()`      =>      `'c'`", 
-        "return": "id"
+        "return": "id",
+        "js": (_this: any[]) => _this.length > 0 ? _this[_this.length - 1] : null
       }, 
       {
         "comment": " 最后一个满足条件的元素，没有满足条件的元素时返回 `nil`\n\n `[11, 12, 13, 14].last(n -> n % 2 == 0)`       =>      `14`", 
@@ -1067,13 +1176,23 @@ export let functions = {
             "name": "block"
           }
         ], 
-        "return": "id"
+        "return": "id",
+        "js": (_this: any[], cb: (obj: any) => boolean) => {
+          for (var i = _this.length - 1; i >= 0; i--) {
+            let obj = _this[i];
+            if (cb(obj)) {
+              return obj;
+            }
+          }
+          return null;
+        }
       }
     ], 
     "reverse": [
       {
         "comment": " 反转数组\n\n `[1, 2, 3].reverse()`      =>      `[3, 2, 1]`", 
-        "return": "NSArray*"
+        "return": "NSArray*",
+        "js": (_this: any[]) => [..._this].reverse()
       }
     ], 
     "indexOf": [
@@ -1085,7 +1204,8 @@ export let functions = {
             "name": "obj"
           }
         ], 
-        "return": "NSInteger"
+        "return": "NSInteger",
+        "js": (_this: any[], obj: any) => _this.indexOf(obj)
       }
     ], 
     "join": [
@@ -1097,7 +1217,8 @@ export let functions = {
             "name": "str"
           }
         ], 
-        "return": "NSString*"
+        "return": "NSString*",
+        "js": (_this: any[], str) => _this.join(str)
       }
     ], 
     "lastIndex": [
@@ -1109,7 +1230,16 @@ export let functions = {
             "name": "block"
           }
         ], 
-        "return": "NSInteger"
+        "return": "NSInteger",
+        "js": (_this: any[], cb: (obj: any) => boolean) => {
+          for (var i = _this.length - 1; i >= 0; i--) {
+            let obj = _this[i];
+            if (cb(obj)) {
+              return i;
+            }
+          }
+          return -1;
+        }
       }
     ], 
     "join_property": [
@@ -1126,7 +1256,8 @@ export let functions = {
           }
         ], 
         "return": "NSString*", 
-        "deprecated": "使用 `select` 和 `join` 代替"
+        "deprecated": "使用 `select` 和 `join` 代替",
+        "js": (_this: any[], str, property) => _this.map(o => o[property]).join(str)
       }
     ], 
     "filter": [
@@ -1138,13 +1269,15 @@ export let functions = {
             "name": "block"
           }
         ], 
-        "return": "NSArray*"
+        "return": "NSArray*",
+        "js": (_this: any[], cb: (obj: any) => boolean) => _this.filter(cb)
       }
     ], 
     "distinct": [
       {
         "comment": " 返回去重后的数组\n\n `['a', 'b', 'a', 'c'].distinct()`      =>      `['a', 'b', 'c']`", 
-        "return": "NSArray*"
+        "return": "NSArray*",
+        "js": (_this: any[]) => [...new Set(_this)]
       }
     ], 
     "concat": [
@@ -1156,7 +1289,8 @@ export let functions = {
             "name": "array"
           }
         ], 
-        "return": "NSArray*"
+        "return": "NSArray*",
+        "js": (_this: any[], array) => _this.concat(array)
       }
     ], 
     "slice": [
@@ -1168,7 +1302,14 @@ export let functions = {
             "name": "count"
           }
         ], 
-        "return": "NSArray*"
+        "return": "NSArray*",
+        "js": (_this: any[], count) => {
+          let arrays = [];
+          for (var i = 0; i < _this.length; i += count) {
+            arrays.push(_this.slice(i, Math.min(i + count, _this.length)))
+          }
+          return arrays;
+        }
       }
     ], 
     "sub_array": [
@@ -1185,12 +1326,13 @@ export let functions = {
           }
         ], 
         "return": "NSArray*", 
-        "deprecated": "使用 `subarray` 代替"
+        "deprecated": "使用 `subarray` 代替",
+        "js": (_this: any[], start, length) => _this.slice(start, start + length)
       }
     ], 
     "splice": [
       {
-        "comment": " 删除/增加/替换元素\n\n `[1, 2, 3].splice(1, 0, 5)`      =>      `[1, 2, 5, 3]`\n `[1, 2, 3].splice(1, 1, 5)`      =>      `[1, 5, 3]`", 
+        "comment": " 删除/增加/替换元素\n\n `[1, 2, 3].splice(1, 0, 5)`      =>      `[1, 5, 2, 3]`\n `[1, 2, 3].splice(1, 1, 5)`      =>      `[1, 5, 3]`", 
         "params": [
           {
             "type": "NSInteger", 
@@ -1205,7 +1347,11 @@ export let functions = {
             "name": "insertValue"
           }
         ], 
-        "return": "NSArray*"
+        "return": "NSArray*",
+        "js": (_this: any[], start, deleteCount, insertValue) => {
+          _this.splice(start, deleteCount, insertValue);
+          return _this;
+        }
       }, 
       {
         "comment": " 删除元素\n\n `[1, 2, 3].splice(1, 1)`      =>      `[1, 3]`", 
@@ -1219,7 +1365,11 @@ export let functions = {
             "name": "deleteCount"
           }
         ], 
-        "return": "NSArray*"
+        "return": "NSArray*",
+        "js": (_this: any[], start, deleteCount) => {
+          _this.splice(start, deleteCount);
+          return _this;
+        }
       }, 
       {
         "comment": " 删除给定索引后的所有元素，如果 `start` 为负数，则表示从后往前数\n\n `[1, 2, 3].splice(1)`      =>      `[1]`\n `[1, 2, 3].splice(-2)`      =>      `[1]`", 
@@ -1229,7 +1379,11 @@ export let functions = {
             "name": "start"
           }
         ], 
-        "return": "NSArray*"
+        "return": "NSArray*",
+        "js": (_this: any[], start) => {
+          _this.splice(start);
+          return _this;
+        }
       }
     ], 
     "subarray": [
@@ -1245,7 +1399,8 @@ export let functions = {
             "name": "length"
           }
         ], 
-        "return": "NSArray*"
+        "return": "NSArray*",
+        "js": (_this: any[], start, length) => _this.slice(start, start + length)
       }
     ], 
     "lastIndexOf": [
@@ -1257,7 +1412,8 @@ export let functions = {
             "name": "obj"
           }
         ], 
-        "return": "NSInteger"
+        "return": "NSInteger",
+        "js": (_this: any[], obj) => _this.lastIndexOf(obj)
       }
     ], 
     "flatten": [
@@ -1269,11 +1425,13 @@ export let functions = {
             "name": "recursive"
           }
         ], 
-        "return": "NSArray*"
+        "return": "NSArray*",
+        "js": _flatten
       }, 
       {
         "comment": " 展开数组\n\n `[1, [2, [3, 4]], 5].flatten()`      =>      `[1, 2, 3, 4, 5]`", 
-        "return": "NSArray*"
+        "return": "NSArray*",
+        "js": _flatten
       }
     ], 
     "firstIndex": [
@@ -1285,7 +1443,8 @@ export let functions = {
             "name": "block"
           }
         ], 
-        "return": "NSInteger"
+        "return": "NSInteger",
+        "js": (_this: any[], cb: (obj: any) => boolean) => _this.findIndex(cb)
       }
     ], 
     "any": [
@@ -1297,7 +1456,8 @@ export let functions = {
             "name": "block"
           }
         ], 
-        "return": "BOOL"
+        "return": "BOOL",
+        "js": (_this: any[], cb: (obj: any) => boolean) => _this.some(cb)
       }
     ], 
     "select": [
@@ -1309,13 +1469,15 @@ export let functions = {
             "name": "block"
           }
         ], 
-        "return": "NSArray*"
+        "return": "NSArray*",
+        "js": (_this: any[], cb: (obj: any) => any) => _this.map(cb)
       }
     ], 
     "first": [
       {
         "comment": " 第一个元素，没有元素时返回 `nil`\n\n `['a', 'b', 'c'].first()`      =>      `'a'`", 
-        "return": "id"
+        "return": "id",
+        "js": (_this: any[]) => _this.length > 0 ? _this[0] : null
       }, 
       {
         "comment": " 第一个满足条件的元素，没有满足条件的元素时返回 `nil`\n\n `[11, 12, 13, 14].first(n -> n % 2 == 0)`       =>      `12`", 
@@ -1325,7 +1487,8 @@ export let functions = {
             "name": "block"
           }
         ], 
-        "return": "id"
+        "return": "id",
+        "js": (_this: any[], cb: (obj: any) => boolean) => _this.find(cb)
       }
     ]
   }, 

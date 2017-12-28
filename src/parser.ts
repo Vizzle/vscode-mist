@@ -140,7 +140,7 @@ export class ExpressionContext {
 
 }
 
-function boolValue(obj: any): boolean {
+export function boolValue(obj: any): boolean {
     if (obj === null || obj === undefined || obj === 0 || obj === '') {
         return false;
     }
@@ -164,7 +164,9 @@ function isEqual(a: any, b: any): boolean {
     }
     if ((isNull(a) || typeof(a) === 'number')
         && (isNull(b) || typeof(b) === 'number')) {
-        return a == b;
+        if (typeof(a) !== 'number') a = 0;
+        if (typeof(b) !== 'number') b = 0;
+        return a === b;
     }
     return false;
 }
@@ -206,6 +208,7 @@ export abstract class ExpressionNode {
     }
 
     abstract compute(context: ExpressionContext): any;
+    abstract computeValue(context: ExpressionContext): any;
     abstract getType(context: ExpressionContext): IType;
     abstract check(context: ExpressionContext): ExpressionError[];
 }
@@ -222,6 +225,10 @@ export class LiteralNode extends ExpressionNode {
     }
 
     compute(context: ExpressionContext) {
+        return this.value;
+    }
+
+    computeValue(context: ExpressionContext) {
         return this.value;
     }
 
@@ -248,6 +255,14 @@ class IdentifierNode extends ExpressionNode {
         }
         let value = context.get(this.identifier);
         return value instanceof IType ? None : value;
+    }
+
+    computeValue(context: ExpressionContext) {
+        if (!context.has(this.identifier)) {
+            return null;
+        }
+        let value = context.get(this.identifier);
+        return value instanceof IType ? null : value;
     }
 
     getType(context: ExpressionContext): IType {
@@ -279,6 +294,11 @@ class ArrayExpressionNode extends ExpressionNode {
         list.every(i => i !== None) ? list : None;
     }
 
+    computeValue(context: ExpressionContext) {
+        let list = this.list.map(v => v.computeValue(context));
+        return list.filter(i => i !== null);
+    }
+
     getType(context: ExpressionContext): IType {
         return new ArrayType(IntersectionType.type(this.list.map(v => v.getType(context))));
     }
@@ -302,6 +322,17 @@ class ObjectExpressionNode extends ExpressionNode {
             return None;
         }
         return computed.reduce((p, c) => {p[c[0]] = c[1]; return p;}, {});
+    }
+
+    computeValue(context: ExpressionContext) {
+        let computed = this.list.map(t => [t[0].computeValue(context), t[1].computeValue(context)]);
+        return computed.reduce((p, c) => {
+            var key = c[0];
+            if (key) {
+                p[key] = c[1];
+            }
+            return p;
+        }, {});
     }
 
     getType(context: ExpressionContext): IType {
@@ -345,6 +376,11 @@ class ConditionalExpressionNode extends ExpressionNode {
         return r ? (this.truePart ? this.truePart.compute(context) : r) : this.falsePart.compute(context);
     }
 
+    computeValue(context: ExpressionContext) {
+        let r = this.condition.computeValue(context);
+        return r ? (this.truePart ? this.truePart.computeValue(context) : r) : this.falsePart.computeValue(context);
+    }
+
     private static isNull(exp: ExpressionNode) {
         return exp instanceof LiteralNode && exp.value === null;
     }
@@ -383,6 +419,25 @@ class UnaryExpressionNode extends ExpressionNode {
         if (r === None) {
             return None;
         }
+        switch (this.operator) {
+            case UnaryOp.Not:
+                return !boolValue(r);
+            case UnaryOp.Negative:
+            {
+                if (typeof(r) !== 'number') {
+                    // unary operator '-' only supports on number type
+                    return null;
+                }
+                return -r;
+            }
+            default:
+                // unknown unary operator
+                return null;
+        }
+    }
+
+    computeValue(context: ExpressionContext) {
+        let r = this.oprand.computeValue(context);
         switch (this.operator) {
             case UnaryOp.Not:
                 return !boolValue(r);
@@ -461,6 +516,85 @@ class BinaryExpressionNode extends ExpressionNode {
             return None;
         }
     
+        // subscript operation
+        if (BinaryOp.Index === this.operator) {
+            if (!value1) {
+                return null;
+            } else if (value1 instanceof Array) {
+                if (typeof(value2) !== 'number') {
+                    // only numbers are allowed to access an array
+                    return None;
+                }
+                return value2 < value1.length ? value1[value2] : None;
+            } else if (value1 && value1 instanceof Object) {
+                return value1[value2];
+            } else if (typeof(value1) === 'string') {
+                return value1[value2];
+            } else {
+                // [] operator can not be used on value1
+                return None;
+            }
+        }
+    
+        // comparision operation
+        if (BinaryOp.Equal === this.operator) {
+            return isEqual(value1, value2);
+        } else if (BinaryOp.NotEqual === this.operator) {
+            return !isEqual(value1, value2);
+        }
+    
+        // string operation
+        if (BinaryOp.Add === this.operator && (typeof(value1 === 'string') || typeof(value2 === 'string'))) {
+            return value1 + value2;
+        }
+    
+        // logical operation
+        else if (BinaryOp.And === this.operator) {
+            return boolValue(value1) && boolValue(value2);
+        } else if (BinaryOp.Or === this.operator) {
+            return boolValue(value1) || boolValue(value2);
+        }
+    
+        if ((value1 && typeof(value1) !== 'number') || (value2 && typeof(value2) !== 'number')) {
+            // invalid operands
+            return null;
+        }
+    
+        switch (this.operator) {
+            case BinaryOp.Add:
+                return value1 + value2;
+            case BinaryOp.Sub:
+                return value1 - value2;
+            case BinaryOp.Mul:
+                return value1 * value2;
+            case BinaryOp.Div:
+                return value1 / value2;
+            case BinaryOp.Mod:
+            {
+                if (value2 == 0) {
+                    // should not mod with zero
+                    return 0;
+                }
+                return Math.floor(value1) % Math.floor(value2);
+            }
+            case BinaryOp.GreaterThan:
+                return value1 > value2;
+            case BinaryOp.LessThan:
+                return value1 < value2;
+            case BinaryOp.GreaterOrEqual:
+                return value1 >= value2;
+            case BinaryOp.LessOrEqual:
+                return value1 <= value2;
+            default:
+                // unknown binary operator
+                return null;
+        }
+    }
+
+    computeValue(context: ExpressionContext) {
+        let value1 = this.oprand1.computeValue(context);
+        let value2 = this.oprand2.computeValue(context);
+
         // subscript operation
         if (BinaryOp.Index === this.operator) {
             if (!value1) {
@@ -668,11 +802,82 @@ class FunctionExpressionNode extends ExpressionNode {
             return None;
         }
     
-        if (!this.parameters && target && typeof(target) === 'object') {
-            return target[this.action.identifier];
+        if (!this.parameters) {
+            let type = Type.typeof(target);
+            if (type instanceof ObjectType) {
+                return target[this.action.identifier];
+            }
+            else {
+                let prop = type.getProperty(this.action.identifier);
+                if (prop && prop.jsEquivalent) {
+                    return prop.jsEquivalent(target);
+                }
+            }
+        }
+        else {
+            let type = Type.typeof(target);
+            let method = type.getMethod(this.action.identifier, this.parameters.length);
+            if (method && method.jsEquivalent) {
+                let params = this.parameters.map(p => p.compute(context));
+                if (params.some(p => p === None)) return None;
+
+                if (target === Type.Global) {
+                    if (this.action.identifier === 'eval') {
+                        return None;
+                    }
+                    return method.jsEquivalent(...params);
+                }
+                else {
+                    return method.jsEquivalent(target, ...params);
+                }
+            }
         }
         
         return None;
+    }
+
+    computeValue(context: ExpressionContext) {
+        let target = this.target ? this.target.computeValue(context) : Type.Global;
+        if (target === null || target === undefined) {
+            return null;
+        }
+    
+        if (!this.parameters) {
+            let type = Type.typeof(target);
+            if (type instanceof ObjectType) {
+                return target[this.action.identifier];
+            }
+            else {
+                let prop = type.getProperty(this.action.identifier);
+                if (prop && prop.jsEquivalent) {
+                    return prop.jsEquivalent(target);
+                }
+            }
+        }
+        else {
+            let type = Type.typeof(target);
+            let method = type.getMethod(this.action.identifier, this.parameters.length);
+            if (method && method.jsEquivalent) {
+                let params = this.parameters.map(p => p.computeValue(context));
+                if (target === Type.Global) {
+                    if (this.action.identifier === 'eval') {
+                        params.push(context);
+                    }
+                    return method.jsEquivalent(...params);
+                }
+                else {
+                    return method.jsEquivalent(target, ...params);
+                }
+            }
+            if (this.parameters.length === 0) {
+                let prop = type.getProperty(this.action.identifier);
+                if (prop && prop.jsEquivalent) {
+                    return prop.jsEquivalent(target);
+                }
+            }
+        }
+        
+        return null;
     }
 
     getType(context: ExpressionContext): IType {
@@ -769,6 +974,15 @@ class LambdaExpressionNode extends ExpressionNode {
     getType(context: ExpressionContext): IType {
         // return Type.getType('id(^)(id)');
         return Type.Any;
+    }
+
+    computeValue(context: ExpressionContext) {
+        return param => {
+            context.push(this.parameter.identifier, param);
+            let value = this.expression.computeValue(context);
+            context.pop(this.parameter.identifier);
+            return value;   
+        };
     }
 
     check(context: ExpressionContext) {
@@ -1161,7 +1375,7 @@ export class Parser {
         let expression = parser.parse();
         if (parser.error) {
             let result = { parserError: parser.error, lexerError: parser.lexer.error };
-            let message = result.lexerError ? Lexer.errorMessage​​(result.lexerError) : this.errorMessage(result.parserError);
+            let message = result.lexerError ? Lexer.errorMessage(result.lexerError) : this.errorMessage(result.parserError);
             return { ...result, errorMessage: message, errorOffset: parser.lexer.token.offset, errorLength: parser.lexer.token.length };
         }
         else {
