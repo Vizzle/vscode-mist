@@ -41,9 +41,21 @@ const devices = [
 
 const defaultDevice = devices[3];
 
+const SCALES = [
+    { desc: '200%', scale: 2 },
+    { desc: '150%', scale: 1.5 },
+    { desc: '100%', scale: 1 },
+    { desc: '75%', scale: 0.75 },
+    { desc: '50%', scale: 0.5 },
+    { desc: '33%', scale: 0.33333333333333 },
+];
+
+const DEFAULT_SCALE_INDEX = SCALES.findIndex(s => s.scale === 1);
+
 type PreviewConfig = {
     device: Device;
     dataIndex?: number;
+    scaleIndex: number;
 }
 
 export class MistContentProvider implements vscode.TextDocumentContentProvider {
@@ -143,6 +155,8 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
         background-color: white;
         margin: 10px;
         box-shadow: 0px 0px 0px 1px white;
+        transform: scale(${SCALES[config.scaleIndex].scale});
+        transform-origin: top left;
     }
 
     .vscode-light .screen {
@@ -282,6 +296,19 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
             </li>`).join("")}
             </ul>
         </div>
+        <div class="dropdown navi-item">
+            <button type="button" class="btn dropdown-toggle" id="dropdownMenu1" 
+                    data-toggle="dropdown">
+                ${SCALES[config.scaleIndex].desc}
+                <span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu1">
+                ${SCALES.map((s, i) => `
+            <li role="presentation" class="${i == config.scaleIndex ? 'selected' : ''}">
+                <a role="menuitem" tabindex="-1" href="${encodeURI(`command:mist.changePreviewConfig?${JSON.stringify([uri.toString(), {scaleIndex: i}])}`)}">${s.desc}</a>
+            </li>`).join("")}
+            </ul>
+        </div>
     </div>
     <script type="text/javascript">
     $(".dropdown-menu li a").click(function(){
@@ -292,7 +319,7 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
     });
     </script>
     
-    <div style="display:flex;align-items:flex-start;overflow:auto;">
+    <div style="display:flex;align-items:flex-start;overflow:auto;flex-grow:1;">
     <div class="screen">
     <div class="screen-header">
     
@@ -1045,9 +1072,9 @@ function update() {
     var div = document.getElementsByClassName('main')[0];
     while (div.children.length > 0)
         div.children.item(0).remove();
-    var t1 = performance.now();
+    // var t1 = performance.now();
     var rendered = render(tree, div.clientWidth);
-    var t2 = performance.now();
+    // var t2 = performance.now();
     div.appendChild(rendered);
 
     var lines = document.getElementsByClassName('line');
@@ -1073,7 +1100,7 @@ function update() {
         context.stroke();
     }
 
-    document.getElementsByClassName('screen-status-time')[0].textContent = parseInt((t2 - t1)+'') + 'ms';
+    // document.getElementsByClassName('screen-status-time')[0].textContent = parseInt((t2 - t1)+'') + 'ms';
 }
 
 Promise.all(loadImages()).then(e => {
@@ -1088,7 +1115,7 @@ Promise.all(loadImages()).then(e => {
 
 	public provideTextDocumentContent(uri: vscode.Uri): vscode.ProviderResult<string> {
 		const sourceUri = vscode.Uri.parse(uri.query);
-		let config = this._config.get(uri.query) || { device: defaultDevice };
+		let config = this._config.get(uri.query) || { device: defaultDevice, scaleIndex: DEFAULT_SCALE_INDEX };
 		if (uri) {
 			let mistDoc = MistDocument.getDocumentByUri(sourceUri);
             let datas = mistDoc.getDatas() || [];
@@ -1115,7 +1142,7 @@ Promise.all(loadImages()).then(e => {
 		if (configChange) {
             var config = this._config.get(uri.query);
             if (!config) {
-                config = {device: defaultDevice};
+                config = {device: defaultDevice, scaleIndex: DEFAULT_SCALE_INDEX};
                 this._config.set(uri.query, config);
             }
 			if ("deviceIndex" in configChange) {
@@ -1123,6 +1150,9 @@ Promise.all(loadImages()).then(e => {
             }
             else if ("dataIndex" in configChange) {
                 config.dataIndex = configChange.dataIndex;
+            }
+            else if ("scaleIndex" in configChange) {
+                config.scaleIndex = configChange.scaleIndex;
             }
 		}
 
