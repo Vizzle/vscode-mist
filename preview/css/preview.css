@@ -1,0 +1,118 @@
+@charset "UTF-8";
+
+div {
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    font-family: "HanHei SC", "PingHei", "PingFang SC", "STHeitiSC-Light", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
+}
+
+body {
+    background-color: #1e1e1e;
+}
+
+body.vscode-light {
+    background-color: white;
+}
+
+.vscode-light .screen {
+    box-shadow: 1px 2px 5px gray;
+}
+
+.screen-header {
+    display: flex;
+    flex-direction: column;
+    background-color: #333;
+    flex-shrink: 0;
+}
+
+.screen-status {
+    height: 20px;
+    display: flex;
+    color: white;
+    align-items: center;
+    justify-content: center;
+}
+
+.screen-navi {
+    height: 44px;
+    display: flex;
+    height: 44px;
+    color: white;
+    align-items: center;
+    justify-content:center;
+}
+
+.main {
+    flex-grow: 1;
+    position: relative;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+.dot {
+    width: 6px;
+    height: 6px;
+    margin: 1px;
+    background-color: white;
+    border-radius: 50%;
+}
+
+.navi-bar {
+    background-color: #2c2c2c;
+}
+
+.vscode-light .navi-bar {
+    background-color: #f3f3f3;
+}
+
+.navi-item {
+    display: inline-block;
+}
+
+.active, .focus, .active.focus, :active, :focus, :active:focus {
+    outline: 0 !important;
+}
+
+.btn, .btn:hover, .btn:active, .btn:visited, .btn:focus {
+    color: white;
+}
+
+.btn.active, .btn:active {
+    box-shadow: none;
+}
+
+.btn:hover {
+    opacity: 0.8;
+}
+
+.dropdown>button {
+    background-color: transparent;
+    border: 0;
+    color: white;
+}
+
+.vscode-light .dropdown>button {
+    color: #333;
+}
+
+.dropdown-menu {
+    max-height: 300px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.dropdown-menu li.selected>a:before {
+    content: "✓";
+    position: absolute;
+    margin-left: -1.1em;
+}
+.dropdown-menu li.selected>a {
+    color: #E24810;
+}

@@ -1,0 +1,14 @@
+@charset "UTF-8";
+
+.main * {
+    line-height: 1.2em;
+}
+
+.main::-webkit-scrollbar, .main ::-webkit-scrollbar { 
+    display: none;
+}
+
+.main div {
+    margin: 0;
+    padding: 0;
+}
