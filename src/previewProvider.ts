@@ -777,6 +777,15 @@ function elementFromLayout(layout) {
         el.height = layout.result.height;
         setLineStyle(el, style);
     }
+    else if (type === 'scroll') {
+        
+    }
+    else if (type === 'paging') {
+        
+    }
+    else {
+        el.textContent = type;
+    }
 
     if (type === 'text') {
         el.style.position = "relative";
@@ -967,8 +976,8 @@ function nodeFromLayout(l) {
         bind(align, 'justify-content', 'justifyContent');
         bind(length, 'spacing');
         bind(length, 'line-spacing', 'lineSpacing');
-        bind(length, 'lines');
-        bind(length, 'items-per-line', 'itemsPerLine');
+        bind(null, 'lines');
+        bind(null, 'items-per-line', 'itemsPerLine');
     }
 
     l.didLayout = function(){
@@ -1121,10 +1130,31 @@ Promise.all(loadImages()).then(e => {
             let datas = mistDoc.getDatas() || [];
             let dataIndex = config.dataIndex || 0;
             if (dataIndex > datas.length) dataIndex = 0;
-			let node = mistDoc.bindData(datas.length > 0 ? datas[dataIndex].data : {}, {
+            let isX = config.device.width === 812;
+            let builtin = {
 				_width_: config.device.width,
-				_height_: config.device.height,
-			});
+                _height_: config.device.height,
+                _mistitem_: {},
+                system: {
+                    name: `${vscode.env.appName} Simulator`,
+                    version: '0.0.1',
+                    deviceName: vscode.env.machineId
+                },
+                screen: {
+                    width: config.device.width,
+                    height: config.device.height,
+                    scale: config.device.scale,
+                    statusBarHeight: isX ? 44 : 20,
+                    isPlus: config.device.width > 400,
+                    isSmall: config.device.width < 350,
+                    isX: isX,
+                    safeArea: isX ? { top: 44, left: 0, bottom: 34, right: 0 } : {},
+                },
+                app: {},
+
+                UIScreen: { mainScreen: { scale: config.device.scale } }
+			};
+			let node = mistDoc.bindData(datas.length > 0 ? datas[dataIndex].data : {}, builtin);
             let layout = node.layout;
             let imageFiles = this.resolveImageFiles(mistDoc.document, layout, config.device.scale);
 			let nodeHtml = this.pageHtml(uri, layout, dataIndex, mistDoc.getDatas(), config, imageFiles);

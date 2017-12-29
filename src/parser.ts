@@ -158,15 +158,21 @@ function isNull(obj) {
     return obj === null || obj === undefined;
 }
 
+function isNumber(obj) {
+    return isNull(obj) || typeof(obj) === 'number';
+}
+
+function numberValue(obj) {
+    if (typeof(obj) === 'number') return obj;
+    return 0;
+}
+
 function isEqual(a: any, b: any): boolean {
     if (typeof(a) === typeof(b)) {
         return a === b;
     }
-    if ((isNull(a) || typeof(a) === 'number')
-        && (isNull(b) || typeof(b) === 'number')) {
-        if (typeof(a) !== 'number') a = 0;
-        if (typeof(b) !== 'number') b = 0;
-        return a === b;
+    if (isNumber(a) && isNumber(b)) {
+        return numberValue(a) === numberValue(b);
     }
     return false;
 }
@@ -424,15 +430,15 @@ class UnaryExpressionNode extends ExpressionNode {
                 return !boolValue(r);
             case UnaryOp.Negative:
             {
-                if (typeof(r) !== 'number') {
-                    // unary operator '-' only supports on number type
-                    return null;
-                }
-                return -r;
+                if (isNumber(r)) {
+                    return -numberValue(r);
+                } 
+                // unary operator '-' only supports on number type
+                return None;
             }
             default:
                 // unknown unary operator
-                return null;
+                return None;
         }
     }
 
@@ -443,11 +449,11 @@ class UnaryExpressionNode extends ExpressionNode {
                 return !boolValue(r);
             case UnaryOp.Negative:
             {
-                if (typeof(r) !== 'number') {
-                    // unary operator '-' only supports on number type
-                    return null;
-                }
-                return -r;
+                if (isNumber(r)) {
+                    return -numberValue(r);
+                } 
+                // unary operator '-' only supports on number type
+                return null;
             }
             default:
                 // unknown unary operator
@@ -560,6 +566,9 @@ class BinaryExpressionNode extends ExpressionNode {
             return null;
         }
     
+        value1 = numberValue(value1);
+        value2 = numberValue(value2);
+
         switch (this.operator) {
             case BinaryOp.Add:
                 return value1 + value2;
@@ -639,6 +648,9 @@ class BinaryExpressionNode extends ExpressionNode {
             return null;
         }
     
+        value1 = numberValue(value1);
+        value2 = numberValue(value2);
+
         switch (this.operator) {
             case BinaryOp.Add:
                 return value1 + value2;
@@ -654,7 +666,7 @@ class BinaryExpressionNode extends ExpressionNode {
                     // should not mod with zero
                     return 0;
                 }
-                return value1 % value2;
+                return Math.floor(value1) % Math.floor(value2);
             }
             case BinaryOp.GreaterThan:
                 return value1 > value2;
