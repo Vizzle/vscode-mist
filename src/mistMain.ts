@@ -200,6 +200,10 @@ function registerPreviewProvider(context: ExtensionContext) {
         contentProvider.update(vscode.Uri.parse(uri), configChange);
     }));
 
+    context.subscriptions.push(commands.registerCommand('mist.revealNode', (uri, nodeIndex) => {
+        contentProvider.revealNode(vscode.Uri.parse(uri), nodeIndex);
+    }));
+
     context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(document => {
         if (isMistFile(document)) {
             const uri = getMistUri(document.uri);

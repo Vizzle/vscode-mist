@@ -3,7 +3,7 @@
 
 import * as vscode from 'vscode';
 import * as path from 'path';
-import * as JsonParser from 'jsonc-parser'
+import * as json from 'jsonc-parser'
 import * as color from './utils/color'
 import * as fs from 'fs'
 import { parseJson } from './utils/json'
@@ -226,6 +226,7 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
     <div class="main"></div>
     </div>
     </div>
+    <div id="mist-hover"></div>
 
     <script>
         var div = document.getElementsByClassName('main')[0];
@@ -234,7 +235,28 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
         var tree = ${JSON.stringify(layout)};
         var scale = ${SCALES[config.scaleIndex].scale};
         var images = ${JSON.stringify(imageFiles)};
-        render(tree, div.clientWidth, scale, images).then(function(r) {
+        var hover = document.getElementById('mist-hover');
+        render(tree, div.clientWidth, scale, images, {
+            nodeClicked: function (node) {
+                window.parent.postMessage({
+                    command: 'did-click-link',
+                    data: 'command:mist.revealNode?["${encodeURI(uri.toString())}", "' + node.getAttribute('data-node-index') + '"]'
+                }, "file://");
+            },
+            nodeHovering: function (node) {
+                if (node) {
+                    var nodeRect = node.getBoundingClientRect();
+                    hover.style.opacity = "1";
+                    hover.style.width = nodeRect.width + 'px';
+                    hover.style.height = nodeRect.height + 'px';
+                    hover.style.left = nodeRect.left + 'px';
+                    hover.style.top = nodeRect.top + 'px';
+                }
+                else {
+                    hover.style.opacity = "0";
+                }
+            },
+        }).then(function(r) {
             div.appendChild(r);
         });
     </script>
@@ -315,6 +337,32 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
 				this._onDidChange.fire(uri);
 			}, 100);
 		}
+	}
+
+	public revealNode(uri: vscode.Uri, nodeIndex: string) {
+        uri = vscode.Uri.parse(uri.query);
+        vscode.workspace.openTextDocument(uri).then(doc => {
+            let mistDoc = MistDocument.getDocumentByUri(uri);
+            if (!mistDoc) return;
+            let rootNode = mistDoc.getRootNode();
+            var node = json.findNodeAtLocation(rootNode, ['layout']);
+            if (!node) return;
+            let indexes = nodeIndex ? nodeIndex.split(',') : [];
+            for (var i of indexes) {
+                if (node.type === 'object') {
+                    node = json.findNodeAtLocation(node, ['children', parseInt(i)]);
+                }
+                else {
+                    break;
+                }
+            }
+            if (!node) return;
+            vscode.window.showTextDocument(doc).then(editor => {
+                let range = new vscode.Range(doc.positionAt(node.offset), doc.positionAt(node.offset + node.length));
+                editor.selection = new vscode.Selection(range.start, range.end);
+                editor.revealRange(editor.selection);
+            });
+        });
 	}
 
 }

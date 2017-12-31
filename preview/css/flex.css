@@ -12,3 +12,10 @@
     margin: 0;
     padding: 0;
 }
+
+#mist-hover {
+    position: absolute;
+    background-color: rgba(112, 168, 218, 0.66);
+    pointer-events: none;
+    transition-duration: 0.2s;
+}

@@ -826,6 +826,10 @@ export class MistDocument {
         this.datas = null;
     }
 
+    public getRootNode() : json.Node {
+        return this.rootNode;
+    }
+
 	public getDatas() {
         if (!this.datas) {
             let file = this.document.fileName;
@@ -2046,8 +2050,11 @@ export class MistDocument {
             }
         }
         let rootNode = parsedTemplate.layout;
-        let computeNode = (node: any) => {
+        let computeNode = (node: any, index) => {
             if (!node) return null;
+
+            node['node-index'] = index;
+
             let vars: any[] = node.vars;
             // delete node.vars;
             if (isObject(vars)) {
@@ -2080,7 +2087,7 @@ export class MistDocument {
             node = extract(node, null, ['vars', 'gone', 'class', 'repeat', 'children']);
             if (children instanceof Array) {
                 let list = [];
-                children.forEach(c => {
+                children.forEach((c, nodeIndex) => {
                     if (c instanceof ExpressionNode) {
                         c = extract(c);
                     }
@@ -2101,13 +2108,13 @@ export class MistDocument {
                             for (var i = 0; i < count; i++) {
                                 valueContext.push('_index_', i);
                                 valueContext.push('_item_', items ? items[i] : null);
-                                list.push(computeNode({...c}));
+                                list.push(computeNode({...c}, (index ? index + ',' : '') + nodeIndex));
                                 valueContext.pop('_index_');
                                 valueContext.pop('_item_');
                             }
                         }
                         else {
-                            list.push(computeNode(c));
+                            list.push(computeNode(c, (index ? index + ',' : '') + nodeIndex));
                         }
                     }
                 });
@@ -2117,7 +2124,7 @@ export class MistDocument {
             return node;
         };
 
-        let node = computeNode(rootNode);
+        let node = computeNode(rootNode, "");
         return { layout: node };
     }
 }

@@ -679,13 +679,15 @@ function layout(layout, width, height) {
     layout.didLayout();
 }
 
-function render(_layout, clientWidth, scale, images) {
+function render(_layout, clientWidth, scale, images, delegate) {
     config.scale = scale;
     return Promise.all(loadImages(images)).then(function() {
         layout(_layout, clientWidth, NaN);
         function _render(l) {
             var el = elementFromLayout(l);
             el.style.position = "absolute";
+            el.classList.add('mist-node');
+            el.setAttribute('data-node-index', l['node-index']);
             setResult(el, l.result);
             if (l.type && l.type === 'text') {
                 var style = l.style || {};
@@ -736,6 +738,34 @@ function render(_layout, clientWidth, scale, images) {
             }
             context.stroke();
         }
+
+        result.onmouseleave = function(event) {
+            if (delegate && delegate.nodeHovering) {
+                delegate.nodeHovering(null);
+            }
+        };
+
+        function getHovering(event) {
+            var node = event.target;
+            while (!node.classList.contains('mist-node')) {
+                node = node.parentElement;
+            }
+            return node;
+        }
+    
+        result.onmousemove = function(event) {
+            var node = getHovering(event);
+            if (delegate && delegate.nodeHovering) {
+                delegate.nodeHovering(node);
+            }
+        };
+
+        result.onmousedown = function(event) {
+            var node = getHovering(event);
+            if (delegate && delegate.nodeClicked) {
+                delegate.nodeClicked(node);
+            }
+        };
 
         return result;
     });
