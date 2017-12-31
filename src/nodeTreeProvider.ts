@@ -218,11 +218,32 @@ export default class MistNodeTreeProvider implements vscode.TreeDataProvider<jso
 		return null;
 	}
 
+	private boldText(str: string) {
+		var ret = '';
+		for (var i = 0; i < str.length; i++) {
+			let c = str.charCodeAt(i);
+			if (c >= 0x61 && c <= 0x7A) {
+				c += 0x1D5EE - 0x61;
+			}
+			else if (c >= 0x41 && c <= 0x5A) {
+				c += 0x1D5D4 - 0x41;
+			}
+			ret += String.fromCodePoint(c);
+		}
+		return ret;
+	}
+
 	private getLabel(node:json.Node): string {
 		let type = this.getType(node);
-		let desc = this.getDesc(node);
-		let comment = this.getComment(node, this.editor.document);
-		return `<${type || 'unknown'}>　${desc || ''} ${comment || ''}`;
+		let desc = this.getDesc(node) || '';
+		let comment = this.getComment(node, this.editor.document) || '';
+		let ret = this.boldText(type || 'unknown');
+		if (desc.length > 0 || comment.length > 0) {
+			ret += ' ∙ ';
+			if (desc) ret += desc + ' ';
+			if (comment) ret += comment + ' ';
+		}
+		return ret;
 	}
 
 	getTreeItem(node: json.Node): vscode.TreeItem {
@@ -240,6 +261,7 @@ export default class MistNodeTreeProvider implements vscode.TreeDataProvider<jso
 	select(range: vscode.Range) {
 		this.editor.selection = new vscode.Selection(range.start, range.end);
 		this.editor.revealRange(this.editor.selection);
+		this.editor.show();
 	}
 
 	private getIcon(node: json.Node): any {
