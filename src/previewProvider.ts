@@ -233,7 +233,7 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
         while (div.children.length > 0)
             div.children.item(0).remove();
         var tree = ${JSON.stringify(layout)};
-        var scale = ${SCALES[config.scaleIndex].scale};
+        var scale = ${config.device.scale};
         var images = ${JSON.stringify(imageFiles)};
         var hover = document.getElementById('mist-hover');
         render(tree, div.clientWidth, scale, images, {
@@ -258,6 +258,7 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
             },
         }).then(function(r) {
             div.appendChild(r);
+            postRender(r);
         });
     </script>
 

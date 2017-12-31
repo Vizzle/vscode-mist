@@ -369,9 +369,9 @@ function setButtonStyle(el, style) {
 }
 
 function setLineStyle(el, style) {
-    el.setAttribute('data-dash-length', style['dash-length']);
-    el.setAttribute('data-space-length', style['space-length']);
-    el.setAttribute('data-line-color', convertColor(style['color']));
+    if ('dash-length' in style) el.setAttribute('data-dash-length', style['dash-length']);
+    if ('space-length' in style) el.setAttribute('data-space-length', style['space-length']);
+    if ('color' in style) el.setAttribute('data-line-color', convertColor(style['color']));
     el.className = 'line';
 }
 
@@ -416,6 +416,12 @@ function elementFromLayout(layout) {
         el.width = layout.result.width;
         el.height = layout.result.height;
         setLineStyle(el, style);
+    }
+    else if (type === 'node') {
+        
+    }
+    else if (type === 'stack') {
+        
     }
     else if (type === 'scroll') {
         
@@ -716,29 +722,6 @@ function render(_layout, clientWidth, scale, images, delegate) {
         }
         var result = _render(_layout);
         
-        var lines = document.getElementsByClassName('line');
-        for (var i = 0; i < lines.length; i++) {
-            var canvas = lines.item(i);
-            var width = canvas.clientWidth;
-            var height = canvas.clientHeight;
-            var lineWidth = Math.min(width, height);
-
-            var context = canvas.getContext('2d');
-            context.beginPath();
-            context.lineWidth = lineWidth;
-            context.strokeStyle = canvas.getAttribute('data-line-color') || 'transparent';
-            context.setLineDash([canvas.getAttribute('data-dash-length') || 0, canvas.getAttribute('data-space-length') || 0]);
-            if (width > height) {
-                context.moveTo(0, height / 2);
-                context.lineTo(width, height / 2);
-            }
-            else {
-                context.moveTo(width / 2, 0);
-                context.lineTo(width / 2, height);
-            }
-            context.stroke();
-        }
-
         result.onmouseleave = function(event) {
             if (delegate && delegate.nodeHovering) {
                 delegate.nodeHovering(null);
@@ -769,4 +752,33 @@ function render(_layout, clientWidth, scale, images, delegate) {
 
         return result;
     });
+}
+
+function postRender(el) {
+    var lines = el.getElementsByClassName('line');
+    for (var i = 0; i < lines.length; i++) {
+        var canvas = lines.item(i);
+        var width = canvas.clientWidth;
+        var height = canvas.clientHeight;
+        var lineWidth = Math.min(width, height);
+
+        var context = canvas.getContext('2d');
+        context.beginPath();
+        context.lineWidth = lineWidth;
+        context.strokeStyle = canvas.getAttribute('data-line-color') || 'transparent';
+        var dashLength = canvas.getAttribute('data-dash-length') || 0;
+        var spaceLength = canvas.getAttribute('data-space-length') || 0;
+        if (dashLength > 0 && spaceLength > 0) {
+            context.setLineDash([dashLength, spaceLength]);
+        }
+        if (width > height) {
+            context.moveTo(0, height / 2);
+            context.lineTo(width, height / 2);
+        }
+        else {
+            context.moveTo(width / 2, 0);
+            context.lineTo(width / 2, height);
+        }
+        context.stroke();
+    }
 }
