@@ -1,6 +1,6 @@
 'use strict';
 
-import { MistDocument​​ } from './mistDocument'
+import { MistDocument } from './mistDocument'
 import * as convertor from './convertor';
 import { MistContentProvider, getMistUri, isMistFile } from './previewProvider';
 import MistNodeTreeProvider from './nodeTreeProvider';
@@ -42,19 +42,19 @@ function setupStatusBarManager(context: ExtensionContext) {
 
 function setupMistDocument(context: ExtensionContext) {
     context.subscriptions.push(vscode.workspace.onDidOpenTextDocument(document => {
-        MistDocument​​.onDidOpenTextDocument(document);
+        MistDocument.onDidOpenTextDocument(document);
     }));
 
     context.subscriptions.push(vscode.workspace.onDidCloseTextDocument(document => {
-        MistDocument​​.onDidCloseTextDocument(document);
+        MistDocument.onDidCloseTextDocument(document);
     }));
 
     context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(document => {
-        MistDocument​​.onDidSaveTextDocument(document);
+        MistDocument.onDidSaveTextDocument(document);
     }));
 
     context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(event => {
-        MistDocument​​.onDidChangeTextDocument(event);
+        MistDocument.onDidChangeTextDocument(event);
     }));
 
     MistDocument.initialize();
@@ -192,29 +192,20 @@ function registerPreviewProvider(context: ExtensionContext) {
     context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(document => {
         if (isMistFile(document)) {
             const uri = getMistUri(document.uri);
-            contentProvider.update(uri);
-        }
-    }));
-
-    context.subscriptions.push(commands.registerCommand('mist.changePreviewConfig', (uri, configChange) => {
-        contentProvider.update(vscode.Uri.parse(uri), configChange);
-    }));
-
-    context.subscriptions.push(commands.registerCommand('mist.revealNode', (uri, nodeIndex) => {
-        contentProvider.revealNode(vscode.Uri.parse(uri), nodeIndex);
-    }));
-
-    context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(document => {
-        if (isMistFile(document)) {
-            const uri = getMistUri(document.uri);
-            contentProvider.update(uri);
+            contentProvider.update(decodeURI(uri.query));
         }
     }));
 
     context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(event => {
         if (isMistFile(event.document)) {
             const uri = getMistUri(event.document.uri);
-            contentProvider.update(uri);
+            contentProvider.update(decodeURI(uri.query));
+        }
+    }));
+
+    context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(event => {
+        if (event.textEditor.document.languageId === 'mist') {
+            contentProvider.selectionDidChange(event.textEditor);
         }
     }));
 }

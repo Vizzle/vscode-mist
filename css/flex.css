@@ -1,0 +1,14 @@
+@charset "UTF-8";
+
+.mist-main * {
+    line-height: 1.2em;
+}
+
+.mist-main::-webkit-scrollbar, .mist-main ::-webkit-scrollbar { 
+    display: none;
+}
+
+.mist-main div {
+    margin: 0;
+    padding: 0;
+}

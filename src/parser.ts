@@ -551,6 +551,8 @@ class BinaryExpressionNode extends ExpressionNode {
     
         // string operation
         if (BinaryOp.Add === this.operator && (typeof(value1 === 'string') || typeof(value2 === 'string'))) {
+            if (isNull(value1)) value1 = "";
+            if (isNull(value2)) value2 = "";
             return value1 + value2;
         }
     
@@ -633,6 +635,8 @@ class BinaryExpressionNode extends ExpressionNode {
     
         // string operation
         if (BinaryOp.Add === this.operator && (typeof(value1 === 'string') || typeof(value2 === 'string'))) {
+            if (isNull(value1)) value1 = "";
+            if (isNull(value2)) value2 = "";
             return value1 + value2;
         }
     

@@ -1,4 +1,3 @@
-import * as vscode from 'vscode';
 import { Parser } from './parser';
 
 function _for(start, end, step) {
@@ -757,7 +756,7 @@ export let functions = {
         ], 
         "return": "id",
         "js": obj => {
-          vscode.window.showInformationMessage(JSON.stringify(obj, null, '\t'));
+          alert(JSON.stringify(obj, null, '\t'));
           return obj;
         }
       }

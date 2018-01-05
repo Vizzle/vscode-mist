@@ -1,10 +1,12 @@
-var flex = FlexLayout;
+import * as flex from '../lib/FlexLayout';
+
+declare const $: any;
 
 var config = {
     scale: 1
 };
 
-function length(obj) {
+function length(obj): flex.Length {
     if (typeof(obj) === 'number') {
         return new flex.Length(obj);
     }
@@ -20,7 +22,7 @@ function length(obj) {
         if (!match) {
             return new flex.Length(0);
         }
-        var value = match[1];
+        var value = parseFloat(match[1]);
         var suffix = match[2];
         if (suffix === '%') {
             return new flex.Length(value, flex.LengthTypePercent);
@@ -41,7 +43,7 @@ function length(obj) {
     return new flex.Length(0);
 }
 
-function lengthString(length) {
+function lengthString(length: flex.Length) {
     switch (length.type) {
         case flex.LengthTypeAuto: return 'auto';
         case flex.LengthTypeContent: return 'content';
@@ -51,17 +53,17 @@ function lengthString(length) {
 }
 
 function direction(obj) {
-    return {
-        "horizontal": flex.Horizontal,
-        "vertical": flex.Vertical,
-        "horizontal-reverse": flex.HorizontalReverse,
-        "vertical-reverse": flex.VerticalReverse,
-    }[obj];
+    switch (obj) {
+        default: case 'horizontal': return flex.Horizontal;
+        case 'vertical': return flex.Vertical;
+        case 'horizontal-reverse': return flex.HorizontalReverse;
+        case 'vertical-reverse': return flex.VerticalReverse;
+    }
 }
 
 function directionString(direction) {
     switch (direction) {
-        case flex.Horizontal: return 'horizontal';
+        default: case flex.Horizontal: return 'horizontal';
         case flex.Vertical: return 'vertical';
         case flex.HorizontalReverse: return 'horizontal-reverse';
         case flex.VerticalReverse: return 'vertical-reverse';
@@ -69,39 +71,32 @@ function directionString(direction) {
 }
 
 function wrap(obj) {
-    if (obj === true) {
-        return flex.Wrap;
+    switch (obj) {
+        case 'wrap': case true: return flex.Wrap;
+        default: case 'nowrap': case false: return flex.NoWrap;
+        case 'wrap-reverse': return flex.WrapReverse;
     }
-    else if (obj === false) {
-        return flex.NoWrap;
-    }
-
-    return {
-        "wrap": flex.Wrap,
-        "nowrap": flex.NoWrap,
-        "wrap-reverse": flex.WrapReverse,
-    }[obj];
 }
 
 function wrapString(wrap) {
     switch (wrap) {
         case flex.Wrap: return 'wrap';
-        case flex.NoWrap: return 'nowrap';
+        default: case flex.NoWrap: return 'nowrap';
         case flex.WrapReverse: return 'wrap-reverse';
     }
 }
 
 function align(obj) {
-    return {
-        "auto": flex.Inherit,
-        "start": flex.Start,
-        "center": flex.Center,
-        "end": flex.End,
-        "stretch": flex.Stretch,
-        "space-between": flex.SpaceBetween,
-        "space-around": flex.SpaceAround,
-        "baseline": flex.Baseline,
-    }[obj];
+    switch (obj) {
+        case "auto": return flex.Inherit;
+        case "start": return flex.Start;
+        case "center": return flex.Center;
+        case "end": return flex.End;
+        case "stretch": return flex.Stretch;
+        case "space-between": return flex.SpaceBetween;
+        case "space-around": return flex.SpaceAround;
+        case "baseline": return flex.Baseline;
+    };
 }
 
 function alignString(align) {
@@ -117,7 +112,7 @@ function alignString(align) {
     }
 }
 
-function convertColor(color) {
+function convertColor(color: string): string {
     if (color === 'clear') {
         return 'transparent';
     }
@@ -156,7 +151,7 @@ function convertLength(l) {
     return lengthStringHtml(length(l));
 }
 
-function setBasicStyle(el, style) {
+function setBasicStyle(el: HTMLElement, style) {
     if (style["background-color"]) el.style.backgroundColor = convertColor(style["background-color"]);
     el.style.borderWidth = convertLength(style["border-width"] || 0);
     el.style.borderStyle = "solid";
@@ -169,7 +164,7 @@ function setBasicStyle(el, style) {
     }
 }
 
-function setResult(el, result) {
+function setResult(el: HTMLElement, result) {
     el.style.top = (result.top || 0) + "px";
     el.style.left = (result.left || 0) + "px";
     el.style.width = el.style.minWidth = (result.width || 0) + "px";
@@ -180,7 +175,7 @@ function setResult(el, result) {
     el.style.paddingBottom = (result.paddingBottom || 0) + "px";
 }
 
-function setTextStyle(el, style) {
+function setTextStyle(el: HTMLElement, style) {
     function fixHtml(text) {
 		return text.replace(/ size\s*=\s*(['"])(\d+)\1/gm, ' style="font-size:$2px"');
 	}
@@ -263,7 +258,9 @@ function setTextStyle(el, style) {
     }
 }
 
-function setImageStyle(el, style) {
+var BLANK_IMAGE = 'data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==';
+
+function setImageStyle(el: HTMLImageElement, style) {
     if (style["content-mode"] == "scale-aspect-fit") {
         el.style["object-fit"] = "contain";
     }
@@ -306,10 +303,15 @@ function setImageStyle(el, style) {
         el.style["object-position"] = "bottom right";
     }
 
-    var blankImage = 'data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==';
-
     function onError() {
-        el.srcset = style["error-image"] || style["image"] || blankImage;
+        var errorImage = style["error-image"];
+        if (!(errorImage in imagesCache)) {
+            errorImage = style["image"];
+            if (!(errorImage in imagesCache)) {
+                errorImage = BLANK_IMAGE;
+            }
+        }
+        el.srcset = errorImage;
         if (el.srcset.startsWith('file')) {
             el.srcset =getSrcset(el.srcset);
         }
@@ -336,11 +338,11 @@ function setImageStyle(el, style) {
     }
     el.onerror = onError;
     if (!el.srcset || el.srcset === '') {
-        el.srcset = blankImage;
+        el.srcset = BLANK_IMAGE;
     }
 }
 
-function setButtonStyle(el, style) {
+function setButtonStyle(el: HTMLElement, style) {
     function unwrap(obj) {
         return obj instanceof Object ? obj.normal : obj;
     }
@@ -352,6 +354,9 @@ function setButtonStyle(el, style) {
     if ("image" in style) {
         var image = document.createElement('img');
         image.srcset = getSrcset(unwrap(style["image"]));
+        image.onerror = function() {
+            image.srcset = BLANK_IMAGE;
+        };
         el.appendChild(image);
     }
 
@@ -368,14 +373,14 @@ function setButtonStyle(el, style) {
     if ("background-image" in style) el.style.background = convertColor(unwrap(style["background-image"]));
 }
 
-function setLineStyle(el, style) {
+function setLineStyle(el: HTMLElement, style) {
     if ('dash-length' in style) el.setAttribute('data-dash-length', style['dash-length']);
     if ('space-length' in style) el.setAttribute('data-space-length', style['space-length']);
     if ('color' in style) el.setAttribute('data-line-color', convertColor(style['color']));
     el.className = 'line';
 }
 
-function setScrollStyle(el, style, result) {
+function setScrollStyle(el: HTMLElement, style, result) {
     var scrollDirection = style["scroll-direction"] || "horizontal";
     var horScroll = scrollDirection === "horizontal" || scrollDirection === "both";
     var verScroll = scrollDirection === "vertical" || scrollDirection === "both";
@@ -387,7 +392,7 @@ function setScrollStyle(el, style, result) {
     el.appendChild(blank);
 }
 
-function elementFromLayout(layout) {
+function elementFromLayout(layout): HTMLElement {
     var type = layout.type;
     var tag;
     if (type === 'image') {
@@ -399,7 +404,7 @@ function elementFromLayout(layout) {
     else {
         tag = 'div';
     }
-    var el = document.createElement(tag);
+    var el: HTMLElement = document.createElement(tag);
     el.style.boxSizing = "border-box";
     var style = layout.style || {};
 
@@ -407,14 +412,14 @@ function elementFromLayout(layout) {
         setTextStyle(el, style);
     }
     else if (type === 'image') {
-        setImageStyle(el, style);
+        setImageStyle(<HTMLImageElement>el, style);
     }
     else if (type === 'button') {
         setButtonStyle(el, style);
     }
     else if (type === 'line') {
-        el.width = layout.result.width;
-        el.height = layout.result.height;
+        (<HTMLCanvasElement>el).width = layout.result.width;
+        (<HTMLCanvasElement>el).height = layout.result.height;
         setLineStyle(el, style);
     }
     else if (type === 'node') {
@@ -462,10 +467,10 @@ function elementFromLayout(layout) {
     return el;
 }
 
-var imagesCache = {};
-function loadImages(imageFiles) {
+var imagesCache: {[name: string]: HTMLImageElement} = {};
+function loadImages(imageFiles: string[]) {
     var imagePromises = [];
-    function loadImage(file) {
+    function loadImage(file: string) {
         if (file in imagesCache) {
     
         }
@@ -485,7 +490,7 @@ function loadImages(imageFiles) {
     return imagePromises;
 }
 
-function getSrcset(file) {
+function getSrcset(file: string) {
     var scale = config.scale;
     var index = file.indexOf('?');
     if (index >= 0) {
@@ -494,7 +499,7 @@ function getSrcset(file) {
     return file + ' ' + scale + 'x';
 }
 
-function imageSize(file) {
+function imageSize(file: string) {
     var scale = config.scale;
     var index = file.indexOf('?');
     if (index >= 0) {
@@ -505,7 +510,9 @@ function imageSize(file) {
     return new flex.Size(image.width / scale, image.height / scale);
 }
 
-var measureFuncs = {
+type MeasureFunc = (layout, constrainedSize: flex.Size) => flex.Size;
+
+var measureFuncs: { [type: string]: MeasureFunc } = {
     text: function (layout, constrainedSize) {
         var el = elementFromLayout(layout);
         el.style.width = "auto";
@@ -546,7 +553,7 @@ var measureFuncs = {
 };
 
 function didLayout(layout) {
-    var node = layout.node;
+    var node: flex.Node = layout.node;
     layout.result = {
         "left": node.resultLeft,
         "top": node.resultTop,
@@ -574,7 +581,7 @@ function nodeFromLayout(l) {
         if (measure) node.setMeasure(function(constrainedSize) { return measure(l, constrainedSize); });
     }
     var style = l.style;
-    function bind(func, layoutProp, nodeProp) {
+    function bind(func, layoutProp, nodeProp = null) {
         if (!nodeProp) nodeProp = layoutProp;
         if (layoutProp in style) {
             var value = style[layoutProp];
@@ -679,13 +686,19 @@ function nodeFromLayout(l) {
     return node;
 }
 
-function layout(layout, width, height) {
+function layout(layout, width: number, height: number) {
     var node = nodeFromLayout(layout);
     node.layoutWithScale(width, height, config.scale);
     layout.didLayout();
 }
 
-function render(_layout, clientWidth, scale, images, delegate) {
+export type RenderDelegate = {
+    nodeHovering: (node: HTMLElement) => void;
+    nodeClicked: (node: HTMLElement) => void;
+}
+
+export function render(_layout, clientWidth: number, scale: number, images: string[], delegate: RenderDelegate) {
+    if (!_layout) return Promise.reject('empty layout');
     config.scale = scale;
     return Promise.all(loadImages(images)).then(function() {
         layout(_layout, clientWidth, NaN);
@@ -698,7 +711,7 @@ function render(_layout, clientWidth, scale, images, delegate) {
             if (l.type && l.type === 'text') {
                 var style = l.style || {};
                 if ("line-spacing" in style) {
-                    var e = el.children.item(0);
+                    var e = <HTMLElement>el.children.item(0);
                     e.style.marginTop = -style["line-spacing"] / 2 + 'px';
                     e.style.marginBottom = -style["line-spacing"] / 2 + 'px';
                 }
@@ -754,10 +767,10 @@ function render(_layout, clientWidth, scale, images, delegate) {
     });
 }
 
-function postRender(el) {
+export function postRender(el: HTMLElement) {
     var lines = el.getElementsByClassName('line');
     for (var i = 0; i < lines.length; i++) {
-        var canvas = lines.item(i);
+        var canvas = <HTMLCanvasElement>lines.item(i);
         var width = canvas.clientWidth;
         var height = canvas.clientHeight;
         var lineWidth = Math.min(width, height);
@@ -766,8 +779,8 @@ function postRender(el) {
         context.beginPath();
         context.lineWidth = lineWidth;
         context.strokeStyle = canvas.getAttribute('data-line-color') || 'transparent';
-        var dashLength = canvas.getAttribute('data-dash-length') || 0;
-        var spaceLength = canvas.getAttribute('data-space-length') || 0;
+        var dashLength = parseFloat(canvas.getAttribute('data-dash-length') || '0');
+        var spaceLength = parseFloat(canvas.getAttribute('data-space-length') || '0');
         if (dashLength > 0 && spaceLength > 0) {
             context.setLineDash([dashLength, spaceLength]);
         }

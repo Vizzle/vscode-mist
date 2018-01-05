@@ -49,7 +49,7 @@ body.vscode-light {
     justify-content:center;
 }
 
-.main {
+.mist-main {
     flex-grow: 1;
     position: relative;
     overflow-x: hidden;
@@ -64,11 +64,12 @@ body.vscode-light {
     border-radius: 50%;
 }
 
-.navi-bar {
+#navi-bar {
     background-color: #2c2c2c;
+    z-index: 1000;
 }
 
-.vscode-light .navi-bar {
+.vscode-light #navi-bar {
     background-color: #f3f3f3;
 }
 
@@ -115,4 +116,45 @@ body.vscode-light {
 }
 .dropdown-menu li.selected>a {
     color: #E24810;
+}
+
+.anim {
+    transition-duration: 0.2s;
+}
+
+.select-anim {
+    transition-duration: 0.15s;
+}
+
+#mist-hover {
+    position: absolute;
+    background-color: rgba(112, 168, 218, 0.66);
+    pointer-events: none;
+}
+
+.mist-select {
+    position: absolute;
+    background-color: rgba(112, 168, 218, 0.11);
+    outline: rgba(112, 168, 218, 0.88) 2px solid;
+    pointer-events: none;
+}
+
+.overlay {
+    pointer-events: none;
+    position: absolute;
+    overflow: hidden;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.hidden {
+    display: none;
+}
+
+#footer {
+    padding: 5px 10px;
+    background-color: #fecb2f;
+    z-index: 1000;
 }

@@ -180,13 +180,15 @@
     },
     "dependencies": {
         "jsonc-parser": "^0.4.0",
-        "http-server": "^0.9.0"
+        "http-server": "^0.9.0",
+        "ws": "^1.1.1"
     },
     "devDependencies": {
         "typescript": "^2.0.3",
         "vscode": "^1.0.0",
         "mocha": "^2.3.3",
         "@types/node": "^6.0.40",
-        "@types/mocha": "^2.2.32"
+        "@types/mocha": "^2.2.32",
+        "@types/ws": "0.0.36"
     }
 }

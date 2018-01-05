@@ -3,6 +3,7 @@ import * as vscode from 'vscode'
 import { MistDocument } from './mistDocument';
 import * as fs from 'fs';
 import * as path from 'path';
+import { ImageInfo } from './image';
 
 function findXcodeProjectPath(dir: string) {
     while (dir.length > 1) {
@@ -65,39 +66,6 @@ function getGroups(content: string) {
         groups.push(group);
     }
     return groups;
-}
-
-class ImageInfo {
-    name: string;
-    files: { [scale: number]: string };
-
-    constructor(name: string, files: { [scale: number]: string }) {
-        this.name = name;
-        this.files = files;
-    }
-
-    getFile(scale: number): {
-        scale: number,
-        file: string
-    } {
-        scale = Math.round(scale);
-        if (scale in this.files) {
-            return {
-                scale: scale,
-                file: this.files[scale]
-            };
-        }
-        
-        let scales = Object.keys(this.files);
-        if (scales.length > 0) {
-            let scale = parseInt(scales[scales.length - 1]);
-            return {
-                scale: scale,
-                file: this.files[scale]
-            };
-        }
-        return null;
-    }
 }
 
 function getImageFiles(dir: string): ImageInfo[] {
@@ -190,6 +158,14 @@ function getImageFiles(dir: string): ImageInfo[] {
 }
 
 export class ImageHelper {
+    public static getImageFiles(document: vscode.TextDocument) {
+        let dir = document.fileName ? path.dirname(document.fileName) : vscode.workspace.rootPath;
+        if (!dir) {
+            return [];
+        }
+        return getImageFiles(dir);
+    }
+
     public static imageUriWithName(document: vscode.TextDocument, name: string, scale: number): {
         scale: number,
         file: string
@@ -199,24 +175,7 @@ export class ImageHelper {
             return null;
         }
         let images = getImageFiles(dir);
-        let match = name.match(/@(\d)x\.\w+$/);
-        if (match) {
-            name = name.replace(/@(\d)x/, '');
-            scale = parseInt(match[1]);
-        }
-        let image = images.find(i => i.name === name);
-        if (image) {
-            let info = image.getFile(scale);
-            if (info) {
-                if (match && info.scale !== scale) return null;
-                return {
-                    scale: info.scale,
-                    file: vscode.Uri.file(info.file).toString()
-                };
-            }
-        }
-        
-        return null;
+        return ImageInfo.findImage(images, name, scale);
     }
 
     public static provideCompletionItems(document: MistDocument, token: vscode.CancellationToken) {

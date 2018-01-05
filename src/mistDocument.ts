@@ -4,13 +4,13 @@ import * as json from 'jsonc-parser'
 import * as path from 'path'
 import * as fs from 'fs'
 import { parseJson, getPropertyNode, getNodeValue } from './utils/json'
-import { functions } from './functions';
 import { Properties, PropertyInfo, Event, BasicType } from "./properties";
 import { ImageHelper } from "./imageHelper";
 import { Lexer, LexerErrorCode } from "./lexer";
 import { Type, IType, Method, Parameter, Property, ArrayType, UnionType, ObjectType, IntersectionType } from "./type";
 import { ExpressionContext, Parser, None, ExpressionNode, LiteralNode, ParseResult, ExpressionErrorLevel } from "./parser";
 import Snippets from "./snippets";
+import { parse, parseExpressionInObject } from "./template";
 
 enum ExpType {
     Void,
@@ -40,25 +40,6 @@ function nameOfType(type: ExpType) {
 
 let MIST_EXP_RE = /\$\{.*?\}/mg;
 // let MIST_EXP_PREFIX_RE = /([_a-zA-Z0-9.]+)\.([_a-zA-Z][_a-zA-Z0-9]*)?$/;
-
-class Property1 {
-    type: string | { [property: string]: Property1 };
-    comment: string;
-
-    constructor(type: string | { [property: string]: Property1 }, comment: string = null) {
-        this.type = type;
-        this.comment = comment;
-    }
-
-    getType() {
-        if (typeof(this.type) === 'string') {
-            return this.type;
-        }
-        else {
-            return 'NSDictionary*';
-        }
-    }
-}
 
 class Variable {
     name: string;
@@ -104,34 +85,6 @@ function findLastIndex<T>(list: T[], predicate: (element: T) => boolean): number
         }
     }
     return -1;
-}
-
-class StringConcatExpressionNode extends ExpressionNode {
-    expressions: ExpressionNode[];
-
-    constructor(expressions: ExpressionNode[]) {
-        super();
-        this.expressions = expressions;
-    }
-
-    compute(context: ExpressionContext) {
-        let computed = this.expressions.map(e => e.compute(context));
-        if (computed.some(v => v === None)) return None;
-        return computed.join('');
-    }
-
-    computeValue(context: ExpressionContext) {
-        let computed = this.expressions.map(e => e.computeValue(context)).filter(s => s !== null && s !== undefined);
-        return computed.join('');
-    }
-
-    getType(context: ExpressionContext): IType {
-        return Type.String;
-    }
-
-    check(context: ExpressionContext) {
-        return this.expressions.reduce((p, c) => p.concat(c.check(context)), []);
-    }
 }
 
 let BUILTIN_VARS = [
@@ -585,185 +538,6 @@ function isId(str: string) {
     return ID_RE.test(str);
 }
 
-function registerTypes() {
-    const aliases = {
-        "NSString": "string",
-        "NSNumber": "number",
-        "CGFloat": "number",
-        "float": "number",
-        "double": "number",
-        "int": "number",
-        "uint": "number",
-        "NSInteger": "number",
-        "NSUInteger": "number",
-        "BOOL": "boolean",
-        "bool": "boolean",
-        "id": "any",
-        "NSArray": "array",
-        "NSDictionary": "object"
-    }
-    let typeName = name => aliases[name.replace('*', '')] || name;
-    let getType = name => name ? Type.getType(typeName(name)) || Type.registerType(new Type(typeName(name))) : Type.Void;
-    Object.keys(functions).forEach(name => {
-        let funs = functions[name];
-        let typeN = typeName(name);
-        let type = Type.getType(typeN);
-        if (!type) {
-            type = Type.registerType(new Type(typeN));
-        }
-        Object.keys(funs).forEach(fun => {
-            funs[fun].forEach(info => {
-                let doc = info.comment;
-                if (info.deprecated) {
-                    doc = `[Deprecated] ${info.deprecated}\n${doc || ''}`.trim();
-                }
-                type.registerMethod(fun, new Method(getType(info.return), doc, (info.params || []).map(p => new Parameter(p.name, getType(p.type) || Type.Any)), info.js));
-            });
-        });
-    });
-
-    const properties = {
-        "VZMistItem": {
-            "tplController": {
-                "type": "VZMistTemplateController", 
-                "comment": "模版关联的 template controller"
-            }
-        },
-        "CGPoint": {
-            "x": {
-                "type": "CGFloat"
-            },
-            "y": {
-                "type": "CGFloat"
-            }
-        },
-        "CGSize": {
-            "width": {
-                "type": "CGFloat"
-            },
-            "height": {
-                "type": "CGFloat"
-            }
-        },
-        "CGRect": {
-            "origin": {
-                "type": "CGPoint"
-            },
-            "size": {
-                "type": "CGSize"
-            },
-            "x": {
-                "type": "CGFloat"
-            },
-            "y": {
-                "type": "CGFloat"
-            },
-            "width": {
-                "type": "CGFloat"
-            },
-            "height": {
-                "type": "CGFloat"
-            }
-        },
-        "UIEdgeInsets": {
-            "top": {
-                "type": "CGFloat"
-            },
-            "left": {
-                "type": "CGFloat"
-            },
-            "bottom": {
-                "type": "CGFloat"
-            },
-            "right": {
-                "type": "CGFloat"
-            }
-        },
-        "NSRange": {
-            "location": {
-                "type": "NSUInteger"
-            },
-            "length": {
-                "type": "NSUInteger"
-            }
-        },
-        "CGVector": {
-            "dx": {
-                "type": "CGFloat"
-            },
-            "dy": {
-                "type": "CGFloat"
-            }
-        },
-        "UIOffset": {
-            "horizontal": {
-                "type": "CGFloat"
-            },
-            "vertical": {
-                "type": "CGFloat"
-            }
-        },
-    };
-
-    Object.keys(properties).forEach(name => {
-        let props = properties[name];
-        name = typeName(name);
-        let type = Type.getType(name);
-        if (!type) {
-            console.error(`type '${name}' not found`);
-            return;
-        }
-        Object.keys(props).forEach(prop => {
-            let info = props[prop];
-            let propType: IType;
-            let comment: string;
-            if (typeof(info.type) === 'string') {
-                propType = getType(info.type);
-                comment = info.comment;
-            }
-            else if (typeof(info) === 'object') {
-                propType = Type.typeof(info);
-            }
-            type.registerProperty(prop, new Property(propType, comment));
-        })
-    });
-}
-
-registerTypes();
-
-class Cache<T> {
-    private maxCount: number;
-    private dict: { [key: string]: T };
-    private keys: string[];
-
-    constructor(maxCount: number) {
-        this.maxCount = maxCount;
-        this.dict = {};
-        this.keys = [];
-    }
-
-    get(key: string): T {
-        if (key in this.dict) {
-            let index = this.keys.indexOf(key);
-            this.keys.splice(index, 1);
-            this.keys.push(key);
-            return this.dict[key];
-        }
-        
-        return null;
-    }
-
-    set(key: string, value: T) {
-        if (!(key in this.dict)) {
-            this.keys.push(key);
-            if (this.keys.length > this.maxCount) {
-                this.keys.splice(0, 1);
-            }
-        }
-        this.dict[key] = value;
-    }
-}
-
 class TrackExpressionContext extends ExpressionContext {
     private accessed: { [key: string]: boolean[] };
 
@@ -815,11 +589,9 @@ export class MistDocument {
     private rootNode: json.Node;
     private nodeTree: MistNode;
     private template: any;
-    private expCache: Cache<ParseResult>;
 
     constructor(document: TextDocument) {
         this.document = document;
-        this.expCache = new Cache(200);
     }
 
     public clearDatas() {
@@ -828,6 +600,11 @@ export class MistDocument {
 
     public getRootNode() : json.Node {
         return this.rootNode;
+    }
+
+    public getTemplate() {
+        this.parseTemplate();
+        return this.template;
     }
 
 	public getDatas() {
@@ -860,8 +637,7 @@ export class MistDocument {
     }
 
     public static getDocumentByUri(uri: Uri) {
-        let path = uri.fsPath;
-        return MistDocument.documents[path];
+        return MistDocument.documents[uri.toString()];
     }
 
     public static initialize() {
@@ -873,7 +649,7 @@ export class MistDocument {
 
     public static onDidOpenTextDocument(document: TextDocument) {
         if (document.languageId === 'mist') {
-            MistDocument.documents[document.uri.fsPath] = new MistDocument(document);
+            MistDocument.documents[document.uri.toString()] = new MistDocument(document);
             if (document.fileName) {
                 MistData.openDir(path.dirname(document.fileName));
             }
@@ -882,8 +658,7 @@ export class MistDocument {
 
     public static onDidCloseTextDocument(document: TextDocument) {
         if (document.languageId === 'mist') {
-            let path = document.uri.fsPath;
-            MistDocument.documents[path] = null;
+            MistDocument.documents[document.uri.toString()] = null;
         }
     }
 
@@ -1008,64 +783,6 @@ export class MistDocument {
         return node;
     }
 
-    private parse(exp: string): ParseResult {
-        let parsed = this.expCache.get(exp);
-        if (!parsed) {
-            parsed = Parser.parse(exp);
-            this.expCache.set(exp, parsed);
-        }
-        return parsed;
-    }
-
-    private parseExpressionInString(source: string) {
-        const re = /\$\{(.*?)\}/mg;
-        re.lastIndex = 0;
-        let match: RegExpExecArray;
-        let index = 0;
-        let parts: ExpressionNode[] = [];
-        while (match = re.exec(source)) {
-            let exp = match[1];
-            let { expression: node, errorMessage: error } = this.parse(exp);
-            if (error || !node) {
-                node = new LiteralNode(null);
-            }
-            if (match.index === 0 && re.lastIndex === source.length) {
-                return node;
-            }
-            else {
-                if (match.index > index) {
-                    parts.push(new LiteralNode(source.slice(index, match.index)));
-                }
-                parts.push(node);
-                index = re.lastIndex;
-            }
-        }
-        if (parts.length === 0) {
-            return null;
-        }
-        if (index < source.length) {
-            parts.push(new LiteralNode(source.slice(index)));
-        }
-        return new StringConcatExpressionNode(parts);
-    }
-
-    private parseExpressionInObject(obj: any) {
-        if (typeof(obj) === 'string') {
-            let exp = this.parseExpressionInString(obj);
-            if (exp) {
-                return exp;
-            }
-            return obj;
-        }
-        else if (obj instanceof Array) {
-            return obj.map(o => this.parseExpressionInObject(o));
-        }
-        else if (obj && obj !== None && typeof(obj) === 'object') {
-            return Object.keys(obj).reduce((p, c) => { p[c] = this.parseExpressionInObject(obj[c]); return p; }, {});
-        }
-        return obj;
-    }
-
     private computeExpressionValueInObject(obj: any, context: ExpressionContext) {
         if (obj instanceof ExpressionNode) {
             return obj.compute(context);
@@ -1120,7 +837,7 @@ export class MistDocument {
         let pushVariable = (v: Variable) => {
             vars.push(v);
             let isExp = false;
-            let parsed = this.parseExpressionInObject(v.value);
+            let parsed = parseExpressionInObject(v.value);
             if (this.hasExpression(parsed)) {
                 isExp = true;
                 v.computed = this.computeExpressionValueInObject(parsed, valueContext);
@@ -1195,7 +912,7 @@ export class MistDocument {
                 let repeatNode = getPropertyNode(node.node, 'repeat');
                 if (repeatNode) {
                     pushVariable(new Variable('_index_', Type.Number, '当前 `repeat` 元素索引'));
-                    let repeat = this.parseExpressionInObject(json.getNodeValue(repeatNode));
+                    let repeat = parseExpressionInObject(json.getNodeValue(repeatNode));
                     let repeatType = this.computeExpressionTypeInObject(repeat, typeContext);
                     let valueType = repeatType instanceof ArrayType ? repeatType.getElementsType()
                         : repeatType === Type.Number ? Type.Null : Type.Any; 
@@ -1227,7 +944,7 @@ export class MistDocument {
     }
 
     private expressionTypeWithContext(expression: string, context: ExpressionContext) {
-        let { expression: node, errorMessage: error } = this.parse(expression);
+        let { expression: node, errorMessage: error } = parse(expression);
         if (error || !node) {
             return null;
         }
@@ -1237,7 +954,7 @@ export class MistDocument {
     }
 
     private expressionValueWithContext(expression: string, context: ExpressionContext) {
-        let { expression: node, errorMessage: error } = this.parse(expression);
+        let { expression: node, errorMessage: error } = parse(expression);
         if (error || !node) {
             return null;
         }
@@ -1369,7 +1086,7 @@ export class MistDocument {
         if (!location.isAtPropertyKey) {
             let expression = this.getExpressionAtLocation(location, position);
             if (expression !== null) {
-                let { lexerError: error } = this.parse(expression);
+                let { lexerError: error } = parse(expression);
                 if (error === LexerErrorCode.UnclosedString) {
                     return [];
                 }
@@ -1799,7 +1516,7 @@ export class MistDocument {
         let pushVariable = (v: Variable) => {
             vars.push(v);
             let isExp = false;
-            let parsed = this.parseExpressionInObject(v.value);
+            let parsed = parseExpressionInObject(v.value);
             if (this.hasExpression(parsed)) {
                 isExp = true;
                 v.computed = this.computeExpressionValueInObject(parsed, valueContext);
@@ -1873,7 +1590,7 @@ export class MistDocument {
                     if (exp.string.errors.length > 0) {
                         return;
                     }
-                    let { expression: expNode, errorMessage: error, errorOffset: offset, errorLength: length } = this.parse(exp.string.parsed);
+                    let { expression: expNode, errorMessage: error, errorOffset: offset, errorLength: length } = parse(exp.string.parsed);
                     if (error) {
                         let start = exp.string.sourceIndex(offset);
                         let end = exp.string.sourceIndex(offset + length);
@@ -1953,7 +1670,7 @@ export class MistDocument {
             if (repeatNode) {
                 validate(repeatNode);
                 pushVariable(new Variable('_index_', Type.Number, '当前 `repeat` 元素索引'));
-                let repeat = this.parseExpressionInObject(json.getNodeValue(repeatNode));
+                let repeat = parseExpressionInObject(json.getNodeValue(repeatNode));
                 let repeatType = this.computeExpressionTypeInObject(repeat, typeContext);
                 let valueType = repeatType instanceof ArrayType ? repeatType.getElementsType()
                     : repeatType === Type.Number ? Type.Null : Type.Any; 
@@ -1995,136 +1712,4 @@ export class MistDocument {
         return diagnostics;
     }
 
-    public bindData(data: any, builtin: any) {
-        this.parseTemplate();
-        let template = this.template;
-        if (!template) return { layout: {} };
-        let parsedTemplate = this.parseExpressionInObject(this.template);
-        let valueContext = new ExpressionContext();
-        let compute = obj => {
-            if (obj instanceof ExpressionNode) {
-                let value = obj.computeValue(valueContext);
-                if (value === None || value === undefined) value = null;
-                return value;
-            }
-            else if (obj instanceof Array) {
-                return obj.map(o => compute(o));
-            }
-            else if (obj && obj !== None && typeof(obj) === 'object') {
-                let values = Object.keys(obj).map(k => compute(obj[k]));
-                return Object.keys(obj).reduce((p, c, i) => { if (values[i] !== null) p[c] = values[i]; return p; }, {});
-            }
-            return obj;
-        }
-        function extract<T> (obj: any, defaultValue: T = null, blacklist: string[] = null): T {
-            if (blacklist) {
-                obj = Object.assign({}, obj);
-                blacklist.forEach(k => delete obj[k]);
-            }
-            let value = compute(obj);
-            if (value === null || value === undefined) {
-                value = defaultValue;
-            }
-            return value;
-        }
-        let styles = extract(parsedTemplate.styles, {}, []);
-
-        valueContext.pushDict(builtin);
-        valueContext.pushDict(data);
-        valueContext.push('_data_', data);
-
-        if ('data' in parsedTemplate) {
-            let tplData = parsedTemplate.data;
-            if (tplData && tplData instanceof (Object)) {
-                let computed = extract(tplData);
-                valueContext.pushDict(computed);
-                data = {...data, ...computed};
-                valueContext.push('_data_', data);
-            }
-        }
-        if ('state' in parsedTemplate) {
-            let state = parsedTemplate.state;
-            if (state && state instanceof (Object)) {
-                let computed = extract(state);
-                valueContext.push('state', computed);
-            }
-        }
-        let rootNode = parsedTemplate.layout;
-        let computeNode = (node: any, index) => {
-            if (!node) return null;
-
-            node['node-index'] = index;
-
-            let vars: any[] = node.vars;
-            // delete node.vars;
-            if (isObject(vars)) {
-                vars = [vars];
-            }
-            let pushed: any[] = [];
-            let popAll = () => pushed.forEach(k => valueContext.pop(k));
-            if (vars instanceof Array) {
-                vars.forEach(vs => {
-                    valueContext.pushDict(extract(vs));
-                    pushed.push(...Object.keys(vs));
-                });
-            }
-
-            if (extract(node.gone)) {
-                popAll();
-                return null;
-            }
-            // delete node.gone;
-
-            let classes = extract(node.class, '').split(' ').filter(s => s.length > 0);
-            // delete node.class;
-            if (classes.length > 0) {
-                let style = classes.map(c => styles[c]).filter(c => c).reduce((p, c) => { return { ...p, ...c } }, {});
-                node.style = { ...style, ...node.style };
-            }
-
-            let children = node.children;
-            // delete node.children;
-            node = extract(node, null, ['vars', 'gone', 'class', 'repeat', 'children']);
-            if (children instanceof Array) {
-                let list = [];
-                children.forEach((c, nodeIndex) => {
-                    if (c instanceof ExpressionNode) {
-                        c = extract(c);
-                    }
-                    if (typeof(c) === 'object') {
-                        if (c.repeat) {
-                            let repeat = extract(c.repeat);
-                            // delete c.repeat;
-                            let count = 1;
-                            let items: any[];
-                            if (typeof(repeat) === 'number') {
-                                count = repeat;
-                            }
-                            else if (repeat instanceof Array) {
-                                count = repeat.length;
-                                items = repeat;
-                            }
-
-                            for (var i = 0; i < count; i++) {
-                                valueContext.push('_index_', i);
-                                valueContext.push('_item_', items ? items[i] : null);
-                                list.push(computeNode({...c}, (index ? index + ',' : '') + nodeIndex));
-                                valueContext.pop('_index_');
-                                valueContext.pop('_item_');
-                            }
-                        }
-                        else {
-                            list.push(computeNode(c, (index ? index + ',' : '') + nodeIndex));
-                        }
-                    }
-                });
-                node.children = list.filter(c => c);
-            }
-            popAll();
-            return node;
-        };
-
-        let node = computeNode(rootNode, "");
-        return { layout: node };
-    }
 }
