@@ -161,7 +161,7 @@ export class StringConcatExpressionNode extends ExpressionNode {
         this.expressions = expressions;
     }
 
-    compute(context: ExpressionContext) {
+    compute(context: ExpressionContext): any {
         let computed = this.expressions.map(e => e.compute(context));
         if (computed.some(v => v === None)) return None;
         return computed.join('');

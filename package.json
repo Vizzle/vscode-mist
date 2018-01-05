@@ -2,7 +2,7 @@
     "name": "mist",
     "displayName": "Mist",
     "description": "Language support for Mist",
-    "version": "0.2.8",
+    "version": "0.2.9",
     "publisher": "Sleen",
     "engines": {
         "vscode": "^1.14.0"
@@ -174,8 +174,10 @@
         }
     },
     "scripts": {
-        "vscode:prepublish": "tsc -p ./",
-        "compile": "tsc -watch -p ./",
+        "vscode:prepublish": "tsc -p ./ && tsc -p ./src/browser",
+        "watch": "tsc -w -p ./",
+        "watch-browser": "tsc -w -p ./src/browser",
+        "compile": "npm run watch & npm run watch-browser",
         "postinstall": "node ./node_modules/vscode/bin/install"
     },
     "dependencies": {

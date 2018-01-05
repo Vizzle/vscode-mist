@@ -11,9 +11,9 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 import * as myExtension from '../src/mistMain';
 import { getCurrentExpression, getSignatureInfo, getFunctionParamsCount } from '../src/mistDocument';
-import { Lexer } from '../src/lexer';
-import { Parser, ExpressionContext } from '../src/parser';
-import { Type, Property, UnionType, IntersectionType, Method } from '../src/type';
+import { Lexer } from '../src/browser/lexer';
+import { Parser, ExpressionContext } from '../src/browser/parser';
+import { Type, Property, UnionType, IntersectionType, Method } from '../src/browser/type';
 
 
 function XCTAssertExpression(exp, result) {

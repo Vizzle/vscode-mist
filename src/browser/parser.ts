@@ -219,7 +219,7 @@ export abstract class ExpressionNode {
     abstract check(context: ExpressionContext): ExpressionError[];
 }
 
-class _None {}
+export class _None {}
 export let None = new _None();
 
 export class LiteralNode extends ExpressionNode {

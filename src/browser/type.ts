@@ -221,7 +221,7 @@ export class Type extends IType {
     });
 }
 
-abstract class CombinedType extends IType {
+export abstract class CombinedType extends IType {
     protected types: IType[];
     public constructor(...types: IType[]) {
         super();

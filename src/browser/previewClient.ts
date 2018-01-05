@@ -1,5 +1,5 @@
-import Device from "previewDevice";
-import { render, postRender } from "render";
+import Device from "./previewDevice";
+import { render, postRender } from "./render";
 import { bindData } from "./template";
 import { ImageInfo } from "./image";
 
@@ -436,3 +436,5 @@ export default function main() {
     let port = parseInt(document.body.dataset.port);
     client = new Client(path, port);
 }
+
+document.addEventListener('DOMContentLoaded', main);

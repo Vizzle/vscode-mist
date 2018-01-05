@@ -6,11 +6,11 @@ import * as fs from 'fs'
 import { parseJson, getPropertyNode, getNodeValue } from './utils/json'
 import { Properties, PropertyInfo, Event, BasicType } from "./properties";
 import { ImageHelper } from "./imageHelper";
-import { Lexer, LexerErrorCode } from "./lexer";
-import { Type, IType, Method, Parameter, Property, ArrayType, UnionType, ObjectType, IntersectionType } from "./type";
-import { ExpressionContext, Parser, None, ExpressionNode, LiteralNode, ParseResult, ExpressionErrorLevel } from "./parser";
+import { Lexer, LexerErrorCode } from "./browser/lexer";
+import { Type, IType, Method, Parameter, Property, ArrayType, UnionType, ObjectType, IntersectionType } from "./browser/type";
+import { ExpressionContext, Parser, None, ExpressionNode, LiteralNode, ParseResult, ExpressionErrorLevel } from "./browser/parser";
 import Snippets from "./snippets";
-import { parse, parseExpressionInObject } from "./template";
+import { parse, parseExpressionInObject } from "./browser/template";
 
 enum ExpType {
     Void,

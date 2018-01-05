@@ -1,4 +1,4 @@
-import * as flex from '../lib/FlexLayout';
+import * as flex from '../../lib/FlexLayout';
 
 declare const $: any;
 

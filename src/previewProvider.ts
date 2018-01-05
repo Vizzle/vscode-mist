@@ -12,8 +12,8 @@ import { parseJson } from './utils/json'
 import { MistDocument, MistData } from './mistDocument';
 import { ImageHelper } from './imageHelper';
 import { extensions } from 'vscode';
-import Device from './previewDevice';
-import { bindData } from './template';
+import Device from './browser/previewDevice';
+import { bindData } from './browser/template';
 
 export function isMistFile(document: vscode.TextDocument) {
 	return document.languageId === 'mist'
@@ -86,7 +86,7 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
                     let c = findClient(client);
                     if (c) {
                         c.client.config.device = data.device;
-                        this.update(vscode.Uri.parse(c.path));
+                        this.update(c.path);
                     }
                     break;
                 }
@@ -119,16 +119,16 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
         <script>
             require.config({
                 paths: {
-                    'previewDevice': 'file://${this.getResourcePath('out/src/previewDevice')}',
-                    'previewClient': 'file://${this.getResourcePath('out/src/previewClient')}',
-                    'render': 'file://${this.getResourcePath('out/src/render')}',
-                    'template': 'file://${this.getResourcePath('out/src/template')}',
-                    'lexer': 'file://${this.getResourcePath('out/src/lexer')}',
-                    'parser': 'file://${this.getResourcePath('out/src/parser')}',
-                    'type': 'file://${this.getResourcePath('out/src/type')}',
-                    'functions': 'file://${this.getResourcePath('out/src/functions')}',
-                    'image': 'file://${this.getResourcePath('out/src/image')}',
-                    '../lib/FlexLayout': 'file://${this.getResourcePath('lib/FlexLayout')}',
+                    'previewClient': 'file:///Users/Sleen/dev/mine/vscode/x/mist/out/browser/previewClient',
+                    'previewDevice': 'file:///Users/Sleen/dev/mine/vscode/x/mist/out/browser/previewDevice',
+                    'render': 'file:///Users/Sleen/dev/mine/vscode/x/mist/out/browser/render',
+                    'template': 'file:///Users/Sleen/dev/mine/vscode/x/mist/out/browser/template',
+                    'lexer': 'file:///Users/Sleen/dev/mine/vscode/x/mist/out/browser/lexer',
+                    'parser': 'file:///Users/Sleen/dev/mine/vscode/x/mist/out/browser/parser',
+                    'type': 'file:///Users/Sleen/dev/mine/vscode/x/mist/out/browser/type',
+                    'functions': 'file:///Users/Sleen/dev/mine/vscode/x/mist/out/browser/functions',
+                    'image': 'file:///Users/Sleen/dev/mine/vscode/x/mist/out/browser/image',
+                    '../../lib/FlexLayout': 'file:///Users/Sleen/dev/mine/vscode/x/mist/lib/FlexLayout',
                 }
             });
             require(['previewClient'], function(main) {
@@ -229,7 +229,7 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
         }
     }
 
-	public update(uri: vscode.Uri) {
+	public update(uri: string) {
         if (this._updateTimer) {
             clearTimeout(this._updateTimer);
             this._updateTimer = null;

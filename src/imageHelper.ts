@@ -3,7 +3,7 @@ import * as vscode from 'vscode'
 import { MistDocument } from './mistDocument';
 import * as fs from 'fs';
 import * as path from 'path';
-import { ImageInfo } from './image';
+import { ImageInfo } from './browser/image';
 
 function findXcodeProjectPath(dir: string) {
     while (dir.length > 1) {
