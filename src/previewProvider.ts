@@ -110,11 +110,11 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
         return `
     <head>
         <meta charset="UTF-8">
-        <link rel="stylesheet" href="https://cdn.bootcss.com/bootstrap/3.3.7/css/bootstrap.min.css">
         <link rel="stylesheet" href="${this.getResourcePath('css/flex.css')}">
         <link rel="stylesheet" href="${this.getResourcePath('css/preview.css')}">
-        <script src="https://cdn.bootcss.com/jquery/2.1.1/jquery.min.js"></script>
-        <script src="https://cdn.bootcss.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+        <link rel="stylesheet" href="${this.getResourcePath('lib/bootstrap.min.css')}">
+        <script type="text/javascript" src="${this.getResourcePath('lib/bootstrap.min.js')}"></script>
+        <script type="text/javascript" src="${this.getResourcePath('lib/jquery.min.js')}"></script>
         <script type="text/javascript" src="${this.getResourcePath('lib/require.js')}"></script>
         <script>
             require.config({
@@ -200,7 +200,7 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
 		if (uri) {
 			let mistDoc = MistDocument.getDocumentByUri(sourceUri);
 			let nodeHtml = this.pageHtml(uri);
-			console.log(nodeHtml);
+			// console.log(nodeHtml);
 			return nodeHtml;
 		}
 		return null;

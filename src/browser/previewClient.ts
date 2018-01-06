@@ -204,7 +204,7 @@ class Client {
         });
         this.socket.addEventListener("message", event => {
             let data = JSON.parse(event.data);
-            console.log(data);
+            // console.log(data);
             this.onMessage(data);
         });
     }
