@@ -3,6 +3,7 @@ import { render, postRender } from "./render";
 import { bindData } from "./template";
 import { ImageInfo } from "./image";
 
+declare const shortcut: any;
 
 const devices: Device[] = [
     new Device('iPhone 4', 'iOS', '10.0.0', 320, 480, 2),
@@ -30,13 +31,13 @@ class Dropdown {
     private listElement: HTMLElement;
     private selectedIndex: number = 0;
 
-    constructor(private items: {
+    constructor(private title: string, private items: {
         name: string,
         desc?: string,
         callback?: () => void
     }[], private emptyText = '<Empty>') {
         this.element = this.elementFromHtml(
-            `<div class="dropdown navi-item" id="device-dropdown">
+            `<div title="${title}" class="dropdown navi-item" id="device-dropdown">
                 <button type="button" class="btn dropdown-toggle" data-toggle="dropdown">
                     <span class="dropdown-name"></span>
                     <span class="caret"></span>
@@ -71,8 +72,8 @@ class Dropdown {
         callback?: () => void
     }[]) {
         this.items = items;
-        for (var i = 0; i < this.listElement.childElementCount; i++) {
-            this.listElement.children.item(i).remove();
+        while (this.listElement.childElementCount > 0) {
+            this.listElement.children.item(0).remove();
         }
 
         if (this.selectedIndex > items.length) {
@@ -108,7 +109,10 @@ class Dropdown {
     }
 }
 
+type ClientType = 'vscode' | 'browser-socket' | 'browser';
+
 class Client {
+    private path: string;
     private socket: WebSocket;
     private timer;
     private template;
@@ -119,11 +123,27 @@ class Client {
     private datasDropdown: Dropdown;
     private devicesDropdown: Dropdown;
     private scalesDropdown: Dropdown;
+    private send: (type: string, params?: {}) => void;
+    private inspecting: boolean;
+    private hoverOverlay: HTMLElement;
 
     constructor(
-        private path: string,
-        private port: number)
+        private type: ClientType,
+        private port: number = 0)
     {
+        this.hoverOverlay = document.getElementById('mist-hover');
+        let inspectButton = document.getElementById('inspect-element');
+        if (this.type !== 'vscode') {
+            inspectButton.title += '（⌘⇧C）';
+            shortcut.add("Meta+Shift+C", () => {
+                inspectButton.classList.toggle('toggle');
+                this.inspecting = inspectButton.classList.contains('toggle');
+            });
+        }
+        inspectButton.onclick = event => {
+            inspectButton.classList.toggle('toggle');
+            this.inspecting = inspectButton.classList.contains('toggle');
+        }
         this.prepareNaviBar();
         this.prepareSocket();
         this.device = devices[0];
@@ -162,10 +182,10 @@ class Client {
     
     private prepareNaviBar() {
         let naviBar = document.getElementById('navi-bar');
-        this.datasDropdown = new Dropdown([], '无数据');
+        this.datasDropdown = new Dropdown('选择数据', [], '无数据');
         naviBar.appendChild(this.datasDropdown.element);
 
-        this.devicesDropdown = new Dropdown(devices.map(d => {
+        this.devicesDropdown = new Dropdown('选择设备', devices.map(d => {
             return {
                 name: d.model,
                 desc: `${d.model} (${d.width} x ${d.height})`,
@@ -177,7 +197,7 @@ class Client {
         }));
         naviBar.appendChild(this.devicesDropdown.element);
 
-        this.scalesDropdown = new Dropdown(scales.map(s => {
+        this.scalesDropdown = new Dropdown('缩放', scales.map(s => {
             return {
                 name: s.desc, 
                 callback: () => (<HTMLElement>document.getElementsByClassName('screen')[0]).style.transform=`scale(${s.scale})`
@@ -188,30 +208,39 @@ class Client {
     }
 
     private prepareSocket() {
-        this.socket = new WebSocket(`ws://localhost:${this.port}`);
-        this.socket.addEventListener("open", () => {
-            this.send('open', { path: this.path });
-        });
-        let error = false;
-        this.socket.addEventListener("error", event => {
-            error = true;
-            this.socket = null;
-            this.setErrorDesc('与宿主连接失败');
-        });
-        this.socket.addEventListener("close", event => {
-            this.socket = null;
-            if (!error) this.setErrorDesc('与宿主连接已断开');
-        });
-        this.socket.addEventListener("message", event => {
-            let data = JSON.parse(event.data);
-            // console.log(data);
-            this.onMessage(data);
-        });
-    }
-
-    send(type: string, params: {}) {
-        if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-            this.socket.send(JSON.stringify({ type, ...params }));
+        if (this.type !== 'browser') {
+            this.socket = new WebSocket(`ws://localhost:${this.port}`);
+            this.socket.addEventListener("open", () => {
+                this.send('open');
+            });
+            let error = false;
+            this.socket.addEventListener("error", event => {
+                error = true;
+                this.socket = null;
+                this.setErrorDesc('与宿主连接失败');
+            });
+            this.socket.addEventListener("close", event => {
+                this.socket = null;
+                if (!error) this.setErrorDesc('与宿主连接已断开');
+            });
+            this.socket.addEventListener("message", event => {
+                let data = JSON.parse(event.data);
+                this.onMessage(data);
+            });
+            this.send = (type, params = {}) => {
+                if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+                    this.socket.send(JSON.stringify({ type, ...params }));
+                }
+            }
+        }
+        else {
+            window.addEventListener('mist-client', (ev: CustomEvent) => {
+                this.onMessage(ev.detail);
+            });
+            this.send = (type, params = {}) => {
+                let event = new CustomEvent('mist-server', { detail: {type, ...params} });
+                window.dispatchEvent(event);
+            }
         }
     }
 
@@ -222,6 +251,7 @@ class Client {
                 this.selectNode(indexes);
                 break;
             case 'data':
+                this.path = data.path;
                 this.template = data.template;
                 this.images = data.images.map(i => new ImageInfo(i.name, i.files));
                 this.datas = data.datas;
@@ -342,7 +372,8 @@ class Client {
             let image = ImageInfo.findImage(this.images, value, this.device.scale);
             let ret = '';
             if (image) {
-                ret = 'file://' + image.file;
+                if (this.type === 'browser-socket') ret += 'getImage/';
+                ret += image.file;
                 if (image.scale !== this.device.scale) {
                     ret += '?' + image.scale;
                 }
@@ -387,33 +418,112 @@ class Client {
         return files;
     }
 
+    private nodeClicked(node: HTMLElement) {
+        this.inspecting = false;
+        let inspectButton = document.getElementById('inspect-element');
+        inspectButton.classList.remove('toggle');
+        this.hoverOverlay.style.opacity = '0';
+        this.send('select', {
+            path: this.path,
+            index: node.dataset.nodeIndex
+        });
+    }
+
+    private nodeHovering(node: HTMLElement) {
+        let hover = this.hoverOverlay;
+        if (node) {
+            var nodeRect = node.getBoundingClientRect();
+            hover.style.opacity = "1";
+            hover.style.width = nodeRect.width + 'px';
+            hover.style.height = nodeRect.height + 'px';
+            hover.style.left = nodeRect.left + 'px';
+            hover.style.top = nodeRect.top + 'px';
+        }
+        else {
+            hover.style.opacity = "0";
+        }
+    }
+
     private render() {
         let div = document.getElementsByClassName('mist-main')[0];
         while (div.children.length > 0)
             div.children.item(0).remove();
-        let hover = document.getElementById('mist-hover');
         let bindedTemplate = bindData(this.template, this.getData(), this.getBuiltinVars());
         let imageFiles = this.resolveImageFiles(bindedTemplate.layout);
-        return render(bindedTemplate.layout, this.device.width, this.device.scale, imageFiles, {
-            nodeClicked: node => {
-                this.send('select', {
-                    index: node.dataset.nodeIndex
-                });
-            },
-            nodeHovering: node => {
-                if (node) {
-                    var nodeRect = node.getBoundingClientRect();
-                    hover.style.opacity = "1";
-                    hover.style.width = nodeRect.width + 'px';
-                    hover.style.height = nodeRect.height + 'px';
-                    hover.style.left = nodeRect.left + 'px';
-                    hover.style.top = nodeRect.top + 'px';
+        return render(bindedTemplate.layout, this.device.width, this.device.scale, imageFiles).then(r => {
+            r.onmouseleave = event => {
+                this.nodeHovering(null);
+            };
+    
+            function getMistNode(event) {
+                var node = event.target;
+                while (!node.classList.contains('mist-node')) {
+                    node = node.parentElement;
+                }
+                return node;
+            }
+        
+            r.onmousemove = event => {
+                if (!this.inspecting) return;
+                var node = getMistNode(event);
+                this.nodeHovering(node);
+            };
+    
+            r.onmousedown = event => {
+                if (!this.inspecting) return;
+                var node = getMistNode(event);
+                this.nodeClicked(node);
+            };
+
+            r.oncontextmenu = event => {
+                var node = getMistNode(event);
+                var overlay = document.createElement('div');
+                overlay.style.position = "absolute";
+                overlay.style.top = '0';
+                overlay.style.left = '0';
+                overlay.style.bottom = '0';
+                overlay.style.right = '0';
+                overlay.style.zIndex = '10000';
+                overlay.onmousedown = event => {
+                    if (menu.contains(<Node>event.target)) return;
+                    overlay.remove();
+                };
+                var menu = document.createElement('div');
+                menu.classList.add('dropdown-menu');
+                menu.style.left = "unset";
+                menu.style.display = "block";
+                overlay.appendChild(menu);
+                var inspectItem = document.createElement('div');
+                inspectItem.classList.add('context-item');
+                inspectItem.textContent = '检查元素';
+                inspectItem.style.padding = "3px 20px";
+                inspectItem.style.cursor = "pointer";
+                inspectItem.onclick = event => {
+                    overlay.remove();
+                    this.nodeClicked(node);
+                };
+                menu.appendChild(inspectItem);
+
+                menu.style.position = "absolute";
+                document.body.appendChild(overlay);
+                if (event.x + menu.clientWidth > document.body.clientWidth) {
+                    menu.style.right = document.body.clientWidth - event.x + 'px';
+                    menu.style.left = event.x - menu.clientWidth + 'px';
                 }
                 else {
-                    hover.style.opacity = "0";
+                    menu.style.left = event.x + 'px';
                 }
-            },
-        }).then(r => {
+                if (event.y + menu.clientHeight > document.body.clientHeight) {
+                    menu.style.bottom = document.body.clientHeight - event.y + 'px';
+                    menu.style.top = event.y - menu.clientHeight + 'px';
+                }
+                else {
+                    menu.style.top = event.y + 'px';
+                }
+                
+                return false;
+            }
+
             div.appendChild(r);
             postRender(r);
             this.updateScreen();
@@ -432,9 +542,9 @@ class Client {
 var client;
 
 export default function main() {
-    let path = document.body.dataset.path;
+    let type = document.body.dataset.type;
     let port = parseInt(document.body.dataset.port);
-    client = new Client(path, port);
+    client = new Client(type as ClientType, port);
 }
 
 document.addEventListener('DOMContentLoaded', main);

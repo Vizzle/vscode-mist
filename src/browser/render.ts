@@ -479,7 +479,10 @@ function loadImages(imageFiles: string[]) {
                 var image = new Image();
                 image.src = file;
                 image.onload = resolve;
-                image.onerror = resolve;
+                image.onerror = ev => {
+                    delete imagesCache[file];
+                    resolve(ev);
+                };
                 imagesCache[file] = image;
             }));
         }
@@ -692,12 +695,7 @@ function layout(layout, width: number, height: number) {
     layout.didLayout();
 }
 
-export type RenderDelegate = {
-    nodeHovering: (node: HTMLElement) => void;
-    nodeClicked: (node: HTMLElement) => void;
-}
-
-export function render(_layout, clientWidth: number, scale: number, images: string[], delegate: RenderDelegate) {
+export function render(_layout, clientWidth: number, scale: number, images: string[]) {
     if (!_layout) return Promise.reject('empty layout');
     config.scale = scale;
     return Promise.all(loadImages(images)).then(function() {
@@ -733,37 +731,7 @@ export function render(_layout, clientWidth: number, scale: number, images: stri
             }
             return el;
         }
-        var result = _render(_layout);
-        
-        result.onmouseleave = function(event) {
-            if (delegate && delegate.nodeHovering) {
-                delegate.nodeHovering(null);
-            }
-        };
-
-        function getHovering(event) {
-            var node = event.target;
-            while (!node.classList.contains('mist-node')) {
-                node = node.parentElement;
-            }
-            return node;
-        }
-    
-        result.onmousemove = function(event) {
-            var node = getHovering(event);
-            if (delegate && delegate.nodeHovering) {
-                delegate.nodeHovering(node);
-            }
-        };
-
-        result.onmousedown = function(event) {
-            var node = getHovering(event);
-            if (delegate && delegate.nodeClicked) {
-                delegate.nodeClicked(node);
-            }
-        };
-
-        return result;
+        return _render(_layout);
     });
 }
 

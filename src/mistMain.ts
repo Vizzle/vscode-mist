@@ -171,7 +171,7 @@ function registerMistServer(context: ExtensionContext) {
 
 function registerPreviewProvider(context: ExtensionContext) {
     const contentProvider = new MistContentProvider(context);
-    const contentProviderRegistration = vscode.workspace.registerTextDocumentContentProvider('mist', contentProvider);
+    const contentProviderRegistration = vscode.workspace.registerTextDocumentContentProvider('mist-preview', contentProvider);
     context.subscriptions.push(contentProviderRegistration);
 
     context.subscriptions.push(commands.registerCommand('mist.showPreviewToSide', uri => {
@@ -184,22 +184,26 @@ function registerPreviewProvider(context: ExtensionContext) {
         }
 
         return vscode.commands.executeCommand('vscode.previewHtml',
-            getMistUri(uri),
+            'mist-preview://shared',
             vscode.ViewColumn.Two,
-            `Preview '${path.basename(resource.fsPath)}'`)
+            'Mist Preview')
+    }));
+
+    
+
+    context.subscriptions.push(vscode.window.onDidChangeVisibleTextEditors(editors => {
+        contentProvider.update('shared');
     }));
 
     context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(document => {
         if (isMistFile(document)) {
-            const uri = getMistUri(document.uri);
-            contentProvider.update(decodeURI(uri.query));
+            contentProvider.update(document.uri.toString());
         }
     }));
 
     context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(event => {
         if (isMistFile(event.document)) {
-            const uri = getMistUri(event.document.uri);
-            contentProvider.update(decodeURI(uri.query));
+            contentProvider.update(event.document.uri.toString());
         }
     }));
 

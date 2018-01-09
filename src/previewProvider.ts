@@ -17,7 +17,7 @@ import { bindData } from './browser/template';
 
 export function isMistFile(document: vscode.TextDocument) {
 	return document.languageId === 'mist'
-		&& document.uri.scheme !== 'mist'; // prevent processing of own documents
+		&& document.uri.scheme !== 'mist-preview'; // prevent processing of own documents
 }
 
 export function getMistUri(uri: vscode.Uri) {
@@ -39,65 +39,64 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
     private _server: ws.Server;
     private _port: number;
     private _listening: Promise<number>;
-    private _clients = new Map<string, PreviewClient[]>();
+    private _clients: PreviewClient[] = [];
     private _updateTimer = null;
 
 	constructor(private context: vscode.ExtensionContext) {
-        let httpServer = http.createServer();
+        let httpServer = http.createServer((request, response) => {
+            let uri = vscode.Uri.parse(request.url);
+            if (uri.path === '/') {
+                var content = this.pageHtml(vscode.Uri.parse('shared'));
+                content = content.replace(/<base [^>]*>/m, '')
+                                 .replace(/<a id="open-in-browser".*<\/a>/, '')
+                                 .replace('data-type="vscode"', 'data-type="browser-socket"');
+                response.end(content);
+            }
+            else {
+                let file = uri.path;
+                if (file.startsWith('/getImage/')) {
+                    file = file.substr(10);
+                }
+                else {
+                    file = this.getResourcePath(uri.path);
+                }
+                fs.readFile(file, (err, data) => {
+                    if (!err) {
+                        response.end(data);
+                    }
+                    else {
+                        response.statusCode = 404;
+                        response.end();
+                    }
+                });
+            }
+        });
         this._listening = new Promise<number>((resolve, reject) => httpServer.listen(0, 'localhost', null, err => err ? reject(err) : resolve(httpServer.address().port)));
         this._server = new ws.Server({ server: httpServer });
         this._server.on('connection', client => {
             client.on('message', message => {
                 let data = JSON.parse(message);
-                let findClient = c => {
-                    for (var [path, clients] of this._clients.entries()) {
-                        let r = clients.find(client => client.client === c);
-                        if (r) {
-                            return {path, client: r};
-                        }
-                    }
-                    return null;
-                }
                 switch (data.type) {
                 case 'open':
-                    let clients = this._clients.get(data.path);
-                    if (!clients) {
-                        clients = [];
-                        this._clients.set(data.path, clients);
-                    }
-                    clients.push({
+                    this._clients.push({
                         client,
                         config: {
                             device: data.device,
                         }
                     });
-                    this.render(data.path);
+                    this.render();
                     break;
                 case 'select':
                 {
-                    let c = findClient(client);
-                    if (c) {
-                        this.revealNode(vscode.Uri.parse(c.path), data.index);
-                    }
-                    break;
-                }
-                case 'device':
-                {
-                    let c = findClient(client);
-                    if (c) {
-                        c.client.config.device = data.device;
-                        this.update(c.path);
-                    }
+                    this.revealNode(vscode.Uri.parse(data.path), data.index);
                     break;
                 }
                 }
             });
 
             client.on('close', () => {
-                for (var [key, list] of this._clients.entries()) {
-                    var index = list.findIndex(c => c.client === client);
-                    if (index >= 0) list.splice(index, 1);
-                }
+                let index = this._clients.findIndex(c => c.client === client);
+                if (index >= 0) this._clients.splice(index, 1);
             });
         });
     }
@@ -109,26 +108,37 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
 	private pageHtml(uri: vscode.Uri) {
         return `
     <head>
+        <base href="${this.getResourcePath('preview.html')}">
         <meta charset="UTF-8">
-        <link rel="stylesheet" href="${this.getResourcePath('css/flex.css')}">
-        <link rel="stylesheet" href="${this.getResourcePath('css/preview.css')}">
-        <link rel="stylesheet" href="${this.getResourcePath('lib/bootstrap.min.css')}">
-        <script type="text/javascript" src="${this.getResourcePath('lib/bootstrap.min.js')}"></script>
-        <script type="text/javascript" src="${this.getResourcePath('lib/jquery.min.js')}"></script>
-        <script type="text/javascript" src="${this.getResourcePath('lib/require.js')}"></script>
+        <link rel="stylesheet" href="lib/bootstrap.min.css">
+        <link rel="stylesheet" href="css/preview.css">
+        <link rel="stylesheet" href="css/flex.css">
+        <script type="text/javascript" src="http://at.alicdn.com/t/font_532796_cdkfbxvwvky2pgb9.js"></script>
+        <style type="text/css">
+            .icon {
+            width: 1em; height: 1em;
+            vertical-align: -0.15em;
+            fill: currentColor;
+            overflow: hidden;
+            }
+        </style>
+        <script type="text/javascript" src="lib/jquery.min.js"></script>
+        <script type="text/javascript" src="lib/bootstrap.min.js"></script>
+        <script type="text/javascript" src="lib/require.js"></script>
+        <script type="text/javascript" src="lib/shortcut.js"></script>
         <script>
             require.config({
                 paths: {
-                    'previewClient': 'file:///Users/Sleen/dev/mine/vscode/x/mist/out/browser/previewClient',
-                    'previewDevice': 'file:///Users/Sleen/dev/mine/vscode/x/mist/out/browser/previewDevice',
-                    'render': 'file:///Users/Sleen/dev/mine/vscode/x/mist/out/browser/render',
-                    'template': 'file:///Users/Sleen/dev/mine/vscode/x/mist/out/browser/template',
-                    'lexer': 'file:///Users/Sleen/dev/mine/vscode/x/mist/out/browser/lexer',
-                    'parser': 'file:///Users/Sleen/dev/mine/vscode/x/mist/out/browser/parser',
-                    'type': 'file:///Users/Sleen/dev/mine/vscode/x/mist/out/browser/type',
-                    'functions': 'file:///Users/Sleen/dev/mine/vscode/x/mist/out/browser/functions',
-                    'image': 'file:///Users/Sleen/dev/mine/vscode/x/mist/out/browser/image',
-                    '../../lib/FlexLayout': 'file:///Users/Sleen/dev/mine/vscode/x/mist/lib/FlexLayout',
+                    'previewClient': 'out/browser/previewClient',
+                    'previewDevice': 'out/browser/previewDevice',
+                    'render': 'out/browser/render',
+                    'template': 'out/browser/template',
+                    'lexer': 'out/browser/lexer',
+                    'parser': 'out/browser/parser',
+                    'type': 'out/browser/type',
+                    'functions': 'out/browser/functions',
+                    'image': 'out/browser/image',
+                    '../../lib/FlexLayout': 'lib/FlexLayout',
                 }
             });
             require(['previewClient'], function(main) {
@@ -152,9 +162,14 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
         </style>
     </head>
     
-    <body data-port="${this._port}" data-path="${decodeURI(uri.query)}">
+    <body data-port="${this._port}" data-path="${uri.toString()}" data-type="vscode">
     <div style="width:100%; height:100%; display:flex; flex-direction:column">
-    <div id="navi-bar"></div>
+    <div id="navi-bar">
+        <a id="inspect-element" class="navi-icon" title="检查元素" href="#"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-select"></use></svg></i></a>
+        <!--<a id="show-frame" class="navi-icon" title="显示边框" href="#"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-frame"></use></svg></i></a>-->
+        <a id="open-in-browser" class="navi-icon" title="在浏览器打开" href="http://localhost:${this._port}"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-chrome"></use></svg></i></a>
+        <div class="navi-line"></div>
+    </div>
     
     <div style="display:flex;align-items:flex-start;overflow:auto;flex-grow:1;">
     <div class="screen hidden">
@@ -199,22 +214,29 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
 		const sourceUri = vscode.Uri.parse(decodeURI(uri.query));
 		if (uri) {
 			let mistDoc = MistDocument.getDocumentByUri(sourceUri);
-			let nodeHtml = this.pageHtml(uri);
-			// console.log(nodeHtml);
+            let nodeHtml = this.pageHtml(vscode.Uri.parse('shared'));
 			return nodeHtml;
 		}
 		return null;
     }
+
+    private getDocument() {
+        let editor = vscode.window.visibleTextEditors.find(e => e.document.languageId === 'mist');
+        if (editor) {
+            return MistDocument.getDocumentByUri(editor.document.uri);
+        }
+        return null;
+    }
     
-    render(uri: string) {
-        let sourceUri = vscode.Uri.parse(uri);
-        let clients = this._clients.get(uri);
-        if (clients && clients.length > 0) {
-            clients.forEach(c => {
-                let mistDoc = MistDocument.getDocumentByUri(sourceUri);
+    render() {
+        if (this._clients.length > 0) {
+            this._clients.forEach(c => {
+                let mistDoc = this.getDocument();
+                if (!mistDoc) return;
                 let template = mistDoc.getTemplate();
                 let images = ImageHelper.getImageFiles(mistDoc.document);
                 c.client.send(JSON.stringify({
+                    path: mistDoc.document.uri.toString(),
                     type: 'data',
                     template,
                     images,
@@ -243,8 +265,7 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
     public selectionDidChange(textEditor: vscode.TextEditor) {
         if (this._updateTimer) return;
         let doc = textEditor.document;
-        let clients = this._clients.get(decodeURI(doc.uri.toString())) || [];
-        if (clients.length === 0) return;
+        if (this._clients.length === 0) return;
         
         let sel = textEditor.selection.end;
         let path = [...json.getLocation(doc.getText(), doc.offsetAt(sel)).path];
@@ -260,7 +281,7 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
             }
         }
 
-        clients.forEach(c => c.client.send(JSON.stringify({ 'type': 'select', indexes })));
+        this._clients.forEach(c => c.client.send(JSON.stringify({ 'type': 'select', indexes })));
     }
 
 	public revealNode(uri: vscode.Uri, nodeIndex: string) {

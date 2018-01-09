@@ -67,6 +67,9 @@ body.vscode-light {
 #navi-bar {
     background-color: #2c2c2c;
     z-index: 1000;
+    display: flex;
+    flex-wrap: wrap;
+    padding-left: 6px;
 }
 
 .vscode-light #navi-bar {
@@ -75,6 +78,30 @@ body.vscode-light {
 
 .navi-item {
     display: inline-block;
+}
+
+.navi-icon {
+    color: white !important;
+    font-size: 18px;
+    padding: 5px;
+    display: flex;
+    align-items: center;
+}
+
+.vscode-light .navi-icon {
+    color: #333 !important;
+}
+
+.navi-icon.toggle {
+    color: #E24810 !important;
+}
+
+.navi-line {
+    width: 1px;
+    height: 20px;
+    background-color: #888;
+    align-self: center;
+    margin-left: 6px;
 }
 
 .active, .focus, .active.focus, :active, :focus, :active:focus {
@@ -89,7 +116,7 @@ body.vscode-light {
     box-shadow: none;
 }
 
-.btn:hover {
+.btn:hover, .navi-icon:hover {
     opacity: 0.8;
 }
 
@@ -107,6 +134,10 @@ body.vscode-light {
     max-height: 300px;
     overflow-y: auto;
     overflow-x: hidden;
+}
+
+.context-item:hover {
+    background-color: #f5f5f5;
 }
 
 .dropdown-menu li.selected>a:before {
