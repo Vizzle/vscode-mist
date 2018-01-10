@@ -165,8 +165,8 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
     <body data-port="${this._port}" data-path="${uri.toString()}" data-type="vscode">
     <div style="width:100%; height:100%; display:flex; flex-direction:column">
     <div id="navi-bar">
-        <a id="inspect-element" class="navi-icon" title="检查元素" href="#"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-select"></use></svg></i></a>
-        <!--<a id="show-frame" class="navi-icon" title="显示边框" href="#"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-frame"></use></svg></i></a>-->
+        <a id="inspect-element" class="navi-icon" title="检查元素"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-select"></use></svg></i></a>
+        <a id="show-frames" class="navi-icon" title="显示边框"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-frame"></use></svg></i></a>
         <a id="open-in-browser" class="navi-icon" title="在浏览器打开" href="http://localhost:${this._port}"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-chrome"></use></svg></i></a>
         <div class="navi-line"></div>
     </div>

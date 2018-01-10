@@ -70,6 +70,7 @@ body.vscode-light {
     display: flex;
     flex-wrap: wrap;
     padding-left: 6px;
+    flex-shrink: 0;
 }
 
 .vscode-light #navi-bar {
@@ -86,6 +87,7 @@ body.vscode-light {
     padding: 5px;
     display: flex;
     align-items: center;
+    cursor: pointer;
 }
 
 .vscode-light .navi-icon {
@@ -161,6 +163,14 @@ body.vscode-light {
     position: absolute;
     background-color: rgba(112, 168, 218, 0.66);
     pointer-events: none;
+}
+
+#mist-frames {
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    position: absolute;
+    overflow: hidden;
 }
 
 .mist-select {

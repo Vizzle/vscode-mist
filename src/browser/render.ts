@@ -418,8 +418,8 @@ function elementFromLayout(layout): HTMLElement {
         setButtonStyle(el, style);
     }
     else if (type === 'line') {
-        (<HTMLCanvasElement>el).width = layout.result.width;
-        (<HTMLCanvasElement>el).height = layout.result.height;
+        (<HTMLCanvasElement>el).width = layout.result.width * window.devicePixelRatio;
+        (<HTMLCanvasElement>el).height = layout.result.height * window.devicePixelRatio;
         setLineStyle(el, style);
     }
     else if (type === 'node') {
@@ -744,6 +744,7 @@ export function postRender(el: HTMLElement) {
         var lineWidth = Math.min(width, height);
 
         var context = canvas.getContext('2d');
+        context.scale(window.devicePixelRatio, window.devicePixelRatio)
         context.beginPath();
         context.lineWidth = lineWidth;
         context.strokeStyle = canvas.getAttribute('data-line-color') || 'transparent';

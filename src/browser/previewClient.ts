@@ -91,7 +91,7 @@ class Dropdown {
         items.forEach((item, i) => {
             let el = this.elementFromHtml(
                 `<li role="presentation" class="${i === this.selectedIndex ? 'selected' : ''}">
-                    <a role="menuitem" tabindex="-1" href="#">${item.desc || item.name}</a>
+                    <a role="menuitem" tabindex="-1" style="cursor: pointer">${item.desc || item.name}</a>
                 </li>`);
             el.onclick = () => {
                 this.listElement.getElementsByClassName('selected').item(0).classList.remove('selected');
@@ -125,29 +125,96 @@ class Client {
     private scalesDropdown: Dropdown;
     private send: (type: string, params?: {}) => void;
     private inspecting: boolean;
+    private showFrames: boolean;
     private hoverOverlay: HTMLElement;
+    private framesOverlay: HTMLCanvasElement;
+    private bindedTemplate;
+    private nodeStyleWhileShowingFrames: HTMLStyleElement;
 
     constructor(
         private type: ClientType,
         private port: number = 0)
     {
         this.hoverOverlay = document.getElementById('mist-hover');
-        let inspectButton = document.getElementById('inspect-element');
-        if (this.type !== 'vscode') {
-            inspectButton.title += '（⌘⇧C）';
-            shortcut.add("Meta+Shift+C", () => {
-                inspectButton.classList.toggle('toggle');
-                this.inspecting = inspectButton.classList.contains('toggle');
-            });
-        }
-        inspectButton.onclick = event => {
-            inspectButton.classList.toggle('toggle');
-            this.inspecting = inspectButton.classList.contains('toggle');
-        }
+        this.framesOverlay = document.createElement('canvas');
+        this.framesOverlay.classList.add('overlay');
+        this.nodeStyleWhileShowingFrames = document.createElement('style');
+        this.nodeStyleWhileShowingFrames.appendChild(document.createTextNode('.mist-node { pointer-events: none; }'));
+        this.prepareButtons();
         this.prepareNaviBar();
         this.prepareSocket();
         this.device = devices[0];
         this.render();
+    }
+
+    private prepareButtons() {
+        let inspectButton = document.getElementById('inspect-element');
+        let framesButton = document.getElementById('show-frames');
+
+        let inspectButtonClicked = () => {
+            inspectButton.classList.toggle('toggle');
+            this.inspecting = inspectButton.classList.contains('toggle');
+            if (this.inspecting && this.showFrames) {
+                framesButton.click();
+            }
+            if (!this.inspecting) {
+                this.hoverOverlay.style.opacity = '0';
+            }
+        };
+        if (this.type !== 'vscode') {
+            inspectButton.title += '（⌘⇧C）';
+            shortcut.add("Meta+Shift+C", inspectButtonClicked);
+        }
+        inspectButton.onclick = inspectButtonClicked;
+
+        framesButton.onclick = () => {
+            framesButton.classList.toggle('toggle');
+            this.showFrames = framesButton.classList.contains('toggle');
+            this.drawFrames();
+            if (this.inspecting && this.showFrames) {
+                inspectButton.click();
+            }
+        }
+    }
+
+    private clearFrames() {
+        let context = this.framesOverlay.getContext('2d');
+        context.clearRect(0, 0, this.framesOverlay.width, this.framesOverlay.height);
+    }
+
+    private drawFrames() {
+        if (this.showFrames) {
+            if (!this.nodeStyleWhileShowingFrames.parentNode)
+                document.getElementsByTagName('head')[0].appendChild(this.nodeStyleWhileShowingFrames);
+        }
+        else {
+            if (this.nodeStyleWhileShowingFrames.parentNode)
+                this.nodeStyleWhileShowingFrames.remove();
+        }
+
+        let scale = window.devicePixelRatio;
+        this.framesOverlay.width = this.framesOverlay.clientWidth * scale;
+        this.framesOverlay.height = this.framesOverlay.clientHeight * scale;
+        let context = this.framesOverlay.getContext('2d');
+        context.clearRect(0, 0, this.framesOverlay.width, this.framesOverlay.height);
+        if (!this.showFrames) return;
+
+        context.scale(scale, scale);
+        context.strokeStyle = 'rgba(112, 168, 218, 0.88)';
+        context.fillStyle = 'rgba(112, 168, 218, 0.16)';
+        let nodes = document.getElementsByClassName('mist-node');
+        let mainRect = nodes.item(0).getBoundingClientRect();
+        let drawNode = (node: HTMLElement) => {
+            let rect = node.getBoundingClientRect();
+            let l = rect.left - mainRect.left,
+                t = rect.top - mainRect.top,
+                w = rect.width, h = rect.height;
+            context.fillRect(l, t, w, h);
+            context.strokeRect(l, t, w, h);
+        };
+        for (var i = 0; i < nodes.length; i++) {
+            drawNode(<HTMLElement>nodes.item(i));
+        }
     }
 
     private getData() {
@@ -448,9 +515,9 @@ class Client {
         let div = document.getElementsByClassName('mist-main')[0];
         while (div.children.length > 0)
             div.children.item(0).remove();
-        let bindedTemplate = bindData(this.template, this.getData(), this.getBuiltinVars());
-        let imageFiles = this.resolveImageFiles(bindedTemplate.layout);
-        return render(bindedTemplate.layout, this.device.width, this.device.scale, imageFiles).then(r => {
+        this.bindedTemplate = bindData(this.template, this.getData(), this.getBuiltinVars());
+        let imageFiles = this.resolveImageFiles(this.bindedTemplate.layout);
+        return render(this.bindedTemplate.layout, this.device.width, this.device.scale, imageFiles).then(r => {
             r.onmouseleave = event => {
                 this.nodeHovering(null);
             };
@@ -525,7 +592,11 @@ class Client {
             }
 
             div.appendChild(r);
+            div.appendChild(this.framesOverlay);
+            this.framesOverlay.style.minWidth = this.framesOverlay.style.width = div.clientWidth + 'px';
+            this.framesOverlay.style.minHeight = this.framesOverlay.style.height = r.clientHeight + r.clientTop + 'px';
             postRender(r);
+            this.drawFrames();
             this.updateScreen();
         });
     }
