@@ -203,11 +203,12 @@ class Client {
         context.strokeStyle = 'rgba(112, 168, 218, 0.88)';
         context.fillStyle = 'rgba(112, 168, 218, 0.16)';
         let nodes = document.getElementsByClassName('mist-node');
-        let mainRect = nodes.item(0).getBoundingClientRect();
+        let mainNode = <HTMLElement>nodes.item(0);
+        let mainRect = mainNode.getBoundingClientRect();
         let drawNode = (node: HTMLElement) => {
             let rect = node.getBoundingClientRect();
-            let l = rect.left - mainRect.left,
-                t = rect.top - mainRect.top,
+            let l = rect.left - mainRect.left + mainNode.offsetLeft,
+                t = rect.top - mainRect.top + mainNode.offsetTop,
                 w = rect.width, h = rect.height;
             context.fillRect(l, t, w, h);
             context.strokeRect(l, t, w, h);
@@ -594,7 +595,7 @@ class Client {
             div.appendChild(r);
             div.appendChild(this.framesOverlay);
             this.framesOverlay.style.minWidth = this.framesOverlay.style.width = div.clientWidth + 'px';
-            this.framesOverlay.style.minHeight = this.framesOverlay.style.height = r.clientHeight + r.clientTop + 'px';
+            this.framesOverlay.style.minHeight = this.framesOverlay.style.height = r.clientHeight + r.offsetTop + 'px';
             postRender(r);
             this.drawFrames();
             this.updateScreen();
