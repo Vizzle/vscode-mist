@@ -17,6 +17,10 @@ export class Method {
     params: Parameter[];
     jsEquivalent: (...params) => any;
 
+    public static isSame(a: Method, b: Method) {
+        return IType.isSame(a.type, b.type) && a.params.length === b.params.length && a.params.every((p, i) => IType.isSame(p.type, b.params[i].type));
+    }
+
     public constructor(type: IType, description?: string, params: Parameter[] = [], jsEquivalent?: (...params) => any) {
         this.type = type;
         this.description = description;
@@ -26,10 +30,6 @@ export class Method {
 
     registerToType(type: Type) {
         this.ownerType = type;
-    }
-
-    public static isSame(a: Method, b: Method) {
-        return IType.isSame(a.type, b.type) && a.params.length == b.params.length && a.params.every((p, i) => IType.isSame(p.type, b.params[i].type));
     }
 }
 
@@ -53,18 +53,6 @@ export class Property {
 }
 
 export abstract class IType {
-    public abstract getName(): string;
-    public abstract getAllProperties(): { [name: string]: Property };
-    public abstract getProperty(name: string): Property;
-    public abstract getAllMethods(): { [name: string]: Method[] };
-    public abstract getMethods(name: string): Method[];
-    public getMethod(name: string, paramsCount: number): Method {
-        let methods = this.getMethods(name);
-        if (methods) {
-            return methods.find(m => m.params.length == paramsCount);
-        }
-        return null;
-    }
     public static isSame(a: IType, b: IType) {
         if (a === b) {
             return true;
@@ -102,19 +90,62 @@ export abstract class IType {
         }
         return new ObjectType(Object.keys(obj).reduce((ret, k) => {ret[k] = this.typeof(obj[k]); return ret}, {}));
     }
+    public abstract getName(): string;
+    public abstract getAllProperties(): { [name: string]: Property };
+    public abstract getProperty(name: string): Property;
+    public abstract getAllMethods(): { [name: string]: Method[] };
+    public abstract getMethods(name: string): Method[];
+    public getMethod(name: string, paramsCount: number): Method {
+        let methods = this.getMethods(name);
+        if (methods) {
+            return methods.find(m => m.params.length === paramsCount);
+        }
+        return null;
+    }
 }
 
 export class Type extends IType {
+
+    static readonly types: { [name: string]: Type } = {};
+
+    public static Number = Type.registerType(new Type('number')).registerPropertys({
+        "intValue": new Property(Type.Number, "数字的整数值", true, n => Math.floor(n)),
+        "doubleValue": new Property(Type.Number, "数字的浮点数值", true, n => n),
+        "floatValue": new Property(Type.Number, "数字的浮点数值", true, n => n),
+        "boolValue": new Property(Type.Number, "数字的布尔值", true, n => n !== 0),
+    });
+    public static Boolean = Type.registerType(new Type('boolean'));
+    public static String = Type.registerType(new Type('string')).registerPropertys({
+        "length": new Property(Type.Number, "字符串长度", true, str => str.length),
+        "intValue": new Property(Type.Number, "字符串的整数值", true, str => parseInt(str)),
+        "doubleValue": new Property(Type.Number, "字符串的浮点数值", true, str => parseFloat(str)),
+        "floatValue": new Property(Type.Number, "字符串的浮点数值", true, str => parseFloat(str)),
+        "boolValue": new Property(Type.Number, "字符串的布尔值", true, (s: string) => /^\s*[TtYy1-9]/.test(s)),
+    });
+    public static Any = Type.registerType(new Type('any'));
+    public static Null = Type.registerType(new Type('null'));
+    public static Void = Type.registerType(new Type('void'));
+    public static Global = Type.registerType(new Type('global'));
+    public static Array = Type.registerType(new Type('array')).registerPropertys({
+        "count": new Property(Type.Number, "数组元素数量", true, list => list.length),
+    });
+    public static Object = Type.registerType(new Type('object')).registerPropertys({
+        "count": new Property(Type.Number, "字典元素数量", true, obj => Object.keys(obj).length),
+    });
+
     private name: string;
     private description?: string;
     private properties: { [name: string]: Property };
     private methods: { [name: string]: Method[] };
     private classMethods: { [name: string]: Method[] };
 
-    private static types: { [name: string]: Type } = {};
-
     public static getType(name: string) {
         return this.types[name];
+    }
+
+    public static registerType(type: Type) {
+        this.types[type.name] = type;
+        return this.types[type.name];
     }
 
     public constructor(name: string, description?: string) {
@@ -124,11 +155,6 @@ export class Type extends IType {
         this.properties = {};
         this.methods = {};
         this.classMethods = {};
-    }
-
-    public static registerType(type: Type) {
-        this.types[type.name] = type;
-        return this.types[type.name];
     }
 
     public registerProperty(name: string, property: Property) {
@@ -184,7 +210,7 @@ export class Type extends IType {
     public getMethod(name: string, paramsCount: number) {
         let methods = this.methods[name];
         if (!methods) return null;
-        return methods.find(m => m.params.length == paramsCount);
+        return methods.find(m => m.params.length === paramsCount);
     }
 
     public getClassMethods(name: string) {
@@ -192,51 +218,23 @@ export class Type extends IType {
     }
 
     public getClassMethod(name: string, paramsCount: number) {
-        return this.classMethods[name].find(m => m.params.length == paramsCount);
+        return this.classMethods[name].find(m => m.params.length === paramsCount);
     }
     
-    public static Number = Type.registerType(new Type('number')).registerPropertys({
-        "intValue": new Property(Type.Number, "数字的整数值", true, n => Math.floor(n)),
-        "doubleValue": new Property(Type.Number, "数字的浮点数值", true, n => n),
-        "floatValue": new Property(Type.Number, "数字的浮点数值", true, n => n),
-        "boolValue": new Property(Type.Number, "数字的布尔值", true, n => n != 0),
-    });;
-    public static Boolean = Type.registerType(new Type('boolean'));
-    public static String = Type.registerType(new Type('string')).registerPropertys({
-        "length": new Property(Type.Number, "字符串长度", true, str => str.length),
-        "intValue": new Property(Type.Number, "字符串的整数值", true, str => parseInt(str)),
-        "doubleValue": new Property(Type.Number, "字符串的浮点数值", true, str => parseFloat(str)),
-        "floatValue": new Property(Type.Number, "字符串的浮点数值", true, str => parseFloat(str)),
-        "boolValue": new Property(Type.Number, "字符串的布尔值", true, (s: string) => /^\s*[TtYy1-9]/.test(s)),
-    });
-    public static Any = Type.registerType(new Type('any'));
-    public static Null = Type.registerType(new Type('null'));
-    public static Void = Type.registerType(new Type('void'));
-    public static Global = Type.registerType(new Type('global'));
-    public static Array = Type.registerType(new Type('array')).registerPropertys({
-        "count": new Property(Type.Number, "数组元素数量", true, list => list.length),
-    });
-    public static Object = Type.registerType(new Type('object')).registerPropertys({
-        "count": new Property(Type.Number, "字典元素数量", true, obj => Object.keys(obj).length),
-    });
 }
 
 export abstract class CombinedType extends IType {
     protected types: IType[];
+    public static isSame(a: CombinedType, b: CombinedType) {
+        return a.types.length === b.types.length && a.types.every(t => b.types.indexOf(t) >= 0);
+    }
     public constructor(...types: IType[]) {
         super();
         this.types = types;
     }
-    public static isSame(a: CombinedType, b: CombinedType) {
-        return a.types.length == b.types.length && a.types.every(t => b.types.indexOf(t) >= 0);
-    }
 }
 
 export class IntersectionType extends CombinedType {
-
-    public constructor(...types: IType[]) {
-        super(...types);
-    }
 
     public static type(types: IType[]) {
         if (types.length === 0) {
@@ -271,15 +269,19 @@ export class IntersectionType extends CombinedType {
             ts = ts.filter(t => !(t instanceof ArrayType));
             ts.push(newArrayType);
         }
-        if (ts.length == 0) {
+        if (ts.length === 0) {
             return Type.Any;
         }
-        else if (ts.length == 1) {
+        else if (ts.length === 1) {
             return ts[0];
         }
         else {
             return new IntersectionType(...ts);
         }
+    }
+
+    public constructor(...types: IType[]) {
+        super(...types);
     }
 
     public getName(): string {
@@ -293,10 +295,10 @@ export class IntersectionType extends CombinedType {
         names.forEach(n => {
             let ps = propertiesList.map(ps => ps[n]).filter(p => p);
             let p: Property;
-            if (ps.length == 0) {
+            if (ps.length === 0) {
                 p = null;
             }
-            else if (ps.length == 1) {
+            else if (ps.length === 1) {
                 p = ps[0];
             }
             else {
@@ -311,10 +313,10 @@ export class IntersectionType extends CombinedType {
 
     public getProperty(name: string): Property {
         let ps = this.types.map(t => t.getProperty(name)).filter(p => p);
-        if (ps.length == 0) {
+        if (ps.length === 0) {
             return null;
         }
-        else if (ps.length == 1) {
+        else if (ps.length === 1) {
             return ps[0];
         }
         else {
@@ -366,10 +368,6 @@ export class IntersectionType extends CombinedType {
 
 export class UnionType extends CombinedType {
 
-    public constructor(...types: IType[]) {
-        super(...types);
-    }
-
     public static type(types: IType[]) {
         if (types.length === 0) {
             return Type.Any;
@@ -380,15 +378,19 @@ export class UnionType extends CombinedType {
         }
         ts = [...new Set(ts)];
         ts = ts.filter((t, i) => ts.findIndex(s => IType.isSame(t, s)) === i);
-        if (ts.length == 0) {
+        if (ts.length === 0) {
             return Type.Any;
         }
-        else if (ts.length == 1) {
+        else if (ts.length === 1) {
             return ts[0];
         }
         else {
             return new UnionType(...ts);
         }
+    }
+
+    public constructor(...types: IType[]) {
+        super(...types);
     }
 
     public getName(): string {
@@ -402,7 +404,7 @@ export class UnionType extends CombinedType {
         names.forEach(n => {
             let ps = propertiesList.map(ps => ps[n]).filter(p => p);
             let p: Property;
-            if (ps.length == this.types.length) {
+            if (ps.length === this.types.length) {
                 p = new Property(UnionType.type(ps.map(p => p.type)), ps[0].description, ps.every(p => p.readonly));
             }
             else {
@@ -417,7 +419,7 @@ export class UnionType extends CombinedType {
 
     public getProperty(name: string): Property {
         let ps = this.types.map(t => t.getProperty(name)).filter(p => p);
-        if (ps.length == this.types.length) {
+        if (ps.length === this.types.length) {
             return new Property(UnionType.type(ps.map(p => p.type)), ps[0].description, ps.every(p => p.readonly));
         }
         else {
@@ -434,7 +436,7 @@ export class UnionType extends CombinedType {
             let ms = msList.slice(1).reduce((p, c) => {
                 let ret = [];
                 p.forEach((v, i) => {
-                    let method = c.find(m => v.params.length == m.params.length && v.params.every((p, i) => IType.isSame(p.type, m.params[i].type)));
+                    let method = c.find(m => v.params.length === m.params.length && v.params.every((p, i) => IType.isSame(p.type, m.params[i].type)));
                     if (method) {
                         ret.push(new Method(UnionType.type([v.type, method.type]), v.description, v.params, v.jsEquivalent));
                     }
@@ -454,7 +456,7 @@ export class UnionType extends CombinedType {
         let ms = msList.slice(1).reduce((p, c) => {
             let ret = [];
             p.forEach((v, i) => {
-                let method = c.find(m => v.params.length == m.params.length && v.params.every((p, i) => IType.isSame(p.type, m.params[i].type)));
+                let method = c.find(m => v.params.length === m.params.length && v.params.every((p, i) => IType.isSame(p.type, m.params[i].type)));
                 if (method) {
                     ret.push(new Method(UnionType.type([v.type, method.type]), v.description, v.params, v.jsEquivalent));
                 }
@@ -467,6 +469,10 @@ export class UnionType extends CombinedType {
 
 export class ArrayType extends IType {
     private elementsType: IType;
+
+    public static isSame(a: ArrayType, b: ArrayType) {
+        return IType.isSame(a.elementsType, b.elementsType);
+    }
 
     public constructor(elementsType: IType) {
         super();
@@ -482,7 +488,7 @@ export class ArrayType extends IType {
     }
 
     public getAllProperties(): { [name: string]: Property; } {
-        return Type.getType('array').getAllProperties();//ArrayType.properties;
+        return Type.getType('array').getAllProperties();
     }
 
     public getProperty(name: string): Property {
@@ -497,21 +503,24 @@ export class ArrayType extends IType {
         return Type.getType('array').getMethods(name);
     }
 
-    public static isSame(a: ArrayType, b: ArrayType) {
-        return IType.isSame(a.elementsType, b.elementsType);
-    }
 }
 
 export class ObjectType extends IType {
-    private map: { [key: string]: IType };
-    private indexType: { name: string, type: IType };
-
-    static properties = {
+    private static properties = {
         
     }
 
-    static methods = {
+    private static methods = {
         
+    }
+
+    private map: { [key: string]: IType };
+    private indexType: { name: string, type: IType };
+
+    public static isSame(a: ObjectType, b: ObjectType) {
+        let keysA = Object.keys(a.map);
+        let keysB = Object.keys(b.map);
+        return keysA.length === keysB.length && keysA.every(k => IType.isSame(a.map[k], b.map[k]));
     }
 
     public constructor(map: { [key: string]: IType }, indexType?: { name: string, type: IType }) {
@@ -531,7 +540,7 @@ export class ObjectType extends IType {
 
     public getName(): string {
         let keys = Object.keys(this.map);
-        if (keys.length == 0 && !this.indexType) {
+        if (keys.length === 0 && !this.indexType) {
             return '{}';
         }
         let props = keys.map(k => `"${k}": ${this.map[k].getName()};`);
@@ -545,7 +554,7 @@ export class ObjectType extends IType {
     }
 
     public getAllProperties(): { [name: string]: Property; } {
-        return Object.keys(this.map).reduce((p, c) => { p[c] = new Property(this.map[c]); return p;}, {});
+        return Object.keys(this.map).reduce((p, c) => { p[c] = new Property(this.map[c]); return p; }, {});
     }
 
     public getProperty(name: string): Property {
@@ -564,11 +573,5 @@ export class ObjectType extends IType {
 
     public getMethods(name: string): Method[] {
         return ObjectType.methods[name];
-    }
-    
-    public static isSame(a: ObjectType, b: ObjectType) {
-        let keysA = Object.keys(a.map);
-        let keysB = Object.keys(b.map);
-        return keysA.length === keysB.length && keysA.every(k => IType.isSame(a.map[k], b.map[k]));
     }
 }

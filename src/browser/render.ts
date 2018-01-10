@@ -121,14 +121,14 @@ function convertColor(color: string): string {
         return color;
     }
 
-    if (color.length == 5) {
+    if (color.length === 5) {
         var a = Number.parseInt(color.substr(1, 1), 16) / 15.0;
         var r = Number.parseInt(color.substr(2, 1), 16) * 255 / 15;
         var g = Number.parseInt(color.substr(3, 1), 16) * 255 / 15;
         var b = Number.parseInt(color.substr(4, 1), 16) * 255 / 15;
         return 'rgba(' + r + ', ' + g + ', ' + b + ', ' + a + ')';
     }
-    else if (color.length == 9) {
+    else if (color.length === 9) {
         var a = Number.parseInt(color.substr(1, 2), 16) / 255.0;
         var r = Number.parseInt(color.substr(3, 2), 16);
         var g = Number.parseInt(color.substr(5, 2), 16);
@@ -177,8 +177,8 @@ function setResult(el: HTMLElement, result) {
 
 function setTextStyle(el: HTMLElement, style) {
     function fixHtml(text) {
-		return text.replace(/ size\s*=\s*(['"])(\d+)\1/gm, ' style="font-size:$2px"');
-	}
+        return text.replace(/ size\s*=\s*(['"])(\d+)\1/gm, ' style="font-size:$2px"');
+    }
     
     var text = style.text;
     if (text === undefined) {
@@ -198,14 +198,14 @@ function setTextStyle(el: HTMLElement, style) {
     if ("line-spacing" in style) el.style.lineHeight = (style['font-size'] || 14) * 1.15 + style['line-spacing'] + 'px';
 
     var wrapMode = style["line-break-mode"];
-    if ("char" == wrapMode) {
+    if ("char" === wrapMode) {
         el.style.wordBreak = "break-all";
     } else {
         el.style.wordBreak = "break-word";
     }
 
     var truncationMode = style["truncation-mode"];
-    if ("clip" == truncationMode) {
+    if ("clip" === truncationMode) {
         el.style.overflow = "hidden";
         el.style.textOverflow = "clip";
     }
@@ -215,7 +215,7 @@ function setTextStyle(el: HTMLElement, style) {
     }
 
     var lines = "lines" in style ? parseInt(style["lines"]) : 1;
-    el.style.whiteSpace = lines == 1 ? "pre" : "pre-wrap";
+    el.style.whiteSpace = lines === 1 ? "pre" : "pre-wrap";
     if (lines > 1) {
         // 只支持webkit内核
         el.style["-webkit-line-clamp"] = lines;
@@ -261,44 +261,44 @@ function setTextStyle(el: HTMLElement, style) {
 var BLANK_IMAGE = 'data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==';
 
 function setImageStyle(el: HTMLImageElement, style) {
-    if (style["content-mode"] == "scale-aspect-fit") {
+    if (style["content-mode"] === "scale-aspect-fit") {
         el.style["object-fit"] = "contain";
     }
-    else if (style["content-mode"] == "scale-aspect-fill") {
+    else if (style["content-mode"] === "scale-aspect-fill") {
         el.style["object-fit"] = "cover";
     }
-    else if (style["content-mode"] == "center") {
+    else if (style["content-mode"] === "center") {
         el.style["object-fit"] = "none";
     }
-    else if (style["content-mode"] == "left") {
+    else if (style["content-mode"] === "left") {
         el.style["object-fit"] = "none";
         el.style["object-position"] = "left";
     }
-    else if (style["content-mode"] == "right") {
+    else if (style["content-mode"] === "right") {
         el.style["object-fit"] = "none";
         el.style["object-position"] = "right";
     }
-    else if (style["content-mode"] == "top") {
+    else if (style["content-mode"] === "top") {
         el.style["object-fit"] = "none";
         el.style["object-position"] = "top";
     }
-    else if (style["content-mode"] == "top-left") {
+    else if (style["content-mode"] === "top-left") {
         el.style["object-fit"] = "none";
         el.style["object-position"] = "top left";
     }
-    else if (style["content-mode"] == "top-right") {
+    else if (style["content-mode"] === "top-right") {
         el.style["object-fit"] = "none";
         el.style["object-position"] = "top right";
     }
-    else if (style["content-mode"] == "bottom") {
+    else if (style["content-mode"] === "bottom") {
         el.style["object-fit"] = "none";
         el.style["object-position"] = "bottom";
     }
-    else if (style["content-mode"] == "bottom-left") {
+    else if (style["content-mode"] === "bottom-left") {
         el.style["object-fit"] = "none";
         el.style["object-position"] = "bottom left";
     }
-    else if (style["content-mode"] == "bottom-right") {
+    else if (style["content-mode"] === "bottom-right") {
         el.style["object-fit"] = "none";
         el.style["object-position"] = "bottom right";
     }
@@ -313,7 +313,7 @@ function setImageStyle(el: HTMLImageElement, style) {
         }
         el.srcset = errorImage;
         if (el.srcset.startsWith('file')) {
-            el.srcset =getSrcset(el.srcset);
+            el.srcset = getSrcset(el.srcset);
         }
     }
 
@@ -323,14 +323,14 @@ function setImageStyle(el: HTMLImageElement, style) {
         if (url.match(/^[-0-9a-zA-Z]+$/)) {
             $.post('http://42.156.141.73/django-debug/j_spring_security_check', {'j_username' : 'aliwallet', 'j_password' : ''}, function(data) {
                 var djangoUrl = 'http://42.156.141.73/django-debug/debug/django.jsp?fileId=' + url;
-				$.get(djangoUrl, function(data, status){
-					var re = /href\s*=\s*"(.*image\?.*?)"/;
+                $.get(djangoUrl, function(data, status){
+                    var re = /href\s*=\s*"(.*image\?.*?)"/;
                     var match = data.match(re);
-					if (match) {
+                    if (match) {
                         el.srcset = match[1];
-					}
-				}).fail(onError);
-			}).fail(onError);
+                    }
+                }).fail(onError);
+            }).fail(onError);
         }
         else {
             el.srcset = url;
@@ -443,7 +443,7 @@ function elementFromLayout(layout): HTMLElement {
         var container = document.createElement('div');
         container.appendChild(el);
         container.style.boxSizing = "border-box";
-		container.style.display = "flex";
+        container.style.display = "flex";
         container.style.flexDirection = "column";
         var justifyContent = "center";
         if ("vertical-alignment" in style) {
@@ -454,7 +454,7 @@ function elementFromLayout(layout): HTMLElement {
                 "bottom": "flex-end"
             }[verticalAlignment] || justifyContent;
         }
-		container.style.justifyContent = justifyContent;
+        container.style.justifyContent = justifyContent;
         el = container;
     }
 

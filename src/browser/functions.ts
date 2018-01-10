@@ -1,7 +1,7 @@
 import { Parser } from './parser';
 
 function _for(start, end, step) {
-  if (step == 0) step = 1;
+  if (step === 0) step = 1;
   step = Math.abs(step);
 
   let array = [];

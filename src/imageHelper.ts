@@ -82,7 +82,7 @@ function getImageFiles(dir: string): ImageInfo[] {
     let pathForId = id => {
         let group;
         let path = "";
-        while(true) {
+        while (true) {
             group = groups.find(g => g.children.indexOf(id) >= 0);
             if (group && group.path) {
                 path = group.path + '/' + path;

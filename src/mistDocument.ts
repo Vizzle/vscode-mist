@@ -51,6 +51,11 @@ class Variable {
     node: json.Node;
     uri: vscode.Uri;
 
+    static unique(vars: Variable[]) {
+        let reversed = [...vars].reverse();
+        return vars.filter((v, i) => reversed.findIndex(n => n.name === v.name) === vars.length - i - 1);
+    }
+    
     constructor(name: string, value: any, description?: string, incomplete: boolean = false) {
         this.name = name;
         let a = [[100, 18], [50, 20], [80, 14], [130, 23], [70, 17], [60, 26], [80, 19], [50, 21], [80, 23], [70, 18], [80, 20]];
@@ -72,10 +77,6 @@ class Variable {
         return this;
     }
 
-    static unique(vars: Variable[]) {
-        let reversed = [...vars].reverse();
-        return vars.filter((v, i) => reversed.findIndex(n => n.name === v.name) === vars.length - i - 1);
-    }
 }
 
 function findLastIndex<T>(list: T[], predicate: (element: T) => boolean): number {
@@ -167,7 +168,7 @@ export class JsonString {
         this.escapes = [];
         for (let i = 0; i < origin.length;) {
             let c = origin.charAt(i);
-            if (c == '\\' && i < origin.length - 1) {
+            if (c === '\\' && i < origin.length - 1) {
                 if (i > start) parsed += origin.substring(start, i);
                 c = origin.charAt(i + 1);
                 let sourceIndex = i;
@@ -214,6 +215,8 @@ export class JsonString {
 }
 
 export class MistData {
+    static dataMap: { [dir: string]: { [file: string]: MistData[] } } = {};
+    
     template: string;
     file: string;
     data: {};
@@ -222,8 +225,6 @@ export class MistData {
     end: number;
     index: number;
 
-    static dataMap: { [dir: string]: { [file: string]: MistData[] } } = {};
-    
     static openFile(file: string) {
         let dir = path.dirname(file);
         if (!(dir in this.dataMap)) {
@@ -239,7 +240,7 @@ export class MistData {
                 }
                 else if (obj.type === 'object') {
                     let valueForKey = k => {
-                        let node = obj.children.find(c => c.children[0].value == k);
+                        let node = obj.children.find(c => c.children[0].value === k);
                         return node ? node.children[1] : null;
                     }
                     let templateKeys = ["templateId", "template", "blockId"];
@@ -315,7 +316,7 @@ class MistNode {
     constructor(node: json.Node) {
         this.node = node;
         let children = getPropertyNode(node, 'children');
-        if (children && children.type == 'array') {
+        if (children && children.type === 'array') {
             this.children = children.children.map(n => {
                 let child = new MistNode(n);
                 child.parent = this;
@@ -363,7 +364,7 @@ export function getCurrentExpression(exp: string) {
             case '>':
             case '<':
             case '=':
-                if (Object.keys(braceCount).every(k => braceCount[k] == 0)) {
+                if (Object.keys(braceCount).every(k => braceCount[k] === 0)) {
                     stop = true;
                 }
                 break;
@@ -371,7 +372,7 @@ export function getCurrentExpression(exp: string) {
             case '{':
             case '[':
                 c = braceDict[c];
-                braceCount[c] = (braceCount[c]||0) - 1;
+                braceCount[c] = (braceCount[c] || 0) - 1;
                 if (braceCount[c] < 0) {
                     stop = true;
                 }
@@ -381,7 +382,7 @@ export function getCurrentExpression(exp: string) {
                 let quote = c;
                 while (--index >= 0) {
                     c = exp[index];
-                    if (c == quote) {
+                    if (c === quote) {
                         break;
                     }
                 }
@@ -389,7 +390,7 @@ export function getCurrentExpression(exp: string) {
             case ']':
             case ')':
             case '}':
-                braceCount[c] = (braceCount[c]||0) + 1;
+                braceCount[c] = (braceCount[c] || 0) + 1;
         }
         if (stop) {
             break;
@@ -428,21 +429,21 @@ export function getFunctionParamsCount(exp: string) {
         var c = exp[index];
         switch (c) {
             case ',':
-                if (Object.keys(braceCount).every(k => braceCount[k] == 0)) {
+                if (Object.keys(braceCount).every(k => braceCount[k] === 0)) {
                     commaCount++;
                 }
                 break;
             case '(':
             case '{':
             case '[':
-                braceCount[c] = (braceCount[c]||0) + 1;
+                braceCount[c] = (braceCount[c] || 0) + 1;
                 break;
             case '\'':
             case '"':
                 let quote = c;
                 while (--index >= 0) {
                     c = exp[index];
-                    if (c == quote) {
+                    if (c === quote) {
                         break;
                     }
                 }
@@ -451,7 +452,7 @@ export function getFunctionParamsCount(exp: string) {
             case ')':
             case '}':
                 c = braceDict[c];
-                braceCount[c] = (braceCount[c]||0) - 1;
+                braceCount[c] = (braceCount[c] || 0) - 1;
                 if (braceCount[c] < 0) {
                     stop = true;
                 }
@@ -480,7 +481,7 @@ export function getSignatureInfo(exp: string) {
         var c = exp[index];
         switch (c) {
             case ',':
-                if (Object.keys(braceCount).every(k => braceCount[k] == 0)) {
+                if (Object.keys(braceCount).every(k => braceCount[k] === 0)) {
                     commaCount++;
                 }
                 break;
@@ -488,7 +489,7 @@ export function getSignatureInfo(exp: string) {
             case '{':
             case '[':
                 c = braceDict[c];
-                braceCount[c] = (braceCount[c]||0) - 1;
+                braceCount[c] = (braceCount[c] || 0) - 1;
                 if (braceCount[c] < 0) {
                     stop = true;
                 }
@@ -498,7 +499,7 @@ export function getSignatureInfo(exp: string) {
                 let quote = c;
                 while (--index >= 0) {
                     c = exp[index];
-                    if (c == quote) {
+                    if (c === quote) {
                         break;
                     }
                 }
@@ -506,7 +507,7 @@ export function getSignatureInfo(exp: string) {
             case ']':
             case ')':
             case '}':
-                braceCount[c] = (braceCount[c]||0) + 1;
+                braceCount[c] = (braceCount[c] || 0) + 1;
         }
         if (stop) {
             break;
@@ -590,52 +591,6 @@ export class MistDocument {
     private nodeTree: MistNode;
     private template: any;
 
-    constructor(document: TextDocument) {
-        this.document = document;
-    }
-
-    public clearDatas() {
-        this.datas = null;
-    }
-
-    public getRootNode() : json.Node {
-        return this.rootNode;
-    }
-
-    public getTemplate() {
-        this.parseTemplate();
-        return this.template;
-    }
-
-	public getDatas() {
-        if (!this.datas) {
-            let file = this.document.fileName;
-            let dir = path.dirname(file);
-            let templateId = path.basename(file, ".mist");
-            this.datas = MistData.getData(dir, templateId);
-        }
-        return this.datas;
-	}
-
-    public setData(file: string, index: number) {
-        this.dataFile = file;
-        this.dataIndex = index;
-    }
-
-    public getData() {
-        let datas = this.getDatas();
-        if (datas && datas.length > 0) {
-            if (this.dataFile == null) {
-                this.dataFile = datas[0].file;
-            }
-            let filterdDatas = datas.filter(d => d.file === this.dataFile);
-            if (this.dataIndex < filterdDatas.length) {
-                return filterdDatas[this.dataIndex];
-            }
-        }
-        return null;
-    }
-
     public static getDocumentByUri(uri: Uri) {
         return MistDocument.documents[uri.toString()];
     }
@@ -678,9 +633,50 @@ export class MistDocument {
         }
     }
     
-    private onDidChangeTextDocument(event: TextDocumentChangeEvent) {
-        this.template = null;
-        this.rootNode = null;
+    constructor(document: TextDocument) {
+        this.document = document;
+    }
+
+    public clearDatas() {
+        this.datas = null;
+    }
+
+    public getRootNode(): json.Node {
+        return this.rootNode;
+    }
+
+    public getTemplate() {
+        this.parseTemplate();
+        return this.template;
+    }
+
+    public getDatas() {
+        if (!this.datas) {
+            let file = this.document.fileName;
+            let dir = path.dirname(file);
+            let templateId = path.basename(file, ".mist");
+            this.datas = MistData.getData(dir, templateId);
+        }
+        return this.datas;
+    }
+
+    public setData(file: string, index: number) {
+        this.dataFile = file;
+        this.dataIndex = index;
+    }
+
+    public getData() {
+        let datas = this.getDatas();
+        if (datas && datas.length > 0) {
+            if (this.dataFile == null) {
+                this.dataFile = datas[0].file;
+            }
+            let filterdDatas = datas.filter(d => d.file === this.dataFile);
+            if (this.dataIndex < filterdDatas.length) {
+                return filterdDatas[this.dataIndex];
+            }
+        }
+        return null;
     }
 
     public dir() {
@@ -688,394 +684,6 @@ export class MistDocument {
             return path.dirname(this.document.fileName);
         }
         return vscode.workspace.rootPath;
-    }
-
-    private parseTemplate() {
-        if (!this.rootNode || !this.template) {
-            this.rootNode = parseJson(this.document.getText());
-            if (this.rootNode) {
-                this.template = getNodeValue(this.rootNode);
-                let layoutNode = getPropertyNode(this.rootNode, "layout");
-                if (layoutNode) {
-                    this.nodeTree = new MistNode(layoutNode);
-                }
-            }
-        }
-    }
-
-    // "abc ${expression1} ${a + max(a, b.c|) + d} xxx" -> ") + d"
-    private getTrailingExpressionAtLocation(location: json.Location, position: vscode.Position) {
-        let document = this.document;
-        if (!location.isAtPropertyKey && location.previousNode.type == 'string') {
-            let start = location.previousNode.offset + 1;
-            let end = location.previousNode.offset + location.previousNode.length - 1;
-            let str = document.getText(new vscode.Range(document.positionAt(start), document.positionAt(end)));
-            let pos = document.offsetAt(position) - start;
-            let match;
-            MIST_EXP_RE.lastIndex = 0;
-            while (match = MIST_EXP_RE.exec(str)) {
-                if (pos >= match.index + 2 && pos <= match.index + match[0].length - 1) {
-                    let str = match[0].slice(pos - match.index, -1);
-                    return json.parse(`"${str}"`);
-                }
-            }
-        }
-        return null;
-    }
-
-    // "abc ${expression1} ${a + max(a, b.c|) + d} xxx" -> "a + max(a, b.c"
-    private getExpressionAtLocation(location: json.Location, position: vscode.Position) {
-        let document = this.document;
-        if (!location.isAtPropertyKey && location.previousNode && location.previousNode.type == 'string') {
-            let start = location.previousNode.offset + 1;
-            let end = location.previousNode.offset + location.previousNode.length - 1;
-            let str = document.getText(new vscode.Range(document.positionAt(start), document.positionAt(end)));
-            let pos = document.offsetAt(position) - start;
-            let match;
-            MIST_EXP_RE.lastIndex = 0;
-            while (match = MIST_EXP_RE.exec(str)) {
-                if (pos >= match.index + 2 && pos <= match.index + match[0].length - 1) {
-                    let str = match[0].substring(2, pos - match.index);
-                    return json.parse(`"${str}"`);
-                }
-            }
-        }
-        return null;
-    }
-
-    private nodeAtOffset(node: MistNode, offset: number) {
-        if (offset > node.node.offset && offset < node.node.offset + node.node.length) {
-            if (node.children) {
-                for (let child of node.children) {
-                    let node = this.nodeAtOffset(child, offset);
-                    if (node) {
-                        return node;
-                    }
-                }
-            }
-            return node;
-        }
-        return null;
-    }
-
-    private nodePath(path: json.Segment[]): json.Segment[] {
-        if (path.length > 0 && path[0] == "layout") {
-            let start = 1;
-            while (start + 1 < path.length && path[start] == "children" && path[start + 1] as number != undefined) {
-                start += 2;
-            }
-            return path.slice(start);
-        }
-        
-        return null;
-    }
-
-    private nodeAtPath(path: json.Segment[]) {
-        if (!(path.length >= 1 && path[0] === 'layout')) {
-            return null;
-        }
-        path.splice(0, 1);
-        let node = this.nodeTree;
-        while (path.length >= 2 && path[0] === 'children' && typeof(path[1]) === 'number') {
-            node = node.children[path[1]];
-            path.splice(0, 2);
-        }
-        return node;
-    }
-
-    private computeExpressionValueInObject(obj: any, context: ExpressionContext) {
-        if (obj instanceof ExpressionNode) {
-            return obj.compute(context);
-        }
-        else if (obj instanceof Array) {
-            let list = obj.map(o => this.computeExpressionValueInObject(o, context));
-            return list.some(v => v === None) ? None : list;
-        }
-        else if (obj && obj !== None && typeof(obj) === 'object') {
-            let values = Object.keys(obj).map(k => this.computeExpressionValueInObject(obj[k], context));
-            if (values.some(v => v === None)) return None;
-            return Object.keys(obj).reduce((p, c, i) => { p[c] = values[i]; return p; }, {});
-        }
-        return obj;
-    }
-
-    private computeExpressionTypeInObject(obj: any, context: ExpressionContext) {
-        if (obj instanceof ExpressionNode) {
-            return obj.getType(context);
-        }
-        else if (obj instanceof Array) {
-            return new ArrayType(IntersectionType.type(obj.map(o => this.computeExpressionTypeInObject(o, context))));
-        }
-        else if (obj && obj !== None && typeof(obj) === 'object') {
-            return new ObjectType(Object.keys(obj).reduce((p, c) => { p[c] = this.computeExpressionTypeInObject(obj[c], context); return p; }, {}));
-        }
-        return Type.typeof(obj);
-    }
-
-    private hasExpression(obj: any) {
-        if (obj instanceof ExpressionNode) {
-            return true;
-        }
-        else if (obj instanceof Array) {
-            return obj.some(o => this.hasExpression(o));
-        }
-        else if (obj && obj !== None && typeof(obj) === 'object') {
-            return Object.keys(obj).some(k => this.hasExpression(obj[k]));
-        }
-        return false;
-    }
-
-    private contextAtLocation(location: json.Location): {
-        vars: Variable[],
-        valueContext: ExpressionContext,
-        typeContext: ExpressionContext
-    } {
-        let vars: Variable[] = [];
-        let typeContext = new ExpressionContext();
-        let valueContext = new ExpressionContext();
-
-        let pushVariable = (v: Variable) => {
-            vars.push(v);
-            let isExp = false;
-            let parsed = parseExpressionInObject(v.value);
-            if (this.hasExpression(parsed)) {
-                isExp = true;
-                v.computed = this.computeExpressionValueInObject(parsed, valueContext);
-
-                if (!v.type) {
-                    v.type = this.computeExpressionTypeInObject(parsed, typeContext);
-                }
-            }
-            valueContext.push(v.name, isExp ? v.computed : v.value);
-            if (!v.type) {
-                v.type = Type.typeof(v.value) || Type.Any;
-            }
-            if (v.incomplete && v.type instanceof ObjectType) {
-                v.type.setIndexType();
-            }
-            typeContext.push(v.name, v.type);
-        };
-        let push = (key, value) => pushVariable(new Variable(key, value));
-        let pushDict = dict => Object.keys(dict).forEach(key => push(key, dict[key]));
-        let pushVarsDict = (node: json.Node) => {
-            if (!node) return [];
-            let pushed = [];
-            node.children.forEach(c => {
-                if (c.children.length == 2) {
-                    let key = c.children[0].value;
-                    pushVariable(new Variable(key, getNodeValue(c.children[1])).setNode(c));
-                    pushed.push(key);
-                }
-            });
-            return pushed;
-        }
-        
-        BUILTIN_VARS.forEach(pushVariable);
-        
-        let data = this.getData();
-        let dataDict = data ? data.data : {};
-
-        if (data) {
-            data.node.children.forEach(c => {
-                if (c.children.length == 2) {
-                    let key = c.children[0].value;
-                    pushVariable(new Variable(key, getNodeValue(c.children[1])).setNode(c, data.file));
-                }
-            });
-        }
-        
-        pushVariable(new Variable('_data_', dataDict, '模版关联的数据', true));
-
-        if (this.template.data instanceof Object) {
-            dataDict = {...dataDict, ...this.template.data};
-        }
-        pushVarsDict(json.findNodeAtLocation(this.rootNode, ['data']));
-
-        pushVariable(new Variable('_data_', dataDict, '模版关联的数据', true));
-
-        if (location.path[0] !== 'data' && location.path[0] !== 'state') {
-            pushVariable(new Variable('state', this.template.state || null, '模版状态', true));
-        }
-        
-        let path = [...location.path];
-        let node = this.nodeAtPath(path);
-        let inVars = path.length > 0 && path[0] === 'vars';
-        let inRepeat = path.length > 0 && path[0] === 'repeat';
-        let nodeStack = [];
-        while (node) {
-            nodeStack.push(node);
-            node = node.parent;
-        }
-        while (nodeStack.length > 0) {
-            let node = nodeStack.pop();
-            if (!(inRepeat && nodeStack.length === 0)) {
-                let repeatNode = getPropertyNode(node.node, 'repeat');
-                if (repeatNode) {
-                    pushVariable(new Variable('_index_', Type.Number, '当前 `repeat` 元素索引'));
-                    let repeat = parseExpressionInObject(json.getNodeValue(repeatNode));
-                    let repeatType = this.computeExpressionTypeInObject(repeat, typeContext);
-                    let valueType = repeatType instanceof ArrayType ? repeatType.getElementsType()
-                        : repeatType === Type.Number ? Type.Null : Type.Any; 
-                    pushVariable(new Variable('_item_', valueType, '当前 `repeat` 元素'));
-                }
-                let varsNode = getPropertyNode(node.node, 'vars');
-                if (varsNode) {
-                    if (varsNode.type === 'array') {
-                        var count = varsNode.children.length;
-                        if (path.length >= 2 && path[0] === 'vars' && typeof(path[1]) === 'number') {
-                            count = path[1] as number;
-                        }
-                        for (var i = 0; i < count; i++) {
-                            pushVarsDict(varsNode.children[i]);
-                        }
-                    }
-                    else if (varsNode.type === 'object') {
-                        pushVarsDict(varsNode);
-                    }
-                }
-            }
-        }
-
-        return {
-            vars: Variable.unique(vars),
-            valueContext: valueContext,
-            typeContext: typeContext   
-        };
-    }
-
-    private expressionTypeWithContext(expression: string, context: ExpressionContext) {
-        let { expression: node, errorMessage: error } = parse(expression);
-        if (error || !node) {
-            return null;
-        }
-        else {
-            return node.getType(context);
-        }
-    }
-
-    private expressionValueWithContext(expression: string, context: ExpressionContext) {
-        let { expression: node, errorMessage: error } = parse(expression);
-        if (error || !node) {
-            return null;
-        }
-        else {
-            return node.compute(context);
-        }
-    }
-
-    private getPropertiesWithPath(properties, path: json.Segment[]) {
-        if (path.length == 1) {
-            return properties instanceof Object ? properties : {};
-        }
-        else if (path.length > 1) {
-            let key = path[0];
-            if (typeof key === "string" && key.startsWith("on-") && key.endsWith("-once")) {
-                key = key.substring(0, key.length - 5);
-                if (!(properties[key] instanceof PropertyInfo && properties[key].type === Event)) {
-                    return {};
-                }
-            }
-            let info = properties[key];
-            if (info) {
-                return this.getPropertiesWithPath(info.type, path.slice(1));
-            }
-        }
-        return {};
-    }
-
-    private getProperties(rootNode: json.Node, location: json.Location) {
-        let properties = {};
-        let currentPath = location.path.length > 0 ? location.path[location.path.length - 1] : '';
-
-        if (location.path.length == 0) {
-            return null;
-        }
-        else if (location.path.length == 1) {
-            properties = Object.assign(properties, Properties.templateProperties);
-        }
-        else if (location.path[0] == 'styles' && location.path.length >= 3) {
-            let propertiesMap = {};
-            propertiesMap = Object.assign(propertiesMap, {'node': Properties.baseProperties});
-            propertiesMap = Object.assign(propertiesMap, Properties.nodeProperties);
-
-            let allProperties = {};
-            let path = [<json.Segment>'style'].concat(location.path.slice(2));
-            Object.keys(propertiesMap).forEach(type => {
-                let typeProperties = this.getPropertiesWithPath(propertiesMap[type], path);
-                Object.keys(typeProperties).forEach(key => {
-                    if (!(key in allProperties)) {
-                        allProperties[key] = {};
-                    }
-                    allProperties[key][type] = typeProperties[key];
-                })
-            });
-
-            Object.keys(allProperties).forEach(key => {
-                let value = allProperties[key];
-                let types = Object.keys(value);
-                let desc = types.map(k => {
-                    let info = value[k];
-                    return `<${k}> ` + (info instanceof PropertyInfo ? info.desc || 'no description' : 'no description');
-                }).join('\n\n');
-                let firstInfo = value[types[0]];
-                allProperties[key] = new PropertyInfo(firstInfo instanceof PropertyInfo ? firstInfo.type : BasicType.Other, desc);
-            });
-            properties = allProperties;
-        }
-        else if (location.path[0] == 'layout') {
-            let path = [...location.path];
-            let node = this.nodeAtPath(path);
-            if (!node) {
-                return [];
-            }
-            let type = node.type();
-            let nodeProperties = Properties.nodeProperties[type] || {};
-
-            properties = Object.assign(properties, this.getPropertiesWithPath(Properties.baseProperties, path));
-            properties = Object.assign(properties, this.getPropertiesWithPath(nodeProperties, path));
-        }
-
-        let keys = Object.keys(properties);
-        keys.forEach(key => {
-            if (key.startsWith("on-")) {
-                let info: PropertyInfo = properties[key];
-                if (info.type === Event) {
-                    let once = new PropertyInfo(info.type, `${info.desc || ""}（只触发一次）`, info.defaultValue);
-                    properties[`${key}-once`] = once;
-                }
-            }
-        })
-
-        if (location.isAtPropertyKey) {
-            let node = json.findNodeAtLocation(rootNode, location.path.slice(0, location.path.length - 1));
-            if (node) {
-                let existsProperties = node.children.map(p => p.children[0].value);
-                if (existsProperties) {
-                    var index = existsProperties.indexOf(currentPath as string, 0);
-                    if (index >= 0) {
-                        existsProperties.splice(index, 1);
-                    }
-                    existsProperties.forEach(p => {
-                        delete properties[p];
-                    });
-                }
-            }
-        }
-        else {
-            let info: PropertyInfo = properties[currentPath];
-            properties = {};
-            if (info && info.isEnumProperty()) {
-                let propertyType = info.type === Properties.colors ? BasicType.Color : BasicType.Enum;
-                if (info.type instanceof Array) {
-                    (<Array<string>>info.type).forEach(v => properties[v] = new PropertyInfo(propertyType, ""));
-                }
-                else {
-                    Object.keys(info.type).forEach(k => properties[k] = new PropertyInfo(propertyType, info.type[k]));
-                }
-            }
-        }
-
-        return properties;
     }
 
     public provideCompletionItems(position: vscode.Position, token: vscode.CancellationToken) {
@@ -1099,7 +707,7 @@ export class MistDocument {
                     type = this.expressionTypeWithContext(prefix, ctx.typeContext);
                 }
                 else {
-                    if (document.getText(new vscode.Range(position.translate(0,-1), position)) == '.') {
+                    if (document.getText(new vscode.Range(position.translate(0, -1), position)) === '.') {
                         return [];
                     }
                     type = Type.Global;
@@ -1107,10 +715,10 @@ export class MistDocument {
 
                     ctx.vars.forEach(v => {
                         let item = new CompletionItem(v.name, vscode.CompletionItemKind.Field);
-                        item.detail = v.value !== None ? `"${v.name}": ${JSON.stringify(v.value,null,'\t')}` : `${v.name}: ${v.type.getName()}`;
+                        item.detail = v.value !== None ? `"${v.name}": ${JSON.stringify(v.value, null, '\t')}` : `${v.name}: ${v.type.getName()}`;
                         let doc = [];
-                        if (v.computed != None) {
-                            doc.push(JSON.stringify(v.computed,null,'\t'));
+                        if (v.computed !== None) {
+                            doc.push(JSON.stringify(v.computed, null, '\t'));
                         }
                         else if (v.type && v.value === None) {
                             doc.push(v.type.getName());
@@ -1141,7 +749,7 @@ export class MistDocument {
                         let item = new vscode.CompletionItem(k, vscode.CompletionItemKind.Method);
                         let funInfo = m[0];
                         let params = funInfo.params || [];
-                        let noParams = params.length == 0 && m.length == 1;
+                        let noParams = params.length === 0 && m.length === 1;
                         item.insertText = new vscode.SnippetString(k + (noParams ? '()' : '($0)'));
                         if (!noParams) {
                             item.command = {
@@ -1194,7 +802,7 @@ export class MistDocument {
 
                 let valueText = '';
                 let comma = false;
-                if (document.lineAt(position.line).text.substr(position.character+1).match(/^\s*"/)) {
+                if (document.lineAt(position.line).text.substr(position.character + 1).match(/^\s*"/)) {
                     comma = true;
                 }
                 else if (position.line + 1 < document.lineCount && document.lineAt(position.line + 1).text.match(/^\s*"/)) {
@@ -1230,7 +838,7 @@ export class MistDocument {
             let nodePath = this.nodePath(location.path);
             if (!nodePath) return propertyItems;
             let snippets: any = Snippets.nodeSnippets;
-            if (nodePath.length == 0) {
+            if (nodePath.length === 0) {
                 let trialingText = this.document.getText(new vscode.Range(position, position.translate(3, 0)));
                 let needTrialingComma = /^\s*\{/m.test(trialingText);
                 snippets = Object.keys(snippets).reduce((p, c) => {
@@ -1239,7 +847,7 @@ export class MistDocument {
                     return p;
                 }, {});
             }
-            else if (nodePath.length == 1 && location.isAtPropertyKey) {
+            else if (nodePath.length === 1 && location.isAtPropertyKey) {
                 let node = this.nodeAtPath(location.path);
                 if (node.node.children.length > 0) {
                     return propertyItems;
@@ -1256,15 +864,6 @@ export class MistDocument {
         }
 
         return propertyItems;
-    }
-
-    private propertyName(name: string, property: Property) {
-        return `${property.ownerType !== Type.Global ? '(property) ' : ''}${property.ownerType && property.ownerType !== Type.Global ? property.ownerType.getName() + '.' : ''}${name}: ${property.type.getName()}`;
-    }
-
-    private methodName(name: string, method: Method, count: number) {
-        let returnType = method.type ? method.type.getName() : 'void';
-        return `${method.ownerType !== Type.Global ? '(method) ' : ''}${method.ownerType && method.ownerType !== Type.Global ? method.ownerType.getName() + '.' : ''}${name}(${(method.params || []).map(p => `${p.name}: ${p.type.getName()}`).join(', ')}): ${returnType}${count > 1 ? ` (+${count - 1} overload${count > 2 ? 's' : ''})` : ''}`
     }
 
     public provideHover(position: vscode.Position, token: vscode.CancellationToken): vscode.ProviderResult<vscode.Hover> {
@@ -1307,7 +906,7 @@ export class MistDocument {
         
         let document = this.document;
         let wordRange = document.getWordRangeAtPosition(position);
-        if (wordRange == null || wordRange.start == wordRange.end) {
+        if (wordRange == null || wordRange.start === wordRange.end) {
             return;
         }
         let location = json.getLocation(document.getText(), document.offsetAt(position));
@@ -1328,10 +927,10 @@ export class MistDocument {
                 let v = ctx.vars.find(v => v.name === func);
                 if (v) {
                     if (v.value !== None) {
-                        contents.push({ language: 'mist', value: `"${v.name}": ${JSON.stringify(v.value,null,'\t')}` });
+                        contents.push({ language: 'mist', value: `"${v.name}": ${JSON.stringify(v.value, null, '\t')}` });
                     }
                     if (v.computed !== None) {
-                        contents.push({ language: 'json', value: JSON.stringify(v.computed,null,'\t') });
+                        contents.push({ language: 'json', value: JSON.stringify(v.computed, null, '\t') });
                     }
                     if (v.type) {
                         contents.push({ language: 'typescript', value: v.type.getName() });
@@ -1365,7 +964,7 @@ export class MistDocument {
                 else {
                     let value = this.expressionValueWithContext(expression, ctx.valueContext);
                     if (value !== None && value !== undefined) {
-                        contents.push({ language: 'json', value: JSON.stringify(value,null,'\t') });
+                        contents.push({ language: 'json', value: JSON.stringify(value, null, '\t') });
                     }
                     let prop = type.getProperty(func);
                     if (prop) {
@@ -1373,7 +972,7 @@ export class MistDocument {
                     }
                     else {
                         let fun = type.getMethod(func, 0);
-                        if (fun && fun.type && fun.type != Type.Void) {
+                        if (fun && fun.type && fun.type !== Type.Void) {
                             contents.push({language: 'typescript', value: this.methodName(func, fun, type.getMethods(func).length)});
                         }
                     }
@@ -1412,7 +1011,7 @@ export class MistDocument {
     public provideDefinition(position: vscode.Position, token: vscode.CancellationToken): vscode.ProviderResult<vscode.Definition> {
         let document = this.document;
         let wordRange = document.getWordRangeAtPosition(position);
-        if (wordRange == null || wordRange.start == wordRange.end) {
+        if (wordRange == null || wordRange.start === wordRange.end) {
             return null;
         }
         let location = json.getLocation(document.getText(), document.offsetAt(position));
@@ -1485,25 +1084,6 @@ export class MistDocument {
         return null;
     }
 
-    private findExpressionsInString(stringNode: json.Node): {
-        string: JsonString,
-        offset: number
-    }[] {
-        let position = this.document.positionAt(stringNode.offset);
-        let rawString = this.document.getText(new vscode.Range(position, position.translate(0, stringNode.length)));
-        const re = /\$\{(.*?)\}/mg;
-        re.lastIndex = 0;
-        let results = [];
-        let match: RegExpExecArray;
-        while (match = re.exec(rawString)) {
-            results.push({
-                string: new JsonString(match[1]),
-                offset: match.index + 2
-            });
-        }
-        return results;
-    }
-
     public validate(): vscode.Diagnostic[] {
         this.parseTemplate();
         if (!this.template) return [];
@@ -1554,7 +1134,7 @@ export class MistDocument {
         let pushVarsDict = (node: json.Node) => {
             let pushed = [];
             node.children.forEach(c => {
-                if (c.children.length == 2) {
+                if (c.children.length === 2) {
                     let key = c.children[0].value;
                     pushVariable(new Variable(key, getNodeValue(c.children[1])).setNode(c));
                     pushed.push(key);
@@ -1698,7 +1278,7 @@ export class MistDocument {
                 }
             }
             const list = ['repeat', 'vars', 'children'];
-            let otherNodes = node.node.children.filter(n => n.children.length == 2 && list.indexOf(n.children[0].value) < 0).map(n => n.children[1]);
+            let otherNodes = node.node.children.filter(n => n.children.length === 2 && list.indexOf(n.children[0].value) < 0).map(n => n.children[1]);
             otherNodes.forEach(validate);
 
             if (node.children) {
@@ -1710,6 +1290,427 @@ export class MistDocument {
         validateNode(this.nodeTree);
         
         return diagnostics;
+    }
+
+    private onDidChangeTextDocument(event: TextDocumentChangeEvent) {
+        this.template = null;
+        this.rootNode = null;
+    }
+
+    private parseTemplate() {
+        if (!this.rootNode || !this.template) {
+            this.rootNode = parseJson(this.document.getText());
+            if (this.rootNode) {
+                this.template = getNodeValue(this.rootNode);
+                let layoutNode = getPropertyNode(this.rootNode, "layout");
+                if (layoutNode) {
+                    this.nodeTree = new MistNode(layoutNode);
+                }
+            }
+        }
+    }
+
+    // "abc ${expression1} ${a + max(a, b.c|) + d} xxx" -> ") + d"
+    private getTrailingExpressionAtLocation(location: json.Location, position: vscode.Position) {
+        let document = this.document;
+        if (!location.isAtPropertyKey && location.previousNode.type === 'string') {
+            let start = location.previousNode.offset + 1;
+            let end = location.previousNode.offset + location.previousNode.length - 1;
+            let str = document.getText(new vscode.Range(document.positionAt(start), document.positionAt(end)));
+            let pos = document.offsetAt(position) - start;
+            let match;
+            MIST_EXP_RE.lastIndex = 0;
+            while (match = MIST_EXP_RE.exec(str)) {
+                if (pos >= match.index + 2 && pos <= match.index + match[0].length - 1) {
+                    let str = match[0].slice(pos - match.index, -1);
+                    return json.parse(`"${str}"`);
+                }
+            }
+        }
+        return null;
+    }
+
+    // "abc ${expression1} ${a + max(a, b.c|) + d} xxx" -> "a + max(a, b.c"
+    private getExpressionAtLocation(location: json.Location, position: vscode.Position) {
+        let document = this.document;
+        if (!location.isAtPropertyKey && location.previousNode && location.previousNode.type === 'string') {
+            let start = location.previousNode.offset + 1;
+            let end = location.previousNode.offset + location.previousNode.length - 1;
+            let str = document.getText(new vscode.Range(document.positionAt(start), document.positionAt(end)));
+            let pos = document.offsetAt(position) - start;
+            let match;
+            MIST_EXP_RE.lastIndex = 0;
+            while (match = MIST_EXP_RE.exec(str)) {
+                if (pos >= match.index + 2 && pos <= match.index + match[0].length - 1) {
+                    let str = match[0].substring(2, pos - match.index);
+                    return json.parse(`"${str}"`);
+                }
+            }
+        }
+        return null;
+    }
+
+    private nodeAtOffset(node: MistNode, offset: number) {
+        if (offset > node.node.offset && offset < node.node.offset + node.node.length) {
+            if (node.children) {
+                for (let child of node.children) {
+                    let node = this.nodeAtOffset(child, offset);
+                    if (node) {
+                        return node;
+                    }
+                }
+            }
+            return node;
+        }
+        return null;
+    }
+
+    private nodePath(path: json.Segment[]): json.Segment[] {
+        if (path.length > 0 && path[0] === "layout") {
+            let start = 1;
+            while (start + 1 < path.length && path[start] === "children" && path[start + 1] as number !== undefined) {
+                start += 2;
+            }
+            return path.slice(start);
+        }
+        
+        return null;
+    }
+
+    private nodeAtPath(path: json.Segment[]) {
+        if (!(path.length >= 1 && path[0] === 'layout')) {
+            return null;
+        }
+        path.splice(0, 1);
+        let node = this.nodeTree;
+        while (path.length >= 2 && path[0] === 'children' && typeof(path[1]) === 'number') {
+            node = node.children[path[1]];
+            path.splice(0, 2);
+        }
+        return node;
+    }
+
+    private computeExpressionValueInObject(obj: any, context: ExpressionContext) {
+        if (obj instanceof ExpressionNode) {
+            return obj.compute(context);
+        }
+        else if (obj instanceof Array) {
+            let list = obj.map(o => this.computeExpressionValueInObject(o, context));
+            return list.some(v => v === None) ? None : list;
+        }
+        else if (obj && obj !== None && typeof(obj) === 'object') {
+            let values = Object.keys(obj).map(k => this.computeExpressionValueInObject(obj[k], context));
+            if (values.some(v => v === None)) return None;
+            return Object.keys(obj).reduce((p, c, i) => { p[c] = values[i]; return p; }, {});
+        }
+        return obj;
+    }
+
+    private computeExpressionTypeInObject(obj: any, context: ExpressionContext) {
+        if (obj instanceof ExpressionNode) {
+            return obj.getType(context);
+        }
+        else if (obj instanceof Array) {
+            return new ArrayType(IntersectionType.type(obj.map(o => this.computeExpressionTypeInObject(o, context))));
+        }
+        else if (obj && obj !== None && typeof(obj) === 'object') {
+            return new ObjectType(Object.keys(obj).reduce((p, c) => { p[c] = this.computeExpressionTypeInObject(obj[c], context); return p; }, {}));
+        }
+        return Type.typeof(obj);
+    }
+
+    private hasExpression(obj: any) {
+        if (obj instanceof ExpressionNode) {
+            return true;
+        }
+        else if (obj instanceof Array) {
+            return obj.some(o => this.hasExpression(o));
+        }
+        else if (obj && obj !== None && typeof(obj) === 'object') {
+            return Object.keys(obj).some(k => this.hasExpression(obj[k]));
+        }
+        return false;
+    }
+
+    private contextAtLocation(location: json.Location): {
+        vars: Variable[],
+        valueContext: ExpressionContext,
+        typeContext: ExpressionContext
+    } {
+        let vars: Variable[] = [];
+        let typeContext = new ExpressionContext();
+        let valueContext = new ExpressionContext();
+
+        let pushVariable = (v: Variable) => {
+            vars.push(v);
+            let isExp = false;
+            let parsed = parseExpressionInObject(v.value);
+            if (this.hasExpression(parsed)) {
+                isExp = true;
+                v.computed = this.computeExpressionValueInObject(parsed, valueContext);
+
+                if (!v.type) {
+                    v.type = this.computeExpressionTypeInObject(parsed, typeContext);
+                }
+            }
+            valueContext.push(v.name, isExp ? v.computed : v.value);
+            if (!v.type) {
+                v.type = Type.typeof(v.value) || Type.Any;
+            }
+            if (v.incomplete && v.type instanceof ObjectType) {
+                v.type.setIndexType();
+            }
+            typeContext.push(v.name, v.type);
+        };
+        let push = (key, value) => pushVariable(new Variable(key, value));
+        let pushDict = dict => Object.keys(dict).forEach(key => push(key, dict[key]));
+        let pushVarsDict = (node: json.Node) => {
+            if (!node) return [];
+            let pushed = [];
+            node.children.forEach(c => {
+                if (c.children.length === 2) {
+                    let key = c.children[0].value;
+                    pushVariable(new Variable(key, getNodeValue(c.children[1])).setNode(c));
+                    pushed.push(key);
+                }
+            });
+            return pushed;
+        }
+        
+        BUILTIN_VARS.forEach(pushVariable);
+        
+        let data = this.getData();
+        let dataDict = data ? data.data : {};
+
+        if (data) {
+            data.node.children.forEach(c => {
+                if (c.children.length === 2) {
+                    let key = c.children[0].value;
+                    pushVariable(new Variable(key, getNodeValue(c.children[1])).setNode(c, data.file));
+                }
+            });
+        }
+        
+        pushVariable(new Variable('_data_', dataDict, '模版关联的数据', true));
+
+        if (this.template.data instanceof Object) {
+            dataDict = {...dataDict, ...this.template.data};
+        }
+        pushVarsDict(json.findNodeAtLocation(this.rootNode, ['data']));
+
+        pushVariable(new Variable('_data_', dataDict, '模版关联的数据', true));
+
+        if (location.path[0] !== 'data' && location.path[0] !== 'state') {
+            pushVariable(new Variable('state', this.template.state || null, '模版状态', true));
+        }
+        
+        let path = [...location.path];
+        let node = this.nodeAtPath(path);
+        let inVars = path.length > 0 && path[0] === 'vars';
+        let inRepeat = path.length > 0 && path[0] === 'repeat';
+        let nodeStack = [];
+        while (node) {
+            nodeStack.push(node);
+            node = node.parent;
+        }
+        while (nodeStack.length > 0) {
+            let node = nodeStack.pop();
+            if (!(inRepeat && nodeStack.length === 0)) {
+                let repeatNode = getPropertyNode(node.node, 'repeat');
+                if (repeatNode) {
+                    pushVariable(new Variable('_index_', Type.Number, '当前 `repeat` 元素索引'));
+                    let repeat = parseExpressionInObject(json.getNodeValue(repeatNode));
+                    let repeatType = this.computeExpressionTypeInObject(repeat, typeContext);
+                    let valueType = repeatType instanceof ArrayType ? repeatType.getElementsType()
+                        : repeatType === Type.Number ? Type.Null : Type.Any; 
+                    pushVariable(new Variable('_item_', valueType, '当前 `repeat` 元素'));
+                }
+                let varsNode = getPropertyNode(node.node, 'vars');
+                if (varsNode) {
+                    if (varsNode.type === 'array') {
+                        var count = varsNode.children.length;
+                        if (path.length >= 2 && path[0] === 'vars' && typeof(path[1]) === 'number') {
+                            count = path[1] as number;
+                        }
+                        for (var i = 0; i < count; i++) {
+                            pushVarsDict(varsNode.children[i]);
+                        }
+                    }
+                    else if (varsNode.type === 'object') {
+                        pushVarsDict(varsNode);
+                    }
+                }
+            }
+        }
+
+        return {
+            vars: Variable.unique(vars),
+            valueContext: valueContext,
+            typeContext: typeContext   
+        };
+    }
+
+    private expressionTypeWithContext(expression: string, context: ExpressionContext) {
+        let { expression: node, errorMessage: error } = parse(expression);
+        if (error || !node) {
+            return null;
+        }
+        else {
+            return node.getType(context);
+        }
+    }
+
+    private expressionValueWithContext(expression: string, context: ExpressionContext) {
+        let { expression: node, errorMessage: error } = parse(expression);
+        if (error || !node) {
+            return null;
+        }
+        else {
+            return node.compute(context);
+        }
+    }
+
+    private getPropertiesWithPath(properties, path: json.Segment[]) {
+        if (path.length === 1) {
+            return properties instanceof Object ? properties : {};
+        }
+        else if (path.length > 1) {
+            let key = path[0];
+            if (typeof key === "string" && key.startsWith("on-") && key.endsWith("-once")) {
+                key = key.substring(0, key.length - 5);
+                if (!(properties[key] instanceof PropertyInfo && properties[key].type === Event)) {
+                    return {};
+                }
+            }
+            let info = properties[key];
+            if (info) {
+                return this.getPropertiesWithPath(info.type, path.slice(1));
+            }
+        }
+        return {};
+    }
+
+    private getProperties(rootNode: json.Node, location: json.Location) {
+        let properties = {};
+        let currentPath = location.path.length > 0 ? location.path[location.path.length - 1] : '';
+
+        if (location.path.length === 0) {
+            return null;
+        }
+        else if (location.path.length === 1) {
+            properties = Object.assign(properties, Properties.templateProperties);
+        }
+        else if (location.path[0] === 'styles' && location.path.length >= 3) {
+            let propertiesMap = {};
+            propertiesMap = Object.assign(propertiesMap, {'node': Properties.baseProperties});
+            propertiesMap = Object.assign(propertiesMap, Properties.nodeProperties);
+
+            let allProperties = {};
+            let path = [<json.Segment>'style'].concat(location.path.slice(2));
+            Object.keys(propertiesMap).forEach(type => {
+                let typeProperties = this.getPropertiesWithPath(propertiesMap[type], path);
+                Object.keys(typeProperties).forEach(key => {
+                    if (!(key in allProperties)) {
+                        allProperties[key] = {};
+                    }
+                    allProperties[key][type] = typeProperties[key];
+                })
+            });
+
+            Object.keys(allProperties).forEach(key => {
+                let value = allProperties[key];
+                let types = Object.keys(value);
+                let desc = types.map(k => {
+                    let info = value[k];
+                    return `<${k}> ` + (info instanceof PropertyInfo ? info.desc || 'no description' : 'no description');
+                }).join('\n\n');
+                let firstInfo = value[types[0]];
+                allProperties[key] = new PropertyInfo(firstInfo instanceof PropertyInfo ? firstInfo.type : BasicType.Other, desc);
+            });
+            properties = allProperties;
+        }
+        else if (location.path[0] === 'layout') {
+            let path = [...location.path];
+            let node = this.nodeAtPath(path);
+            if (!node) {
+                return [];
+            }
+            let type = node.type();
+            let nodeProperties = Properties.nodeProperties[type] || {};
+
+            properties = Object.assign(properties, this.getPropertiesWithPath(Properties.baseProperties, path));
+            properties = Object.assign(properties, this.getPropertiesWithPath(nodeProperties, path));
+        }
+
+        let keys = Object.keys(properties);
+        keys.forEach(key => {
+            if (key.startsWith("on-")) {
+                let info: PropertyInfo = properties[key];
+                if (info.type === Event) {
+                    let once = new PropertyInfo(info.type, `${info.desc || ""}（只触发一次）`, info.defaultValue);
+                    properties[`${key}-once`] = once;
+                }
+            }
+        })
+
+        if (location.isAtPropertyKey) {
+            let node = json.findNodeAtLocation(rootNode, location.path.slice(0, location.path.length - 1));
+            if (node) {
+                let existsProperties = node.children.map(p => p.children[0].value);
+                if (existsProperties) {
+                    var index = existsProperties.indexOf(currentPath as string, 0);
+                    if (index >= 0) {
+                        existsProperties.splice(index, 1);
+                    }
+                    existsProperties.forEach(p => {
+                        delete properties[p];
+                    });
+                }
+            }
+        }
+        else {
+            let info: PropertyInfo = properties[currentPath];
+            properties = {};
+            if (info && info.isEnumProperty()) {
+                let propertyType = info.type === Properties.colors ? BasicType.Color : BasicType.Enum;
+                if (info.type instanceof Array) {
+                    (<Array<string>>info.type).forEach(v => properties[v] = new PropertyInfo(propertyType, ""));
+                }
+                else {
+                    Object.keys(info.type).forEach(k => properties[k] = new PropertyInfo(propertyType, info.type[k]));
+                }
+            }
+        }
+
+        return properties;
+    }
+
+    private propertyName(name: string, property: Property) {
+        return `${property.ownerType !== Type.Global ? '(property) ' : ''}${property.ownerType && property.ownerType !== Type.Global ? property.ownerType.getName() + '.' : ''}${name}: ${property.type.getName()}`;
+    }
+
+    private methodName(name: string, method: Method, count: number) {
+        let returnType = method.type ? method.type.getName() : 'void';
+        return `${method.ownerType !== Type.Global ? '(method) ' : ''}${method.ownerType && method.ownerType !== Type.Global ? method.ownerType.getName() + '.' : ''}${name}(${(method.params || []).map(p => `${p.name}: ${p.type.getName()}`).join(', ')}): ${returnType}${count > 1 ? ` (+${count - 1} overload${count > 2 ? 's' : ''})` : ''}`
+    }
+
+    private findExpressionsInString(stringNode: json.Node): {
+        string: JsonString,
+        offset: number
+    }[] {
+        let position = this.document.positionAt(stringNode.offset);
+        let rawString = this.document.getText(new vscode.Range(position, position.translate(0, stringNode.length)));
+        const re = /\$\{(.*?)\}/mg;
+        re.lastIndex = 0;
+        let results = [];
+        let match: RegExpExecArray;
+        while (match = re.exec(rawString)) {
+            results.push({
+                string: new JsonString(match[1]),
+                offset: match.index + 2
+            });
+        }
+        return results;
     }
 
 }

@@ -189,8 +189,6 @@ function registerPreviewProvider(context: ExtensionContext) {
             'Mist Preview')
     }));
 
-    
-
     context.subscriptions.push(vscode.window.onDidChangeVisibleTextEditors(editors => {
         contentProvider.update('shared');
     }));
@@ -246,9 +244,9 @@ function registerConvertor(context: ExtensionContext) {
         }
 
         vscode.window.showInformationMessage("该操作可能会修改当前目录下的所有 .mist 文件，且无法撤销，确定要继续吗？", "确定").then(result => {
-            if (result == "确定") {
+            if (result === "确定") {
                 vscode.workspace.findFiles("*.mist").then(files => {
-                    if (files.length == 0) {
+                    if (files.length === 0) {
                         vscode.window.showWarningMessage("没有找到 .mist 模版文件");
                         return;
                     }
@@ -316,14 +314,14 @@ function registerShowData(context: ExtensionContext) {
                     });
             }
 
-            if (result.length == 0) {
+            if (result.length === 0) {
                 vscode.window.showInformationMessage('No data file found');
             }
-            else if (result.length == 1) {
+            else if (result.length === 1) {
                 showDataFile(result[0]);
             }
             else {
-                vscode.window.showQuickPick(result.map(r => <vscode.QuickPickItem>{label: r.file, detail: ''+r.position})).then(r => {
+                vscode.window.showQuickPick(result.map(r => <vscode.QuickPickItem>{label: r.file, detail: '' + r.position})).then(r => {
                     showDataFile({file: r.label, position: Number.parseInt(r.detail)});
                 });
             }
@@ -366,7 +364,7 @@ function registerCompletionProvider(context: ExtensionContext) {
     }));
     context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(event => {
         if (event.document.languageId === 'mist') {
-            let textEditor = vscode.window.visibleTextEditors.find(e => e.document == event.document);
+            let textEditor = vscode.window.visibleTextEditors.find(e => e.document === event.document);
             completionProvider.documentDidChange(textEditor, event);
         }
     }));
@@ -405,7 +403,7 @@ function registerValidateWorkspace(context: ExtensionContext) {
         }
 
         vscode.workspace.findFiles("*.mist").then(files => {
-            if (files.length == 0) {
+            if (files.length === 0) {
                 vscode.window.showWarningMessage("没有找到 .mist 模版文件");
                 return;
             }
@@ -459,7 +457,7 @@ function registerColorDecorations(context: ExtensionContext) {
             return;
         }
 
-        let textEditor = vscode.window.visibleTextEditors.find(e => e.document == document);
+        let textEditor = vscode.window.visibleTextEditors.find(e => e.document === document);
         if (!textEditor) {
             return;
         }
@@ -474,7 +472,7 @@ function registerColorDecorations(context: ExtensionContext) {
         let colorRE = /#((([a-fA-F0-9]{2}){3,4})|([a-fA-F0-9]{3,4}))\b/mg;
         let match;
         while (match = colorRE.exec(text)) {
-            colorResults.push({color: match[0], offset:match.index});
+            colorResults.push({color: match[0], offset: match.index});
         }
 
         textEditor.setDecorations(decorationType, []);
@@ -497,14 +495,14 @@ function registerColorDecorations(context: ExtensionContext) {
         _updateColorDecorations(event.document);
     }));
     
-	context.subscriptions.push(vscode.workspace.onDidOpenTextDocument(document => {
+    context.subscriptions.push(vscode.workspace.onDidOpenTextDocument(document => {
         _updateColorDecorations(document);
     }));
 
-	vscode.window.onDidChangeVisibleTextEditors(editors => {
-		for (let editor of editors) {
-			_updateColorDecorations(editor.document);
-		}
+    vscode.window.onDidChangeVisibleTextEditors(editors => {
+        for (let editor of editors) {
+            _updateColorDecorations(editor.document);
+        }
     }, null, [decorationType]);
 
     function updateAllEditors() {

@@ -60,12 +60,6 @@ class Dropdown {
         if (item.callback) item.callback();
     }
 
-    private elementFromHtml(html: string) {
-        let div = document.createElement('div');
-        div.innerHTML = html;
-        return <HTMLElement>div.firstChild;
-    }
-
     public updateItems(items: {
         name: string,
         desc?: string,
@@ -106,6 +100,12 @@ class Dropdown {
             }
             this.listElement.appendChild(el);
         });
+    }
+
+    private elementFromHtml(html: string) {
+        let div = document.createElement('div');
+        div.innerHTML = html;
+        return <HTMLElement>div.firstChild;
     }
 }
 
@@ -268,7 +268,7 @@ class Client {
         this.scalesDropdown = new Dropdown('缩放', scales.map(s => {
             return {
                 name: s.desc, 
-                callback: () => (<HTMLElement>document.getElementsByClassName('screen')[0]).style.transform=`scale(${s.scale})`
+                callback: () => (<HTMLElement>document.getElementsByClassName('screen')[0]).style.transform = `scale(${s.scale})`
             };
         }));
         this.scalesDropdown.select(2);
@@ -312,7 +312,7 @@ class Client {
         }
     }
 
-    onMessage(data: any) {
+    private onMessage(data: any) {
         switch (data.type) {
             case 'select':
                 let indexes = data.indexes ? data.indexes.join(',') : null;
@@ -602,7 +602,7 @@ class Client {
         });
     }
     
-    updateScreen() {
+    private updateScreen() {
         let screen = <HTMLElement>document.getElementsByClassName('screen').item(0);
         screen.classList.remove('hidden');
         screen.style.minWidth = this.device.width + 'px';

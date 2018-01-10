@@ -2,7 +2,6 @@ import { ExpressionContext, ExpressionNode, None, LiteralNode, ParseResult, Pars
 import { IType, Type, Property, Method, Parameter } from "./type";
 import { functions } from "./functions";
 
-
 function isObject(obj: any) {
     return obj && typeof(obj) === 'object' && obj.constructor === Object;
 }

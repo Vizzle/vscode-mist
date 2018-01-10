@@ -16,12 +16,12 @@ import Device from './browser/previewDevice';
 import { bindData } from './browser/template';
 
 export function isMistFile(document: vscode.TextDocument) {
-	return document.languageId === 'mist'
-		&& document.uri.scheme !== 'mist-preview'; // prevent processing of own documents
+    return document.languageId === 'mist'
+        && document.uri.scheme !== 'mist-preview'; // prevent processing of own documents
 }
 
 export function getMistUri(uri: vscode.Uri) {
-	return uri.with({ scheme: 'mist', path: uri.path + '.rendered', query: uri.toString() });
+    return uri.with({ scheme: 'mist', path: uri.path + '.rendered', query: uri.toString() });
 }
 
 type PreviewConfig = {
@@ -42,7 +42,7 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
     private _clients: PreviewClient[] = [];
     private _updateTimer = null;
 
-	constructor(private context: vscode.ExtensionContext) {
+    constructor(private context: vscode.ExtensionContext) {
         let httpServer = http.createServer((request, response) => {
             let uri = vscode.Uri.parse(request.url);
             if (uri.path === '/') {
@@ -104,11 +104,103 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
         });
     }
 
+    public async provideTextDocumentContent(uri: vscode.Uri): Promise<string> {
+        this._port = await this._listening;
+        const sourceUri = vscode.Uri.parse(decodeURI(uri.query));
+        if (uri) {
+            let mistDoc = MistDocument.getDocumentByUri(sourceUri);
+            let nodeHtml = this.pageHtml(vscode.Uri.parse('shared'));
+            return nodeHtml;
+        }
+        return null;
+    }
+
+    render() {
+        if (this._clients.length > 0) {
+            this._clients.forEach(c => {
+                let mistDoc = this.getDocument();
+                if (!mistDoc) return;
+                let template = mistDoc.getTemplate();
+                let images = ImageHelper.getImageFiles(mistDoc.document);
+                c.client.send(JSON.stringify({
+                    path: mistDoc.document.uri.toString(),
+                    type: 'data',
+                    template,
+                    images,
+                    datas: mistDoc.getDatas().map(d => {
+                        return {
+                            name: d.description(),
+                            data: d.data
+                        }
+                    }),
+                }));
+            });
+        }
+    }
+
+    public update(uri: string) {
+        if (this._updateTimer) {
+            clearTimeout(this._updateTimer);
+            this._updateTimer = null;
+        }
+        this._updateTimer = setTimeout((thiz) => {
+            thiz._updateTimer = null;
+            thiz.render(decodeURI(uri));
+        }, 100, this);
+    }
+    
+    public selectionDidChange(textEditor: vscode.TextEditor) {
+        if (this._updateTimer) return;
+        let doc = textEditor.document;
+        if (this._clients.length === 0) return;
+        
+        let sel = textEditor.selection.end;
+        let path = [...json.getLocation(doc.getText(), doc.offsetAt(sel)).path];
+        let indexes = [];
+        if (path.length === 0 || path[0] !== 'layout') {
+            indexes = null;
+        }
+        else {
+            path.splice(0, 1);
+            while (path.length >= 2 && path[0] === 'children') {
+                indexes.push(path[1]);
+                path.splice(0, 2);
+            }
+        }
+
+        this._clients.forEach(c => c.client.send(JSON.stringify({ 'type': 'select', indexes })));
+    }
+
+    public revealNode(uri: vscode.Uri, nodeIndex: string) {
+        vscode.workspace.openTextDocument(uri).then(doc => {
+            let mistDoc = MistDocument.getDocumentByUri(uri);
+            if (!mistDoc) return;
+            let rootNode = mistDoc.getRootNode();
+            var node = json.findNodeAtLocation(rootNode, ['layout']);
+            if (!node) return;
+            let indexes = nodeIndex ? nodeIndex.split(',') : [];
+            for (var i of indexes) {
+                if (node.type === 'object') {
+                    node = json.findNodeAtLocation(node, ['children', parseInt(i)]);
+                }
+                else {
+                    break;
+                }
+            }
+            if (!node) return;
+            vscode.window.showTextDocument(doc).then(editor => {
+                let range = new vscode.Range(doc.positionAt(node.offset), doc.positionAt(node.offset + node.length));
+                editor.selection = new vscode.Selection(range.start, range.end);
+                editor.revealRange(editor.selection);
+            });
+        });
+    }
+
     private getResourcePath(file: string) {
         return this.context.asAbsolutePath(file);
     }
 
-	private pageHtml(uri: vscode.Uri) {
+    private pageHtml(uri: vscode.Uri) {
         return `
     <head>
         <base href="${this.getResourcePath('preview.html')}">
@@ -209,18 +301,7 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
     <div class="overlay"><div id="mist-hover" class="anim"></div></div>
 
     </body>
-		`
-	}
-
-	public async provideTextDocumentContent(uri: vscode.Uri): Promise<string> {
-        this._port = await this._listening;
-		const sourceUri = vscode.Uri.parse(decodeURI(uri.query));
-		if (uri) {
-			let mistDoc = MistDocument.getDocumentByUri(sourceUri);
-            let nodeHtml = this.pageHtml(vscode.Uri.parse('shared'));
-			return nodeHtml;
-		}
-		return null;
+        `
     }
 
     private getDocument() {
@@ -231,85 +312,4 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
         return null;
     }
     
-    render() {
-        if (this._clients.length > 0) {
-            this._clients.forEach(c => {
-                let mistDoc = this.getDocument();
-                if (!mistDoc) return;
-                let template = mistDoc.getTemplate();
-                let images = ImageHelper.getImageFiles(mistDoc.document);
-                c.client.send(JSON.stringify({
-                    path: mistDoc.document.uri.toString(),
-                    type: 'data',
-                    template,
-                    images,
-                    datas: mistDoc.getDatas().map(d => {
-                        return {
-                            name: d.description(),
-                            data: d.data
-                        }
-                    }),
-                }));
-            });
-        }
-    }
-
-	public update(uri: string) {
-        if (this._updateTimer) {
-            clearTimeout(this._updateTimer);
-            this._updateTimer = null;
-        }
-        this._updateTimer = setTimeout((thiz) => {
-            thiz._updateTimer = null;
-            thiz.render(decodeURI(uri));
-        }, 100, this);
-    }
-    
-    public selectionDidChange(textEditor: vscode.TextEditor) {
-        if (this._updateTimer) return;
-        let doc = textEditor.document;
-        if (this._clients.length === 0) return;
-        
-        let sel = textEditor.selection.end;
-        let path = [...json.getLocation(doc.getText(), doc.offsetAt(sel)).path];
-        let indexes = [];
-        if (path.length === 0 || path[0] !== 'layout') {
-            indexes = null;
-        }
-        else {
-            path.splice(0, 1);
-            while (path.length >= 2 && path[0] === 'children') {
-                indexes.push(path[1]);
-                path.splice(0, 2);
-            }
-        }
-
-        this._clients.forEach(c => c.client.send(JSON.stringify({ 'type': 'select', indexes })));
-    }
-
-	public revealNode(uri: vscode.Uri, nodeIndex: string) {
-        vscode.workspace.openTextDocument(uri).then(doc => {
-            let mistDoc = MistDocument.getDocumentByUri(uri);
-            if (!mistDoc) return;
-            let rootNode = mistDoc.getRootNode();
-            var node = json.findNodeAtLocation(rootNode, ['layout']);
-            if (!node) return;
-            let indexes = nodeIndex ? nodeIndex.split(',') : [];
-            for (var i of indexes) {
-                if (node.type === 'object') {
-                    node = json.findNodeAtLocation(node, ['children', parseInt(i)]);
-                }
-                else {
-                    break;
-                }
-            }
-            if (!node) return;
-            vscode.window.showTextDocument(doc).then(editor => {
-                let range = new vscode.Range(doc.positionAt(node.offset), doc.positionAt(node.offset + node.length));
-                editor.selection = new vscode.Selection(range.start, range.end);
-                editor.revealRange(editor.selection);
-            });
-        });
-	}
-
 }

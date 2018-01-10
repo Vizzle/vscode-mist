@@ -81,12 +81,12 @@ export default class MistDiagnosticProvider {
 
     onChange(document: vscode.TextDocument) {
         if (!this._waiting) {
-			this._waiting = true;
-			setTimeout(() => {
-				this._waiting = false;
-				this.validate(document);
+            this._waiting = true;
+            setTimeout(() => {
+                this._waiting = false;
+                this.validate(document);
             }, 200);
-		}
+        }
     }
     
 }

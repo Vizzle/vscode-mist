@@ -15,7 +15,6 @@ import { Lexer } from '../src/browser/lexer';
 import { Parser, ExpressionContext } from '../src/browser/parser';
 import { Type, Property, UnionType, IntersectionType, Method } from '../src/browser/type';
 
-
 function XCTAssertExpression(exp, result) {
     let { expression: node, errorMessage: error } = Parser.parse(exp);
     assert.equal(error, null, error);
@@ -25,7 +24,6 @@ function XCTAssertExpression(exp, result) {
 function XCTAssertSameExpression(exp) {
     XCTAssertExpression(exp, eval(exp));
 }
-
 
 suite("Extension Tests", () => {
 

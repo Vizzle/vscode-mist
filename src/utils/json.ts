@@ -4,8 +4,8 @@
 import * as json from 'jsonc-parser'
 
 export function getPropertyNode(node: json.Node, property: string) {
-    if (node.type == 'object') {
-        let propertyNode = node.children.find(n => n.type == 'property' && n.children[0].value == property);
+    if (node.type === 'object') {
+        let propertyNode = node.children.find(n => n.type === 'property' && n.children[0].value === property);
         if (propertyNode) {
             return propertyNode.children[1];
         }
@@ -25,7 +25,7 @@ export function parseJson(text: string, errors?: json.ParseErrorCode[]): json.No
             }
             else if (currentNode.type === "object") {
                 let property = currentNode.children[currentNode.children.length - 1];
-                if (property.children.length == 1) {
+                if (property.children.length === 1) {
                     property.children.push(node);
                     node.parent = property;
                     property.length = end - property.offset;
@@ -116,16 +116,16 @@ export function parseJson(text: string, errors?: json.ParseErrorCode[]): json.No
 }
 
 export function getNodeValue(node: json.Node): any {
-	if (node.type === 'array') {
-		return node.children.map(getNodeValue);
-	} else if (node.type === 'object') {
-		let obj = {};
-		for (let prop of node.children) {
-            if (prop.children.length == 2) {
+    if (node.type === 'array') {
+        return node.children.map(getNodeValue);
+    } else if (node.type === 'object') {
+        let obj = {};
+        for (let prop of node.children) {
+            if (prop.children.length === 2) {
                 obj[prop.children[0].value] = getNodeValue(prop.children[1]);
             }
-		}
-		return obj;
-	}
-	return node.value;
+        }
+        return obj;
+    }
+    return node.value;
 }
