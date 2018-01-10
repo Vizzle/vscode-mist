@@ -57,8 +57,11 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
                 if (file.startsWith('/getImage/')) {
                     file = file.substr(10);
                 }
+                else if (file === '/favicon.ico') {
+                    file = this.getResourcePath('media/mist.png');
+                }
                 else {
-                    file = this.getResourcePath(uri.path);
+                    file = this.getResourcePath(file);
                 }
                 fs.readFile(file, (err, data) => {
                     if (!err) {
