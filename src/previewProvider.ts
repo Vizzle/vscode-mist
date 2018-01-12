@@ -168,7 +168,8 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
             }
         }
 
-        this._clients.forEach(c => c.client.send(JSON.stringify({ 'type': 'select', indexes })));
+        let index = indexes ? indexes.join(',') : null;
+        this._clients.forEach(c => c.client.send(JSON.stringify({ 'type': 'select', index })));
     }
 
     public revealNode(uri: vscode.Uri, nodeIndex: string) {
@@ -244,17 +245,6 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
                 footer.textContent = '脚本加载失败：' + JSON.stringify(err);
             });
         </script>
-        <style>
-            .screen {
-                display: flex;
-                flex-direction: column;
-                background-color: white;
-                margin: 10px;
-                box-shadow: 0px 0px 0px 1px white;
-                transform: scale(1);
-                transform-origin: top left;
-            }
-        </style>
     </head>
     
     <body data-port="${this._port}" data-path="${uri.toString()}" data-type="vscode">

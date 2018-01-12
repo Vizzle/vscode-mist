@@ -96,7 +96,7 @@ function align(obj) {
         case "space-between": return flex.SpaceBetween;
         case "space-around": return flex.SpaceAround;
         case "baseline": return flex.Baseline;
-    };
+    }
 }
 
 function alignString(align) {

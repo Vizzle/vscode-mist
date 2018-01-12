@@ -315,8 +315,7 @@ class Client {
     private onMessage(data: any) {
         switch (data.type) {
             case 'select':
-                let indexes = data.indexes ? data.indexes.join(',') : null;
-                this.selectNode(indexes);
+                this.selectNode(data.index);
                 break;
             case 'data':
                 this.path = data.path;
@@ -614,7 +613,7 @@ class Client {
 var client;
 
 export default function main() {
-    let type = document.body.dataset.type;
+    let type = document.body.dataset.type || 'browser';
     let port = parseInt(document.body.dataset.port);
     client = new Client(type as ClientType, port);
 }
