@@ -31,6 +31,10 @@ class Dropdown {
     private listElement: HTMLElement;
     private selectedIndex: number = 0;
 
+    public get index() {
+        return this.selectedIndex;
+    }
+
     constructor(private title: string, private items: {
         name: string,
         desc?: string,
@@ -88,12 +92,7 @@ class Dropdown {
                     <a role="menuitem" tabindex="-1" style="cursor: pointer">${item.desc || item.name}</a>
                 </li>`);
             el.onclick = () => {
-                this.listElement.getElementsByClassName('selected').item(0).classList.remove('selected');
-                el.classList.add('selected');
-                this.nameElement.textContent = item.name;
-                if (item.callback) {
-                    item.callback();
-                }
+                this.select(i);
             }
             if (i === this.selectedIndex) {
                 this.nameElement.textContent = item.name;
@@ -205,11 +204,12 @@ class Client {
         let nodes = document.getElementsByClassName('mist-node');
         let mainNode = <HTMLElement>nodes.item(0);
         let mainRect = mainNode.getBoundingClientRect();
+        let s = scales[this.scalesDropdown.index].scale;
         let drawNode = (node: HTMLElement) => {
             let rect = node.getBoundingClientRect();
-            let l = rect.left - mainRect.left + mainNode.offsetLeft,
-                t = rect.top - mainRect.top + mainNode.offsetTop,
-                w = rect.width, h = rect.height;
+            let l = (rect.left - mainRect.left + mainNode.offsetLeft) / s,
+                t = (rect.top - mainRect.top + mainNode.offsetTop) / s,
+                w = rect.width / s, h = rect.height / s;
             context.fillRect(l, t, w, h);
             context.strokeRect(l, t, w, h);
         };
