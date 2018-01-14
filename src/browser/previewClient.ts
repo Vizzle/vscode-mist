@@ -110,6 +110,18 @@ class Dropdown {
 
 type ClientType = 'vscode' | 'browser-socket' | 'browser';
 
+class CancellationToken {
+    private cancelled: boolean;
+    public constructor(private onCancel: () => void = null) {}
+    public isCancelled() { return this.cancelled; }
+    public cancel() {
+        if (!this.cancelled) {
+            this.cancelled = true;
+            if (this.onCancel) { this.onCancel(); }
+        }
+    }
+}
+
 class Client {
     private path: string;
     private socket: WebSocket;
@@ -129,6 +141,7 @@ class Client {
     private framesOverlay: HTMLCanvasElement;
     private bindedTemplate;
     private nodeStyleWhileShowingFrames: HTMLStyleElement;
+    private renderingTokens: CancellationToken[] = [];
 
     constructor(
         private type: ClientType,
@@ -470,7 +483,7 @@ class Client {
                 if ("html-text" in layout.style) {
                     layout.style["html-text"] = layout.style["html-text"].replace(/src\s*=\s*['"](.*?)['"]/, (s, src) => {
                         let image = ImageInfo.findImage(this.images, src, this.device.scale);
-                        files.push(image.file);
+                        if (image) files.push(image.file);
                         return image ? `srcset="${image.file} ${image.scale}x"` : '';
                     });
                 }
@@ -512,12 +525,20 @@ class Client {
     }
 
     private render() {
+        for (let token of this.renderingTokens) {
+            token.cancel();
+        }
+        this.renderingTokens.splice(0, this.renderingTokens.length);
+
+        let token = new CancellationToken();
+        this.renderingTokens.push(token);
+
         let div = document.getElementsByClassName('mist-main')[0];
-        while (div.children.length > 0)
-            div.children.item(0).remove();
         this.bindedTemplate = bindData(this.template, this.getData(), this.getBuiltinVars());
         let imageFiles = this.resolveImageFiles(this.bindedTemplate.layout);
-        return render(this.bindedTemplate.layout, this.device.width, this.device.scale, imageFiles).then(r => {
+        return render(this.bindedTemplate.layout, this.device.width, this.device.scale, imageFiles, token).then(r => {
+            if (token.isCancelled()) return;
+
             r.onmouseleave = event => {
                 this.nodeHovering(null);
             };
@@ -591,12 +612,21 @@ class Client {
                 return false;
             }
 
-            div.appendChild(r);
-            div.appendChild(this.framesOverlay);
+            if (div.childElementCount === 0) {
+                div.appendChild(r);
+                div.appendChild(this.framesOverlay);
+            }
+            else {
+                div.replaceChild(r, div.children.item(0));
+            }
+            
             this.framesOverlay.style.minWidth = this.framesOverlay.style.width = div.clientWidth + 'px';
             this.framesOverlay.style.minHeight = this.framesOverlay.style.height = r.clientHeight + r.offsetTop + 'px';
+            if (token.isCancelled()) return;
             postRender(r);
+            if (token.isCancelled()) return;
             this.drawFrames();
+            if (token.isCancelled()) return;
             this.updateScreen();
         });
     }

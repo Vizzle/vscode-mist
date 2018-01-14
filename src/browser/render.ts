@@ -695,12 +695,14 @@ function layout(layout, width: number, height: number) {
     layout.didLayout();
 }
 
-export function render(_layout, clientWidth: number, scale: number, images: string[]) {
+export function render(_layout, clientWidth: number, scale: number, images: string[], cancellationToken: { isCancelled(): boolean }) {
     if (!_layout) return Promise.reject('empty layout');
     config.scale = scale;
     return Promise.all(loadImages(images)).then(function() {
         layout(_layout, clientWidth, NaN);
+        if (cancellationToken.isCancelled()) return;
         function _render(l) {
+            if (cancellationToken.isCancelled()) return;
             var el = elementFromLayout(l);
             el.style.position = "absolute";
             el.classList.add('mist-node');
