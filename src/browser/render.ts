@@ -8,7 +8,7 @@ var config = {
 
 function length(obj): flex.Length {
     if (typeof(obj) === 'number') {
-        return new flex.Length(obj);
+        return new flex.Length(obj * config.scale);
     }
     else if (typeof(obj) === 'string') {
         if (obj === 'auto') {
@@ -37,7 +37,7 @@ function length(obj): flex.Length {
                 case 'pc': value *= 96 / 6;  break;
                 case 'pt': value *= 96 / 72;  break;
             }
-            return new flex.Length(value);
+            return new flex.Length(value * config.scale);
         }
     }
     return new flex.Length(0);
@@ -176,8 +176,8 @@ function setResult(el: HTMLElement, result) {
 }
 
 function setTextStyle(el: HTMLElement, style) {
-    function fixHtml(text) {
-        return text.replace(/ size\s*=\s*(['"])(\d+)\1/gm, ' style="font-size:$2px"');
+    function fixHtml(text: string) {
+        return text.replace(/ size\s*=\s*(['"])(\d+)\1/gm, (s, g1, g2) => ` style="font-size:${parseInt(g2) * 2}px"`);
     }
     
     var text = style.text;
@@ -190,12 +190,12 @@ function setTextStyle(el: HTMLElement, style) {
     el.textContent = text;
     if ("html-text" in style) el.innerHTML = fixHtml(style["html-text"]);
 
-    el.style.fontSize = (style['font-size'] || 14) + 'px';
+    el.style.fontSize = (style['font-size'] || 14) * config.scale + 'px';
     if ("color" in style) el.style.color = convertColor(style.color);
     if ("font-name" in style) el.style.fontFamily = style["font-name"];
     if ("alignment" in style) el.style.textAlign = style["alignment"];
-    if ("kern" in style) el.style.letterSpacing = style["kern"] + "px";
-    if ("line-spacing" in style) el.style.lineHeight = (style['font-size'] || 14) * 1.15 + style['line-spacing'] + 'px';
+    if ("kern" in style) el.style.letterSpacing = style["kern"] * config.scale + "px";
+    if ("line-spacing" in style) el.style.lineHeight = (style['font-size'] || 14) * config.scale * 1.15 + style['line-spacing'] * config.scale + 'px';
 
     var wrapMode = style["line-break-mode"];
     if ("char" === wrapMode) {
@@ -365,7 +365,7 @@ function setButtonStyle(el: HTMLElement, style) {
         text.textContent = unwrap(style["title"]) || "";
         text.style.textAlign = "center";
         if ("title-color" in style) text.style.color = convertColor(unwrap(style["title-color"]));
-        if ("font-size" in style) text.style.fontSize = convertLength(style["font-size"]);
+        text.style.fontSize = (style['font-size'] || 14) * config.scale + 'px';
         if ("font-name" in style) text.style.fontFamily = style["font-name"];
         el.appendChild(text);
     }
@@ -499,7 +499,7 @@ function getSrcset(file: string) {
     if (index >= 0) {
         scale = parseInt(file.substr(index + 1));
     }
-    return file + ' ' + scale + 'x';
+    return file + ' ' + scale / config.scale + 'x';
 }
 
 function imageSize(file: string) {
@@ -513,24 +513,39 @@ function imageSize(file: string) {
     return new flex.Size(image.width / scale, image.height / scale);
 }
 
+function measureElement(el: HTMLElement, constrainedSize: flex.Size) {
+    const id = '__measure_container';
+    let container = document.getElementById(id);
+    if (!container) {
+        container = document.createElement('div');
+        container.id = id;
+        container.style.position = "absolute";
+        container.style.width = "10000px";
+        container.style.height = "10000px";
+        container.style.left = "10000px";
+        container.style.top = "10000px";
+        document.body.appendChild(container);
+    }
+    el.style.width = "auto";
+    el.style.height = "auto";
+    el.style.position = "absolute";
+    el.style.maxWidth = constrainedSize.width + "px";
+    el.style.maxHeight = constrainedSize.height + "px";
+    container.appendChild(el);
+    let rect = el.getBoundingClientRect();
+    el.remove();
+    return new flex.Size(Math.ceil(rect.width), Math.ceil(rect.height));
+}
+
 type MeasureFunc = (layout, constrainedSize: flex.Size) => flex.Size;
 
 var measureFuncs: { [type: string]: MeasureFunc } = {
     text: function (layout, constrainedSize) {
-        var el = elementFromLayout(layout);
-        el.style.width = "auto";
-        el.style.height = "auto";
-        el.style.maxWidth = constrainedSize.width + "px";
-        el.style.maxHeight = constrainedSize.height + "px";
-        el.style.position = "absolute";
-        document.body.appendChild(el);
-        var rect = el.getBoundingClientRect();
-        var size = new flex.Size(Math.ceil(rect.width), Math.ceil(rect.height));
+        let size = measureElement(elementFromLayout(layout), constrainedSize);
         var style = layout.style || {};
         if ("line-spacing" in style) {
-            size.height -= style["line-spacing"];
+            size.height -= style["line-spacing"] * config.scale;
         }
-        el.remove();
         return size;
     },
     image: function (layout, constrainedSize) {
@@ -541,17 +556,7 @@ var measureFuncs: { [type: string]: MeasureFunc } = {
         return new flex.Size(0, 0);
     },
     button: function (layout, constrainedSize) {
-        var el = elementFromLayout(layout);
-        el.style.width = "auto";
-        el.style.height = "auto";
-        el.style.maxWidth = constrainedSize.width + "px";
-        el.style.maxHeight = constrainedSize.height + "px";
-        el.style.position = "absolute";
-        document.body.appendChild(el);
-        var rect = el.getBoundingClientRect();
-        var size = new flex.Size(Math.ceil(rect.width), Math.ceil(rect.height));
-        el.remove();
-        return size;
+        return measureElement(elementFromLayout(layout), constrainedSize);
     },
 };
 
@@ -649,9 +654,9 @@ function nodeFromLayout(l) {
                 var scrollDirection = l.style["scroll-direction"] || "horizontal";
                 var horScroll = scrollDirection === "horizontal" || scrollDirection === "both";
                 var verScroll = scrollDirection === "vertical" || scrollDirection === "both";
-                node.width = horScroll ? length("auto") : length(l.result.width);
-                node.height = verScroll ? length("auto") : length(l.result.height);
-                node.layoutWithScale(node.width.value, node.height.value, config.scale);
+                node.width = horScroll ? length("auto") : length(l.result.width / config.scale);
+                node.height = verScroll ? length("auto") : length(l.result.height / config.scale);
+                node.layoutWithScale(node.width.value, node.height.value, 1);
                 l.result.scrollWidth = node.resultWidth;
                 l.result.scrollHeight = node.resultHeight;
                 for (var i in l.children) {
@@ -667,7 +672,7 @@ function nodeFromLayout(l) {
                 for (var i in l.children) {
                     var child = l.children[i];
                     var childNode = nodeFromLayout(child);
-                    childNode.layoutWithScale(width, height, config.scale);
+                    childNode.layoutWithScale(width, height, 1);
                     child.didLayout();
                 }
             };
@@ -691,7 +696,7 @@ function nodeFromLayout(l) {
 
 function layout(layout, width: number, height: number) {
     var node = nodeFromLayout(layout);
-    node.layoutWithScale(width, height, config.scale);
+    node.layoutWithScale(width * config.scale, height * config.scale, 1);
     layout.didLayout();
 }
 
@@ -733,7 +738,14 @@ export function render(_layout, clientWidth: number, scale: number, images: stri
             }
             return el;
         }
-        return _render(_layout);
+        let result = _render(_layout);
+        let container = document.createElement('div');
+        container.appendChild(result);
+        container.style.width = _layout.result.width / config.scale + 'px';
+        container.style.height = _layout.result.height / config.scale + 'px';
+        container.style.transformOrigin = "top left";
+        container.style.transform = `scale(${1 / config.scale})`;
+        return container;
     });
 }
 
@@ -750,8 +762,8 @@ export function postRender(el: HTMLElement) {
         context.beginPath();
         context.lineWidth = lineWidth;
         context.strokeStyle = canvas.getAttribute('data-line-color') || 'transparent';
-        var dashLength = parseFloat(canvas.getAttribute('data-dash-length') || '0');
-        var spaceLength = parseFloat(canvas.getAttribute('data-space-length') || '0');
+        var dashLength = parseFloat(canvas.getAttribute('data-dash-length') || '0') * config.scale;
+        var spaceLength = parseFloat(canvas.getAttribute('data-space-length') || '0') * config.scale;
         if (dashLength > 0 && spaceLength > 0) {
             context.setLineDash([dashLength, spaceLength]);
         }
