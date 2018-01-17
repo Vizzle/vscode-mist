@@ -208,7 +208,6 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
         <meta charset="UTF-8">
         <link rel="stylesheet" href="lib/bootstrap.min.css">
         <link rel="stylesheet" href="css/preview.css">
-        <link rel="stylesheet" href="css/flex.css">
         <script type="text/javascript" src="http://at.alicdn.com/t/font_532796_cdkfbxvwvky2pgb9.js"></script>
         <style type="text/css">
             .icon {

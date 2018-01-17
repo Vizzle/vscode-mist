@@ -484,7 +484,7 @@ class Client {
                     layout.style["html-text"] = layout.style["html-text"].replace(/src\s*=\s*['"](.*?)['"]/, (s, src) => {
                         let image = ImageInfo.findImage(this.images, src, this.device.scale);
                         if (image) files.push(image.file);
-                        return image ? `srcset="${image.file} ${image.scale}x"` : '';
+                        return image ? `srcset="getImage/${image.file} ${image.scale}x"` : '';
                     });
                 }
             }

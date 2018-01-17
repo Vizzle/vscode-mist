@@ -195,7 +195,12 @@ function setTextStyle(el: HTMLElement, style) {
     if ("font-name" in style) el.style.fontFamily = style["font-name"];
     if ("alignment" in style) el.style.textAlign = style["alignment"];
     if ("kern" in style) el.style.letterSpacing = style["kern"] * config.scale + "px";
-    if ("line-spacing" in style) el.style.lineHeight = (style['font-size'] || 14) * config.scale * 1.15 + style['line-spacing'] * config.scale + 'px';
+    if (style['line-spacing']) {
+        el.style.lineHeight = (style['font-size'] || 14) * config.scale * 1.2 + style['line-spacing'] * config.scale + 'px';
+    }
+    else {
+        el.style.lineHeight = '1.2em';
+    }
 
     var wrapMode = style["line-break-mode"];
     if ("char" === wrapMode) {
@@ -510,7 +515,7 @@ function imageSize(file: string) {
     }
     var image = imagesCache[file];
     if (!image) return new flex.Size(0, 0);
-    return new flex.Size(image.width / scale, image.height / scale);
+    return new flex.Size(image.width / scale * config.scale, image.height / scale * config.scale);
 }
 
 function measureElement(el: HTMLElement, constrainedSize: flex.Size) {
@@ -543,7 +548,7 @@ var measureFuncs: { [type: string]: MeasureFunc } = {
     text: function (layout, constrainedSize) {
         let size = measureElement(elementFromLayout(layout), constrainedSize);
         var style = layout.style || {};
-        if ("line-spacing" in style) {
+        if (style["line-spacing"]) {
             size.height -= style["line-spacing"] * config.scale;
         }
         return size;
@@ -715,10 +720,10 @@ export function render(_layout, clientWidth: number, scale: number, images: stri
             setResult(el, l.result);
             if (l.type && l.type === 'text') {
                 var style = l.style || {};
-                if ("line-spacing" in style) {
+                if (style["line-spacing"]) {
                     var e = <HTMLElement>el.children.item(0);
-                    e.style.marginTop = -style["line-spacing"] / 2 + 'px';
-                    e.style.marginBottom = -style["line-spacing"] / 2 + 'px';
+                    e.style.marginTop = -style["line-spacing"] / 2 * config.scale + 'px';
+                    e.style.marginBottom = -style["line-spacing"] / 2 * config.scale + 'px';
                 }
             }
             if (l.children instanceof Array) {

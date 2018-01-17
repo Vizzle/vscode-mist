@@ -67,6 +67,10 @@ body.vscode-light {
     overflow-y: auto;
 }
 
+.mist-main::-webkit-scrollbar, .mist-main ::-webkit-scrollbar { 
+    display: none;
+}
+
 .dot {
     width: 6px;
     height: 6px;
