@@ -157,6 +157,11 @@ function setBasicStyle(el: HTMLElement, style) {
     el.style.borderStyle = "solid";
     if (style["border-color"]) el.style.borderColor = convertColor(style["border-color"]);
     if (style["corner-radius"]) el.style.borderRadius = convertLength(style["corner-radius"]);
+    if (style["corner-radius-top-left"]) el.style.borderTopLeftRadius = convertLength(style["corner-radius-top-left"]);
+    if (style["corner-radius-top-right"]) el.style.borderTopRightRadius = convertLength(style["corner-radius-top-right"]);
+    if (style["corner-radius-bottom-left"]) el.style.borderBottomLeftRadius = convertLength(style["corner-radius-bottom-left"]);
+    if (style["corner-radius-bottom-right"]) el.style.borderBottomRightRadius = convertLength(style["corner-radius-bottom-right"]);
+    if ('alpha' in style) el.style.opacity = style['alpha'];
     if (style["clip"]) {
         el.style.overflow = "hidden";
         // fixes overflow:hidden. reference: https://gist.github.com/adamcbrewer/5859738
