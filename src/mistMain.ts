@@ -368,6 +368,10 @@ function registerCompletionProvider(context: ExtensionContext) {
             completionProvider.documentDidChange(textEditor, event);
         }
     }));
+    vscode.commands.registerTextEditorCommand("mist.moveToLineEnd", (textEditor, edit) => {
+        let pos = textEditor.selection.end.translate(0, 2);
+        textEditor.selection = new vscode.Selection(pos, pos); 
+    });
 }
 
 function registerSignatureHelpProvider(context: ExtensionContext) {

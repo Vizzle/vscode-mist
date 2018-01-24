@@ -4,13 +4,14 @@ import * as json from 'jsonc-parser'
 import * as path from 'path'
 import * as fs from 'fs'
 import { parseJson, getPropertyNode, getNodeValue } from './utils/json'
-import { Properties, PropertyInfo, Event, BasicType } from "./properties";
 import { ImageHelper } from "./imageHelper";
 import { Lexer, LexerErrorCode } from "./browser/lexer";
 import { Type, IType, Method, Parameter, Property, ArrayType, UnionType, ObjectType, IntersectionType } from "./browser/type";
 import { ExpressionContext, Parser, None, ExpressionNode, LiteralNode, ParseResult, ExpressionErrorLevel } from "./browser/parser";
 import Snippets from "./snippets";
 import { parse, parseExpressionInObject } from "./browser/template";
+import { Schema, validateJsonNode } from "./schema";
+import { templateSchema } from "./template_schema";
 
 enum ExpType {
     Void,
@@ -327,7 +328,7 @@ class MistNode {
 
     property(key: string) {
         let p = getPropertyNode(this.node, key);
-        return p ? json.getNodeValue(p) : null;
+        return p ? getNodeValue(p) : null;
     }
 
     type() {
@@ -686,11 +687,63 @@ export class MistDocument {
         return vscode.workspace.rootPath;
     }
 
+    private valueType(value: any) {
+        if (value === null) return 'null';
+        if (value instanceof Array) return 'array';
+        return typeof(value);
+    }
+
+    private schemaType(s: Schema): string {
+        if (s && typeof(s) === 'object') {
+            if (s.type) return s.type;
+            if (s.enum) {
+                let set = [...new Set(s.enum.map(e => this.valueType(e)))];
+                if (set.length === 1) {
+                    return set[0];
+                }
+                return null;
+            }
+            if (s.oneOf) {
+                let set = [...new Set(s.oneOf.filter(s => s && typeof(s) === 'object' && !s.deprecatedMessage).map(s => this.schemaType(s)))];
+                if (set.length === 1) {
+                    return set[0];
+                }
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private schemaEnums(s: Schema): [any, string, vscode.CompletionItemKind][] {
+        if (s && typeof(s) === 'object') {
+            if (s.enum) {
+                let enums = s.enum;
+                enums = enums.map((e, i) => [e, s.enumDescriptions ? s.enumDescriptions[i] : null, vscode.CompletionItemKind.EnumMember]);
+                if (s.type) {
+                    enums = enums.filter(e => this.valueType(e[0]) === s.type);
+                }
+                return enums;
+            }
+            else if (s.type) {
+                switch (s.type) {
+                    case 'boolean': return [[true, null, vscode.CompletionItemKind.Constant], [false, null, vscode.CompletionItemKind.Constant]];
+                    case 'null': return [[null, null, vscode.CompletionItemKind.Constant]];
+                }
+            }
+            else if (s.oneOf) {
+                return s.oneOf.filter(s => s && typeof(s) === 'object' && !s.deprecatedMessage).map(s => this.schemaEnums(s)).reduce((p, c) => {p.push(...c); return p;}, []);
+            }
+        }
+        return [];
+    }
+
     public provideCompletionItems(position: vscode.Position, token: vscode.CancellationToken) {
         let document = this.document;
         let location = json.getLocation(document.getText(), document.offsetAt(position));
         this.parseTemplate();
 
+        // expression suggestions
+        var items: CompletionItem[] = [];
         if (!location.isAtPropertyKey) {
             let expression = this.getExpressionAtLocation(location, position);
             if (expression !== null) {
@@ -698,7 +751,6 @@ export class MistDocument {
                 if (error === LexerErrorCode.UnclosedString) {
                     return [];
                 }
-                var items = []
                 let exp = getCurrentExpression(expression);
                 let {prefix: prefix, function: func} = getPrefix(exp);
                 let type: IType;
@@ -775,95 +827,150 @@ export class MistDocument {
             }
         }
 
-        let properties = this.getProperties(this.rootNode, location);
-        
-        let propertyItems = Object.keys(properties).map(p => {
-            let info: PropertyInfo = properties[p];
-            let kind;
-            if (info.type === BasicType.Enum) {
-                kind = vscode.CompletionItemKind.EnumMember;
+        // property suggestions
+        let node = this.rootNode;
+        let matchingSchemas: Schema[] = [];
+        let offset = document.offsetAt(position);
+        if (!location.isAtPropertyKey && !location.previousNode) {
+            // 用 key 的 offset，否则找不到对应的 schema
+            let name = location.path[location.path.length - 1];
+            let parentNode = json.findNodeAtLocation(node, location.path.slice(0, -1));
+            let propNode = parentNode.children.find(n => n.children[0].value === name);
+            if (propNode) {
+                offset = propNode.children[0].offset;
             }
-            else if (info.type === BasicType.Color) {
-                kind = vscode.CompletionItemKind.Color;
-            }
-            else if (info.type === Event) {
-                kind = vscode.CompletionItemKind.Event;
-            }
-            else {
-                kind = vscode.CompletionItemKind.Property;
-            }
-            let item = new vscode.CompletionItem(p, kind);
-            item.documentation = info.desc;
-            
-            function valueText() {
-                if (!location.isAtPropertyKey) {
-                    return '';
+        }
+        validateJsonNode(node, templateSchema, offset, matchingSchemas);
+        if (matchingSchemas.length > 0) {
+            for (let s of matchingSchemas) {
+                if (location.isAtPropertyKey && s && typeof(s) === 'object') {
+                    if (s.properties) {
+                        let notDeprecated = (s: Schema) => !(s && typeof(s) === 'object' && s.deprecatedMessage);
+                        let s1 = s;
+                        let existsProperties = json.findNodeAtLocation(node, location.path.slice(0, -1)).children.map(c => c.children[0].value);
+                        items.push(...Object.keys(s.properties)
+                            .filter(k => notDeprecated(s1.properties[k]))
+                            .filter(k => existsProperties.indexOf(k) < 0)
+                            .map(k => {
+                                let s = s1.properties[k];
+                                let item = new CompletionItem(k, vscode.CompletionItemKind.Property);
+    
+                                if (s && typeof(s) === 'object') {
+                                    switch (s.format) {
+                                        case 'event': item.kind = vscode.CompletionItemKind.Event; break;
+                                    }
+                                    if (s.description) {
+                                        item.detail = s.description;
+                                    }
+                                }
+    
+                                let valueText = () => {
+                                    if (!location.isAtPropertyKey) {
+                                        return '';
+                                    }
+                    
+                                    let valueText = '';
+                                    let comma = false;
+                                    if (document.lineAt(position.line).text.substr(position.character + 1).match(/^\s*"/)) {
+                                        comma = true;
+                                    }
+                                    else if (position.line + 1 < document.lineCount && document.lineAt(position.line + 1).text.match(/^\s*"/)) {
+                                        comma = true;
+                                    }
+                                    let value = '$0';
+                                    let type = this.schemaType(s);
+                                    switch (type) {
+                                        case 'string': value = '"$0"'; break;
+                                        case 'object': value = '{$0}'; break;
+                                        case 'array': value = '[$0]'; break;
+                                        case 'null': value = '${0:null}'; break;
+                                    }
+                                    valueText += `: ${value}`;
+                                    if (comma) {
+                                        valueText += ',';
+                                    }
+                                    
+                                    return valueText;
+                                }
+    
+                                if (location.previousNode) {
+                                    let offset = document.offsetAt(position);
+                                    let delta = offset - location.previousNode.offset;
+                                    let inQuote = delta > 0 && delta < location.previousNode.length;
+                                    if (inQuote) {
+                                        item.insertText = new vscode.SnippetString(`${k}"${valueText()}`);
+                                        item.range = new vscode.Range(document.positionAt(location.previousNode.offset + 1), document.positionAt(location.previousNode.offset + location.previousNode.length));
+                                    }
+                                    else {
+                                        item.insertText = `"${k}"`;
+                                        item.range = new vscode.Range(document.positionAt(location.previousNode.offset), document.positionAt(location.previousNode.offset + location.previousNode.length));
+                                    }
+                                } else {
+                                    item.insertText = new vscode.SnippetString(`"${k}"${valueText()}`);
+                                }
+                                return item;
+                            }));
+                    }
                 }
+                else if (!location.isAtPropertyKey && s && typeof(s) === 'object') {
+                    let enums = this.schemaEnums(s);
+                    if (location.previousNode) {
+                        enums = enums.filter(s => typeof(s[0]) === 'string');
+                        items.push(...enums.map(e => {
+                            let item = new CompletionItem(e[0], e[2]);
+                            if (e[1]) {
+                                item.detail = e[1];
+                            }
+                            item.command = {
+                                title: "Move To Line End",
+                                command: "mist.moveToLineEnd"
+                            };
+                            return item;
+                        })); 
+                    }
+                    else {
+                        items.push(...enums.map(e => {
+                            let item = new CompletionItem(JSON.stringify(e[0]), e[2]);
+                            if (e[1]) {
+                                item.detail = e[1];
+                            }
+                            return item;
+                        })); 
+                    }
+                }
+            }
+        }
 
-                let valueText = '';
-                let comma = false;
-                if (document.lineAt(position.line).text.substr(position.character + 1).match(/^\s*"/)) {
-                    comma = true;
-                }
-                else if (position.line + 1 < document.lineCount && document.lineAt(position.line + 1).text.match(/^\s*"/)) {
-                    comma = true;
-                }
-                valueText += `: ${info.defaultValue}`;
-                if (comma) {
-                    valueText += ',';
-                }
-                
-                return valueText;
-            }
-
-            if (location.previousNode) {
-                let offset = document.offsetAt(position);
-                let delta = offset - location.previousNode.offset;
-                let inQuote = delta > 0 && delta < location.previousNode.length;
-                if (inQuote) {
-                    item.insertText = new vscode.SnippetString(`${p}"${valueText()}`);
-                    item.range = new vscode.Range(document.positionAt(location.previousNode.offset + 1), document.positionAt(location.previousNode.offset + location.previousNode.length));
-                }
-                else {
-                    item.insertText = `"${p}"`;
-                    item.range = new vscode.Range(document.positionAt(location.previousNode.offset), document.positionAt(location.previousNode.offset + location.previousNode.length));
-                }
-            } else {
-                item.insertText = new vscode.SnippetString(`"${p}"${valueText()}`);
-            }
-            return item;
-        });
-
+        // snippets
         if (!location.previousNode) {
             let nodePath = this.nodePath(location.path);
-            if (!nodePath) return propertyItems;
             let snippets: any = Snippets.nodeSnippets;
-            if (nodePath.length === 0) {
+            if (nodePath && nodePath.length === 0) {
                 let trialingText = this.document.getText(new vscode.Range(position, position.translate(3, 0)));
-                let needTrialingComma = /^\s*\{/m.test(trialingText);
+                let needTrialingComma = trialingText.trim().startsWith('{');
                 snippets = Object.keys(snippets).reduce((p, c) => {
                     p[c] = '{\n  ' + snippets[c].replace(/\n/mg, '\n  ') + '\n}';
                     if (needTrialingComma) p[c] += ',';
                     return p;
                 }, {});
             }
-            else if (nodePath.length === 1 && location.isAtPropertyKey) {
+            else if (nodePath && nodePath.length === 1 && location.isAtPropertyKey) {
                 let node = this.nodeAtPath(location.path);
                 if (node.node.children.length > 0) {
-                    return propertyItems;
+                    return items;
                 }
             }
             else {
-                return propertyItems;
+                return items;
             }
-            propertyItems.push(...Object.keys(snippets).map(name => {
+            items.push(...Object.keys(snippets).map(name => {
                 let item = new CompletionItem(name, vscode.CompletionItemKind.Snippet);
                 item.insertText = new vscode.SnippetString(snippets[name]);
                 return item;
             }));
         }
 
-        return propertyItems;
+        return items;
     }
 
     public provideHover(position: vscode.Position, token: vscode.CancellationToken): vscode.ProviderResult<vscode.Hover> {
@@ -983,28 +1090,40 @@ export class MistDocument {
             return new Hover(contents);
         }
         
-        let properties = this.getProperties(this.rootNode, location);
-        let node = findNodeAtLocation(this.rootNode, location.path);
-        if (location.isAtPropertyKey) {
-            if (node.type === 'property') {
-                node = node.children[0];
+        let node = this.rootNode;
+        let matchingSchemas: Schema[] = [];
+        let range = new vscode.Range(
+            document.positionAt(location.previousNode.offset),
+            document.positionAt(location.previousNode.offset + location.previousNode.length)
+        );
+        let offset = document.offsetAt(position);
+        validateJsonNode(node, templateSchema, offset, matchingSchemas);
+        if (matchingSchemas.length > 0) {
+            let s = matchingSchemas[matchingSchemas.length - 1];
+            if (location.isAtPropertyKey && s && typeof(s) === 'object') {
+                if (s.properties) {
+                    s = s.properties[location.previousNode.value];
+                }
+                else if (s.patternProperties) {
+                    s = s.patternProperties;
+                }
+                else if (typeof(s.additionalProperties) === 'object') {
+                    s = s.additionalProperties;
+                }
             }
-            else if (node.parent.type === 'property') {
-                node = node.parent.children[0];
+            else if (!location.isAtPropertyKey && s && typeof(s) === 'object') {
+                if (s.enum && s.enumDescriptions) {
+                    let value = getNodeValue(json.findNodeAtLocation(node, location.path));
+                    let index = s.enum.indexOf(value);
+                    if (index >= 0) {
+                        return new Hover(s.enumDescriptions[index], range);
+                    }
+                }
+            }
+            if (s && typeof(s) === 'object' && s.description) {
+                return new Hover(s.description, range);
             }
         }
-        
-        let key = node.value;
-        let info: PropertyInfo = properties[key];
-        if (!info) {
-            return null;
-        }
-        if (info.desc) {
-            let hover = new vscode.Hover(info.desc);
-            hover.range = new vscode.Range(document.positionAt(node.offset), document.positionAt(node.offset + node.length));
-            return hover;
-        }
-        
         return null;
     }
 
@@ -1568,121 +1687,6 @@ export class MistDocument {
         else {
             return node.compute(context);
         }
-    }
-
-    private getPropertiesWithPath(properties, path: json.Segment[]) {
-        if (path.length === 1) {
-            return properties instanceof Object ? properties : {};
-        }
-        else if (path.length > 1) {
-            let key = path[0];
-            if (typeof key === "string" && key.startsWith("on-") && key.endsWith("-once")) {
-                key = key.substring(0, key.length - 5);
-                if (!(properties[key] instanceof PropertyInfo && properties[key].type === Event)) {
-                    return {};
-                }
-            }
-            let info = properties[key];
-            if (info) {
-                return this.getPropertiesWithPath(info.type, path.slice(1));
-            }
-        }
-        return {};
-    }
-
-    private getProperties(rootNode: json.Node, location: json.Location) {
-        let properties = {};
-        let currentPath = location.path.length > 0 ? location.path[location.path.length - 1] : '';
-
-        if (location.path.length === 0) {
-            return null;
-        }
-        else if (location.path.length === 1) {
-            properties = Object.assign(properties, Properties.templateProperties);
-        }
-        else if (location.path[0] === 'styles' && location.path.length >= 3) {
-            let propertiesMap = {};
-            propertiesMap = Object.assign(propertiesMap, {'node': Properties.baseProperties});
-            propertiesMap = Object.assign(propertiesMap, Properties.nodeProperties);
-
-            let allProperties = {};
-            let path = [<json.Segment>'style'].concat(location.path.slice(2));
-            Object.keys(propertiesMap).forEach(type => {
-                let typeProperties = this.getPropertiesWithPath(propertiesMap[type], path);
-                Object.keys(typeProperties).forEach(key => {
-                    if (!(key in allProperties)) {
-                        allProperties[key] = {};
-                    }
-                    allProperties[key][type] = typeProperties[key];
-                })
-            });
-
-            Object.keys(allProperties).forEach(key => {
-                let value = allProperties[key];
-                let types = Object.keys(value);
-                let desc = types.map(k => {
-                    let info = value[k];
-                    return `<${k}> ` + (info instanceof PropertyInfo ? info.desc || 'no description' : 'no description');
-                }).join('\n\n');
-                let firstInfo = value[types[0]];
-                allProperties[key] = new PropertyInfo(firstInfo instanceof PropertyInfo ? firstInfo.type : BasicType.Other, desc);
-            });
-            properties = allProperties;
-        }
-        else if (location.path[0] === 'layout') {
-            let path = [...location.path];
-            let node = this.nodeAtPath(path);
-            if (!node) {
-                return [];
-            }
-            let type = node.type();
-            let nodeProperties = Properties.nodeProperties[type] || {};
-
-            properties = Object.assign(properties, this.getPropertiesWithPath(Properties.baseProperties, path));
-            properties = Object.assign(properties, this.getPropertiesWithPath(nodeProperties, path));
-        }
-
-        let keys = Object.keys(properties);
-        keys.forEach(key => {
-            if (key.startsWith("on-")) {
-                let info: PropertyInfo = properties[key];
-                if (info.type === Event) {
-                    let once = new PropertyInfo(info.type, `${info.desc || ""}（只触发一次）`, info.defaultValue);
-                    properties[`${key}-once`] = once;
-                }
-            }
-        })
-
-        if (location.isAtPropertyKey) {
-            let node = json.findNodeAtLocation(rootNode, location.path.slice(0, location.path.length - 1));
-            if (node) {
-                let existsProperties = node.children.map(p => p.children[0].value);
-                if (existsProperties) {
-                    var index = existsProperties.indexOf(currentPath as string, 0);
-                    if (index >= 0) {
-                        existsProperties.splice(index, 1);
-                    }
-                    existsProperties.forEach(p => {
-                        delete properties[p];
-                    });
-                }
-            }
-        }
-        else {
-            let info: PropertyInfo = properties[currentPath];
-            properties = {};
-            if (info && info.isEnumProperty()) {
-                let propertyType = info.type === Properties.colors ? BasicType.Color : BasicType.Enum;
-                if (info.type instanceof Array) {
-                    (<Array<string>>info.type).forEach(v => properties[v] = new PropertyInfo(propertyType, ""));
-                }
-                else {
-                    Object.keys(info.type).forEach(k => properties[k] = new PropertyInfo(propertyType, info.type[k]));
-                }
-            }
-        }
-
-        return properties;
     }
 
     private propertyName(name: string, property: Property) {
