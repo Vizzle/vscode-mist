@@ -74,7 +74,7 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
                 });
             }
         });
-        this._listening = new Promise<number>((resolve, reject) => httpServer.listen(0, 'localhost', null, err => err ? reject(err) : resolve(httpServer.address().port)));
+        this._listening = new Promise<number>((resolve, reject) => httpServer.listen(0, null, null, err => err ? reject(err) : resolve(httpServer.address().port)));
         this._server = new ws.Server({ server: httpServer });
         this._server.on('connection', client => {
             client.on('message', message => {
@@ -205,6 +205,7 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
         return `
     <head>
         <base href="${this.getResourcePath('preview.html')}">
+        <title>Mist Preview</title>
         <meta charset="UTF-8">
         <link rel="stylesheet" href="lib/bootstrap.min.css">
         <link rel="stylesheet" href="css/preview.css">

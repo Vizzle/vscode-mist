@@ -290,7 +290,18 @@ class Client {
 
     private prepareSocket() {
         if (this.type !== 'browser') {
-            this.socket = new WebSocket(`ws://localhost:${this.port}`);
+            let uri = location.href;
+            let host: string;
+            // 1: schema, 2: host, 3: port, 4: request, 5: query, 6: anchor
+            const uri_re = /^(\w+):\/\/([^:/?#]+)(?::(\d+))?(\/[^?#]*)?(?:\?([^?#]*))?(?:#(.*)?)?$/;
+            let match = uri.match(uri_re);
+            if (match) {
+                host = match[2];
+            }
+            else {
+                host = 'localhost';
+            }
+            this.socket = new WebSocket(`ws://${host}:${this.port}`);
             this.socket.addEventListener("open", () => {
                 this.send('open');
             });
