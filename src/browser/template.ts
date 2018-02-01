@@ -1,4 +1,4 @@
-import { ExpressionContext, ExpressionNode, None, LiteralNode, ParseResult, Parser } from "./parser";
+import { ExpressionContext, ExpressionNode, None, LiteralNode, ParseResult, Parser, ExpressionError } from "./parser";
 import { IType, Type, Property, Method, Parameter } from "./type";
 import { functions } from "./functions";
 
@@ -223,6 +223,21 @@ export function parse(exp: string): ParseResult {
     return parsed;
 }
 
+class ErrorNode extends ExpressionNode {
+    compute(context: ExpressionContext) {
+        return None;
+    }
+    computeValue(context: ExpressionContext) {
+        return null;
+    }
+    getType(context: ExpressionContext): IType {
+        return Type.Any
+    }
+    check(context: ExpressionContext): ExpressionError[] {
+        return [];
+    }
+}
+
 function parseExpressionInString(source: string) {
     const re = /\$\{(.*?)\}/mg;
     re.lastIndex = 0;
@@ -233,7 +248,7 @@ function parseExpressionInString(source: string) {
         let exp = match[1];
         let { expression: node, errorMessage: error } = parse(exp);
         if (error || !node) {
-            node = new LiteralNode(null);
+            node = new ErrorNode();
         }
         if (match.index === 0 && re.lastIndex === source.length) {
             return node;

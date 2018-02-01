@@ -10,8 +10,8 @@ import { Type, IType, Method, Parameter, Property, ArrayType, UnionType, ObjectT
 import { ExpressionContext, Parser, None, ExpressionNode, LiteralNode, ParseResult, ExpressionErrorLevel } from "./browser/parser";
 import Snippets from "./snippets";
 import { parse, parseExpressionInObject } from "./browser/template";
-import { Schema, validateJsonNode } from "./schema";
-import { templateSchema } from "./template_schema";
+import { Schema, validateJsonNode, SchemaObject } from "./schema";
+import { templateSchema, NodeSchema } from "./template_schema";
 
 enum ExpType {
     Void,
@@ -46,7 +46,6 @@ class Variable {
     name: string;
     type: IType;
     value: any;
-    computed: any;
     description: string;
     incomplete: boolean;
     node: json.Node;
@@ -106,7 +105,7 @@ let BUILTIN_VARS = [
         "isPlus": new Property(Type.Boolean, "是否是大屏（iPhone 6/6s/7/8 Plus）"),
         "isSmall": new Property(Type.Boolean, "是否是小屏（iPhone 4/4s/5/5s/SE）"),
         "isX": new Property(Type.Boolean, "是否是 iPhone X"),
-        "safeAera": new Property(Type.registerType(new Type('UIEdgeInsets')), "安全区域"),
+        "safeArea": new Property(Type.getType('UIEdgeInsets'), "安全区域"),
     }), "屏幕属性"),
     new Variable("app", Type.registerType(new Type('screen')).registerPropertys({
         "isAlipay": new Property(Type.Boolean, "是否是支付宝客户端"),
@@ -687,56 +686,6 @@ export class MistDocument {
         return vscode.workspace.rootPath;
     }
 
-    private valueType(value: any) {
-        if (value === null) return 'null';
-        if (value instanceof Array) return 'array';
-        return typeof(value);
-    }
-
-    private schemaType(s: Schema): string {
-        if (s && typeof(s) === 'object') {
-            if (s.type) return s.type;
-            if (s.enum) {
-                let set = [...new Set(s.enum.map(e => this.valueType(e)))];
-                if (set.length === 1) {
-                    return set[0];
-                }
-                return null;
-            }
-            if (s.oneOf) {
-                let set = [...new Set(s.oneOf.filter(s => s && typeof(s) === 'object' && !s.deprecatedMessage).map(s => this.schemaType(s)))];
-                if (set.length === 1) {
-                    return set[0];
-                }
-                return null;
-            }
-        }
-        return null;
-    }
-
-    private schemaEnums(s: Schema): [any, string, vscode.CompletionItemKind][] {
-        if (s && typeof(s) === 'object') {
-            if (s.enum) {
-                let enums = s.enum;
-                enums = enums.map((e, i) => [e, s.enumDescriptions ? s.enumDescriptions[i] : null, vscode.CompletionItemKind.EnumMember]);
-                if (s.type) {
-                    enums = enums.filter(e => this.valueType(e[0]) === s.type);
-                }
-                return enums;
-            }
-            else if (s.type) {
-                switch (s.type) {
-                    case 'boolean': return [[true, null, vscode.CompletionItemKind.Constant], [false, null, vscode.CompletionItemKind.Constant]];
-                    case 'null': return [[null, null, vscode.CompletionItemKind.Constant]];
-                }
-            }
-            else if (s.oneOf) {
-                return s.oneOf.filter(s => s && typeof(s) === 'object' && !s.deprecatedMessage).map(s => this.schemaEnums(s)).reduce((p, c) => {p.push(...c); return p;}, []);
-            }
-        }
-        return [];
-    }
-
     public provideCompletionItems(position: vscode.Position, token: vscode.CancellationToken) {
         let document = this.document;
         let location = json.getLocation(document.getText(), document.offsetAt(position));
@@ -769,10 +718,7 @@ export class MistDocument {
                         let item = new CompletionItem(v.name, vscode.CompletionItemKind.Field);
                         item.detail = v.value !== None ? `"${v.name}": ${JSON.stringify(v.value, null, '\t')}` : `${v.name}: ${v.type.getName()}`;
                         let doc = [];
-                        if (v.computed !== None) {
-                            doc.push(JSON.stringify(v.computed, null, '\t'));
-                        }
-                        else if (v.type && v.value === None) {
+                        if (v.type && v.value === None) {
                             doc.push(v.type.getName());
                         }
                         if (v.description) {
@@ -840,6 +786,11 @@ export class MistDocument {
                 offset = propNode.children[0].offset;
             }
         }
+        else if (location.isAtPropertyKey && location.previousNode) {
+            // 在 key 已经有引号时
+            let parentNode = json.findNodeAtLocation(node, location.path.slice(0, -1));
+            offset = parentNode.offset;
+        }
         validateJsonNode(node, templateSchema, offset, matchingSchemas);
         if (matchingSchemas.length > 0) {
             for (let s of matchingSchemas) {
@@ -881,9 +832,12 @@ export class MistDocument {
                                     let type = this.schemaType(s);
                                     switch (type) {
                                         case 'string': value = '"$0"'; break;
-                                        case 'object': value = '{$0}'; break;
-                                        case 'array': value = '[$0]'; break;
+                                        case 'object': value = '{\n  $0\n}'; break;
+                                        case 'array': value = '[\n  $0\n]'; break;
                                         case 'null': value = '${0:null}'; break;
+                                    }
+                                    if (s && typeof(s) === 'object' && s.snippet) {
+                                        value = s.snippet;
                                     }
                                     valueText += `: ${value}`;
                                     if (comma) {
@@ -1010,6 +964,24 @@ export class MistDocument {
             }
             return node;
         }
+
+        let contentsFromProperty = (name: string, prop: Property): vscode.MarkedString[] => {
+            let contents:vscode.MarkedString[] = [];
+            contents.push({language: 'typescript', value: this.propertyName(name, prop)});
+            if (prop.description) {
+                contents.push(prop.description);
+            }
+            return contents;
+        }
+        
+        let contentsFromMethod = (name: string, fun: Method, count: number): vscode.MarkedString[] => {
+            let contents:vscode.MarkedString[] = [];
+            contents.push({language: 'typescript', value: this.methodName(name, fun, count)});
+            if (fun.description) {
+                contents.push(fun.description);
+            }
+            return contents;
+        }
         
         let document = this.document;
         let wordRange = document.getWordRangeAtPosition(position);
@@ -1033,14 +1005,11 @@ export class MistDocument {
             else if (!isFunction) {
                 let v = ctx.vars.find(v => v.name === func);
                 if (v) {
-                    if (v.value !== None) {
-                        contents.push({ language: 'mist', value: `"${v.name}": ${JSON.stringify(v.value, null, '\t')}` });
-                    }
-                    if (v.computed !== None) {
-                        contents.push({ language: 'json', value: JSON.stringify(v.computed, null, '\t') });
-                    }
+                    // if (v.value !== None) {
+                    //     contents.push({ language: 'mist', value: `"${v.name}": ${JSON.stringify(v.value, null, '\t')}` });
+                    // }
                     if (v.type) {
-                        contents.push({ language: 'typescript', value: v.type.getName() });
+                        contents.push({ language: 'typescript', value: `"${v.name}": ${v.type.getName()}` });
                     }
                     if (v.description) {
                         contents.push(v.description);
@@ -1059,28 +1028,24 @@ export class MistDocument {
                             let paramsCount = getFunctionParamsCount(this.getTrailingExpressionAtLocation(location, wordRange.end));
                             current = fun.find(f => f.params.length === paramsCount);
                         }
-                        contents.push({language: 'typescript', value: this.methodName(func, current || fun[0], fun.length)});
+                        contents.push(...contentsFromMethod(func, current || fun[0], fun.length));
                     }
                     else {
                         let prop = type.getProperty(func);
                         if (prop) {
-                            contents.push({language: 'typescript', value: this.propertyName(func, prop)});
+                            contents.push(...contentsFromProperty(func, prop));
                         }
                     }
                 }
                 else {
-                    let value = this.expressionValueWithContext(expression, ctx.valueContext);
-                    if (value !== None && value !== undefined) {
-                        contents.push({ language: 'json', value: JSON.stringify(value, null, '\t') });
-                    }
                     let prop = type.getProperty(func);
                     if (prop) {
-                        contents.push({language: 'typescript', value: this.propertyName(func, prop)});
+                        contents.push(...contentsFromProperty(func, prop));
                     }
                     else {
                         let fun = type.getMethod(func, 0);
                         if (fun && fun.type && fun.type !== Type.Void) {
-                            contents.push({language: 'typescript', value: this.methodName(func, fun, type.getMethods(func).length)});
+                            contents.push(...contentsFromMethod(func, fun, type.getMethods(func).length));
                         }
                     }
                 }
@@ -1100,18 +1065,7 @@ export class MistDocument {
         validateJsonNode(node, templateSchema, offset, matchingSchemas);
         if (matchingSchemas.length > 0) {
             let s = matchingSchemas[matchingSchemas.length - 1];
-            if (location.isAtPropertyKey && s && typeof(s) === 'object') {
-                if (s.properties) {
-                    s = s.properties[location.previousNode.value];
-                }
-                else if (s.patternProperties) {
-                    s = s.patternProperties;
-                }
-                else if (typeof(s.additionalProperties) === 'object') {
-                    s = s.additionalProperties;
-                }
-            }
-            else if (!location.isAtPropertyKey && s && typeof(s) === 'object') {
+            if (!location.isAtPropertyKey && s && typeof(s) === 'object') {
                 if (s.enum && s.enumDescriptions) {
                     let value = getNodeValue(json.findNodeAtLocation(node, location.path));
                     let index = s.enum.indexOf(value);
@@ -1208,25 +1162,21 @@ export class MistDocument {
         if (!this.template) return [];
         let vars: Variable[] = [];
         let typeContext = new TrackExpressionContext();
-        let valueContext = new ExpressionContext();
 
         let diagnostics = [];
 
-        let pushVariable = (v: Variable) => {
+        let pushVariable = (v: Variable, isConst: boolean = false) => {
             vars.push(v);
             let isExp = false;
             let parsed = parseExpressionInObject(v.value);
             if (this.hasExpression(parsed)) {
                 isExp = true;
-                v.computed = this.computeExpressionValueInObject(parsed, valueContext);
-
                 if (!v.type) {
-                    v.type = this.computeExpressionTypeInObject(parsed, typeContext);
+                    v.type = isConst ? this.computeExpressionTypeInObject(parsed, typeContext, isConst) : this.getDataType(parsed);
                 }
             }
-            valueContext.push(v.name, isExp ? v.computed : v.value);
             if (!v.type) {
-                v.type = Type.typeof(v.value) || Type.Any;
+                v.type = (isConst ? Type.typeof(v.value, isConst) : this.getDataType(v.value)) || Type.Any;
             }
             if (v.incomplete && v.type instanceof ObjectType) {
                 v.type.setIndexType();
@@ -1247,15 +1197,14 @@ export class MistDocument {
                 vars.splice(index, 1);
             }
             typeContext.pop(key);
-            valueContext.pop(key);
         };
         let pushDict = dict => Object.keys(dict).forEach(key => push(key, dict[key]));
-        let pushVarsDict = (node: json.Node) => {
+        let pushVarsDict = (node: json.Node, isConst: boolean = false) => {
             let pushed = [];
             node.children.forEach(c => {
                 if (c.children.length === 2) {
                     let key = c.children[0].value;
-                    pushVariable(new Variable(key, getNodeValue(c.children[1])).setNode(c));
+                    pushVariable(new Variable(key, getNodeValue(c.children[1])).setNode(c), isConst);
                     pushed.push(key);
                 }
             });
@@ -1312,6 +1261,57 @@ export class MistDocument {
             }
         }
 
+        let resolveExpressionsInNode = (node: json.Node) => {
+            if (node.type === 'string') {
+                let parsed = parseExpressionInObject(node.value);
+                if (parsed === null) {
+                    node.value = Type.Any;
+                }
+                else {
+                    node.value = this.computeExpressionTypeInObject(parsed, typeContext, true);
+                }
+            }
+            else if (node.type === 'array') {
+                node.children.forEach(c => resolveExpressionsInNode(c));
+            }
+            else if (node.type === 'object') {
+                node.children.forEach(c => {
+                    if (c.children.length === 2) resolveExpressionsInNode(c.children[1]);
+                });
+            }
+        };
+
+        let validateProperty = (node: json.Node, schema: Schema) => {
+            if (!node) return;
+            if (node.type !== 'property') {
+                node = node.parent;
+            }
+            if (!node || node.type !== 'property') return;
+            if (typeof(schema) !== 'object') return;
+            let keyNode = node.children[0];
+            let valueNode = node.children[1];
+            if (!valueNode) return;
+            let key = keyNode.value;
+            let s = schema.properties[key];
+            if (!valueNode) return;
+            if (!s) {
+                if (!schema.additionalProperties) {
+                    let desc = `不存在属性 \`${key}\``;
+                    let style = schema.properties.style;
+                    let inStyle = style && typeof(style) === 'object' && key in style.properties;
+                    if (inStyle) {
+                        desc += `，是否想使用 \`style\` 中的 \`${key}\``;
+                    }
+                    diagnostics.push(new vscode.Diagnostic(range(keyNode.offset, keyNode.length), desc, vscode.DiagnosticSeverity.Warning));
+                }
+                return;
+            }
+            validate(valueNode);
+            resolveExpressionsInNode(valueNode);
+            let errors = validateJsonNode(valueNode, s);
+            diagnostics.push(...errors.map(e => new vscode.Diagnostic(range(e.node.offset, e.node.length), e.error, vscode.DiagnosticSeverity.Warning)));
+        }
+
         let assertNoExp = (node: json.Node) => {
             if (node && node.type === 'string') {
                 let expressions = this.findExpressionsInString(node);
@@ -1321,30 +1321,42 @@ export class MistDocument {
             }
         }
         
-        ['controller', 'identifier', 'async-display', 'cell-height-animation', 'reuse-identifier'].forEach(p => assertNoExp(json.findNodeAtLocation(this.rootNode, [p])));
+        let noExpProps = ['controller', 'identifier', 'async-display', 'cell-height-animation', 'reuse-identifier'];
         
-        BUILTIN_VARS.forEach(pushVariable);
+        BUILTIN_VARS.forEach(v => pushVariable(v)); 
 
         let data = this.getData() ? this.getData().data : {};
 
         pushDict(data);
-        pushVariable(new Variable('_data_', data, '模版关联的数据', true));
+        pushVariable(new Variable('_data_', this.getDataType(data), '模版关联的数据', true));
 
+        validateProperty(json.findNodeAtLocation(this.rootNode, ['data']), templateSchema);
         if (this.template.data instanceof Object) {
-            validate(json.findNodeAtLocation(this.rootNode, ['data']));
             data = {...data, ...this.template.data};
         }
         pushDict(data);
 
-        pushVariable(new Variable('_data_', data, '模版关联的数据', true));
+        pushVariable(new Variable('_data_', this.getDataType(data), '模版关联的数据', true));
 
         pushDict({
             '_item_': Type.Null,
             '_index_': Type.Null,
         });
 
-        validate(json.findNodeAtLocation(this.rootNode, ['state']));
-        pushVariable(new Variable('state', this.template.state || null, '模版状态', true));
+        validateProperty(json.findNodeAtLocation(this.rootNode, ['state']), templateSchema);
+        pushVariable(new Variable('state', this.getDataType(this.template.state || null), '模版状态', true));
+
+        this.rootNode.children.forEach(c => {
+            let key = c.children[0].value;
+            if (key === 'layout' || key === 'data' || key === 'state') {
+                return;
+            }
+
+            if (noExpProps.indexOf(key) >= 0) {
+                assertNoExp(c.children[1]);
+            }
+            validateProperty(c, templateSchema);
+        });
         
         let validateNode = (node: MistNode) => {
             if (!node) return;
@@ -1365,14 +1377,16 @@ export class MistDocument {
                 return;
             }
             let pushed = [];
+            let schema = new NodeSchema().getSchema(node.node);
             let repeatNode = getPropertyNode(node.node, 'repeat');
             if (repeatNode) {
-                validate(repeatNode);
+                validateProperty(repeatNode.parent, schema);
                 pushVariable(new Variable('_index_', Type.Number, '当前 `repeat` 元素索引'));
-                let repeat = parseExpressionInObject(json.getNodeValue(repeatNode));
-                let repeatType = this.computeExpressionTypeInObject(repeat, typeContext);
-                let valueType = repeatType instanceof ArrayType ? repeatType.getElementsType()
-                    : repeatType === Type.Number ? Type.Null : Type.Any; 
+                let repeatType: IType = repeatNode.value;
+                if (!(repeatType instanceof IType)) {
+                    repeatType = Type.Any;
+                }
+                let valueType = repeatType.getTypeAtIndex(Type.Number);
                 pushVariable(new Variable('_item_', valueType, '当前 `repeat` 元素'));
                 pushed.push('_item_', '_index_');
             }
@@ -1385,20 +1399,27 @@ export class MistDocument {
                             return;
                         }
                         validate(c);
-                        pushed.push(...pushVarsDict(c));
+                        pushed.push(...pushVarsDict(c, true));
                     });
                 }
                 else if (varsNode.type === 'object') {
                     validate(varsNode);
-                    pushed.push(...pushVarsDict(varsNode));
+                    pushed.push(...pushVarsDict(varsNode, true));
                 }
                 else {
                     diagnostics.push(new vscode.Diagnostic(nodeRange(varsNode), '`vars` 属性只能为 `object` 或 `array`', vscode.DiagnosticSeverity.Error));
                 }
             }
             const list = ['repeat', 'vars', 'children'];
-            let otherNodes = node.node.children.filter(n => n.children.length === 2 && list.indexOf(n.children[0].value) < 0).map(n => n.children[1]);
-            otherNodes.forEach(validate);
+            let otherNodes = node.node.children.filter(n => n.children.length === 2 && list.indexOf(n.children[0].value) < 0);
+            if (typeof(schema) === 'object') {
+                let childrenNode = json.findNodeAtLocation(node.node, ['children']);
+                if (childrenNode && !schema.properties['children'] && schema.additionalProperties === false) {
+                    let keyNode = childrenNode.parent.children[0];
+                    diagnostics.push(new vscode.Diagnostic(range(keyNode.offset, keyNode.length), '不存在属性 `children`', vscode.DiagnosticSeverity.Warning));
+                }
+                otherNodes.forEach(n => validateProperty(n, schema));
+            }
 
             if (node.children) {
                 node.children.forEach(validateNode);
@@ -1525,17 +1546,18 @@ export class MistDocument {
         return obj;
     }
 
-    private computeExpressionTypeInObject(obj: any, context: ExpressionContext) {
+    private computeExpressionTypeInObject(obj: any, context: ExpressionContext, isConst: boolean = false) {
         if (obj instanceof ExpressionNode) {
             return obj.getType(context);
         }
         else if (obj instanceof Array) {
-            return new ArrayType(IntersectionType.type(obj.map(o => this.computeExpressionTypeInObject(o, context))));
+            let types = obj.map(o => this.computeExpressionTypeInObject(o, context, isConst));
+            return isConst ? ArrayType.tuple(types) : new ArrayType(UnionType.type(types));
         }
         else if (obj && obj !== None && typeof(obj) === 'object') {
-            return new ObjectType(Object.keys(obj).reduce((p, c) => { p[c] = this.computeExpressionTypeInObject(obj[c], context); return p; }, {}));
+            return new ObjectType(Object.keys(obj).reduce((p, c) => { p[c] = this.computeExpressionTypeInObject(obj[c], context, isConst); return p; }, {}));
         }
-        return Type.typeof(obj);
+        return Type.typeof(obj, isConst);
     }
 
     private hasExpression(obj: any) {
@@ -1553,28 +1575,23 @@ export class MistDocument {
 
     private contextAtLocation(location: json.Location): {
         vars: Variable[],
-        valueContext: ExpressionContext,
         typeContext: ExpressionContext
     } {
         let vars: Variable[] = [];
         let typeContext = new ExpressionContext();
-        let valueContext = new ExpressionContext();
 
-        let pushVariable = (v: Variable) => {
+        let pushVariable = (v: Variable, isConst: boolean = false) => {
             vars.push(v);
             let isExp = false;
             let parsed = parseExpressionInObject(v.value);
             if (this.hasExpression(parsed)) {
                 isExp = true;
-                v.computed = this.computeExpressionValueInObject(parsed, valueContext);
-
                 if (!v.type) {
-                    v.type = this.computeExpressionTypeInObject(parsed, typeContext);
+                    v.type = this.computeExpressionTypeInObject(parsed, typeContext, isConst);
                 }
             }
-            valueContext.push(v.name, isExp ? v.computed : v.value);
             if (!v.type) {
-                v.type = Type.typeof(v.value) || Type.Any;
+                v.type = Type.typeof(v.value, isConst) || Type.Any;
             }
             if (v.incomplete && v.type instanceof ObjectType) {
                 v.type.setIndexType();
@@ -1583,20 +1600,20 @@ export class MistDocument {
         };
         let push = (key, value) => pushVariable(new Variable(key, value));
         let pushDict = dict => Object.keys(dict).forEach(key => push(key, dict[key]));
-        let pushVarsDict = (node: json.Node) => {
+        let pushVarsDict = (node: json.Node, isConst: boolean = false) => {
             if (!node) return [];
             let pushed = [];
             node.children.forEach(c => {
                 if (c.children.length === 2) {
                     let key = c.children[0].value;
-                    pushVariable(new Variable(key, getNodeValue(c.children[1])).setNode(c));
+                    pushVariable(new Variable(key, getNodeValue(c.children[1])).setNode(c), isConst);
                     pushed.push(key);
                 }
             });
             return pushed;
         }
         
-        BUILTIN_VARS.forEach(pushVariable);
+        BUILTIN_VARS.forEach(v => pushVariable(v));
         
         let data = this.getData();
         let dataDict = data ? data.data : {};
@@ -1638,10 +1655,11 @@ export class MistDocument {
                 let repeatNode = getPropertyNode(node.node, 'repeat');
                 if (repeatNode) {
                     pushVariable(new Variable('_index_', Type.Number, '当前 `repeat` 元素索引'));
-                    let repeat = parseExpressionInObject(json.getNodeValue(repeatNode));
-                    let repeatType = this.computeExpressionTypeInObject(repeat, typeContext);
-                    let valueType = repeatType instanceof ArrayType ? repeatType.getElementsType()
-                        : repeatType === Type.Number ? Type.Null : Type.Any; 
+                    let repeatType: IType = repeatNode.value;
+                    if (!(repeatType instanceof IType)) {
+                        repeatType = Type.Any;
+                    }
+                    let valueType = repeatType.getTypeAtIndex(Type.Number);
                     pushVariable(new Variable('_item_', valueType, '当前 `repeat` 元素'));
                 }
                 let varsNode = getPropertyNode(node.node, 'vars');
@@ -1652,11 +1670,11 @@ export class MistDocument {
                             count = path[1] as number;
                         }
                         for (var i = 0; i < count; i++) {
-                            pushVarsDict(varsNode.children[i]);
+                            pushVarsDict(varsNode.children[i], true);
                         }
                     }
                     else if (varsNode.type === 'object') {
-                        pushVarsDict(varsNode);
+                        pushVarsDict(varsNode, true);
                     }
                 }
             }
@@ -1664,7 +1682,6 @@ export class MistDocument {
 
         return {
             vars: Variable.unique(vars),
-            valueContext: valueContext,
             typeContext: typeContext   
         };
     }
@@ -1715,6 +1732,89 @@ export class MistDocument {
             });
         }
         return results;
+    }
+
+    private valueType(value: any) {
+        if (value === null) return 'null';
+        if (value instanceof Array) return 'array';
+        return typeof(value);
+    }
+
+    private schemaType(s: Schema): string {
+        if (s && typeof(s) === 'object') {
+            if (s.type) return s.type;
+            if (s.enum) {
+                let set = [...new Set(s.enum.map(e => this.valueType(e)))];
+                if (set.length === 1) {
+                    return set[0];
+                }
+                return null;
+            }
+            if (s.oneOf) {
+                let set = [...new Set(s.oneOf.filter(s => s && typeof(s) === 'object' && !s.deprecatedMessage).map(s => this.schemaType(s)))];
+                if (set.length === 1) {
+                    return set[0];
+                }
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private schemaEnums(s: Schema): [any, string, vscode.CompletionItemKind][] {
+        if (s && typeof(s) === 'object') {
+            if (s.enum) {
+                let enums = s.enum;
+                enums = enums.map((e, i) => [e, s.enumDescriptions ? s.enumDescriptions[i] : null, vscode.CompletionItemKind.EnumMember]);
+                if (s.type) {
+                    enums = enums.filter(e => this.valueType(e[0]) === s.type);
+                }
+                return enums;
+            }
+            else if (s.type) {
+                switch (s.type) {
+                    case 'boolean': return [[true, null, vscode.CompletionItemKind.Constant], [false, null, vscode.CompletionItemKind.Constant]];
+                    case 'null': return [[null, null, vscode.CompletionItemKind.Constant]];
+                }
+            }
+            else if (s.oneOf) {
+                return s.oneOf.filter(s => s && typeof(s) === 'object' && !s.deprecatedMessage).map(s => this.schemaEnums(s)).reduce((p, c) => { p.push(...c); return p; }, []);
+            }
+        }
+        return [];
+    }
+
+    private getDataType(obj: any): IType {
+        if (obj instanceof IType) return obj;
+        if (obj === undefined || obj === null) {
+            return Type.Any;
+        }
+        let type = typeof(obj);
+        if (type === 'string' || type === 'number' || type === 'boolean') {
+            return Type.getType(type);
+        }
+        if (obj instanceof Array) {
+            let ts = obj.map(o => this.getDataType(o));
+            let objectTypes: ObjectType[] = ts.filter(t => t instanceof ObjectType) as ObjectType[];
+            if (objectTypes.length >= 2) {
+                let newObjectType = new ObjectType(objectTypes.reduce((p, c) => {
+                    let map = c.getMap();
+                    Object.keys(map).forEach(k => {
+                        if (k in p) {
+                            p[k] = IntersectionType.type([p[k], map[k]]);
+                        }
+                        else {
+                            p[k] = map[k];
+                        }
+                    });
+                    return p;
+                }, {}));
+                ts = ts.filter(t => !(t instanceof ObjectType));
+                ts.push(newObjectType);
+            }
+            return new ArrayType(UnionType.type(ts));
+        }
+        return new ObjectType(Object.keys(obj).reduce((ret, k) => {ret[k] = this.getDataType(obj[k]); return ret}, {}));
     }
 
 }

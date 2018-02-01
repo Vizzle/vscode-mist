@@ -13,7 +13,7 @@ import * as myExtension from '../src/mistMain';
 import { getCurrentExpression, getSignatureInfo, getFunctionParamsCount } from '../src/mistDocument';
 import { Lexer } from '../src/browser/lexer';
 import { Parser, ExpressionContext } from '../src/browser/parser';
-import { Type, Property, UnionType, IntersectionType, Method } from '../src/browser/type';
+import { Type, Property, UnionType, IntersectionType, Method, IType, ObjectType, ArrayType, LiteralType } from '../src/browser/type';
 
 function XCTAssertExpression(exp, result) {
     let { expression: node, errorMessage: error } = Parser.parse(exp);
@@ -60,6 +60,146 @@ suite("Extension Tests", () => {
                 m.forEach(p => console.log(`${p.ownerType ? `${p.ownerType.getName()}.` : ''}${n}(${p.params.map(p => `${p.name}: ${p.type.getName()}`)}): ${p.type.getName()}`));
             });
         }
+    });
+
+    test("typeof", () => {
+        assert.equal(IType.typeof(null).getName(), 'any');
+        assert.equal(IType.typeof(123).getName(), 'number');
+        assert.equal(IType.typeof('abc').getName(), 'string');
+        assert.equal(IType.typeof([]).getName(), 'any[]');
+        assert.equal(IType.typeof([123]).getName(), 'number[]');
+        assert.equal(IType.typeof([123, 'abc']).getName(), '(number | string)[]');
+        assert.equal(IType.typeof({}).getName(), '{}');
+        assert.equal(IType.typeof({'a': 1}).getName(), 
+`{
+    "a": number;
+}`
+        );
+
+        assert.equal(IType.typeof(null, true).getName(), 'null');
+        assert.equal(IType.typeof(123, true).getName(), '123');
+        assert.equal(IType.typeof('abc', true).getName(), '"abc"');
+        assert.equal(IType.typeof([], true).getName(), 'any[]');
+        assert.equal(IType.typeof([123], true).getName(), '[123]');
+        assert.equal(IType.typeof([123, 'abc'], true).getName(), '[123, "abc"]');
+        assert.equal(IType.typeof({}, true).getName(), '{}');
+        assert.equal(IType.typeof({'a': 1}, true).getName(), 
+`{
+    "a": 1;
+}`
+        );
+    });
+
+    test("union", () => {
+        assert.equal(UnionType.type([Type.Number, Type.String]).getName(), 'number | string');
+        assert.equal(UnionType.type([Type.Number, UnionType.type([Type.Number, Type.String])]).getName(), 'number | string');
+        assert.equal(UnionType.type([new LiteralType(1), new LiteralType(2)]).getName(), '1 | 2');
+        assert.equal(UnionType.type([new LiteralType(1), new LiteralType(2), Type.String]).getName(), '1 | 2 | string');
+        assert.equal(UnionType.type([new LiteralType(1), new LiteralType(2), Type.Number]).getName(), 'number');
+        assert.equal(UnionType.type([new LiteralType(1), new LiteralType('abc'), Type.Number]).getName(), '"abc" | number');
+        assert.equal(UnionType.type([new LiteralType(1), new LiteralType('abc'), Type.Number, Type.String]).getName(), 'number | string');
+        assert.equal(UnionType.type([Type.Number, Type.Any]).getName(), 'any');
+        assert.equal(UnionType.type([Type.Any, Type.Number]).getName(), 'any');
+        assert.equal(UnionType.type([Type.Number, Type.String, Type.Any]).getName(), 'any');
+        assert.equal(UnionType.type([Type.Number, new ArrayType(Type.Any), Type.Any]).getName(), 'any');
+        assert.equal(UnionType.type([new ArrayType(Type.Number), new ArrayType(Type.Any)]).getName(), 'any[]');
+        assert.equal(UnionType.type([new ArrayType(Type.Any), new ArrayType(Type.Number)]).getName(), 'any[]');
+    });
+
+    test("kindof", () => {
+        const AnyArray = new ArrayType(Type.Any);
+        const NumberArray = new ArrayType(Type.Number);
+        const StringArray = new ArrayType(Type.String);
+        const StringOrNumber = UnionType.type([Type.String, Type.Number]);
+        const _1_2 = UnionType.type([new LiteralType(1), new LiteralType(2)]);
+        const abcOrNumber = UnionType.type([new LiteralType('abc'), Type.Number]);
+
+        // any
+        assert.ok(Type.Number.kindof(Type.Any));
+        assert.ok(Type.Any.kindof(Type.Number));
+        assert.ok(Type.Any.kindof(Type.Any));
+        assert.ok(new LiteralType(1).kindof(Type.Any));
+        assert.ok(new LiteralType('a').kindof(Type.Any));
+        assert.ok(Type.Any.kindof(new LiteralType(1)));
+        assert.ok(Type.Any.kindof(new LiteralType('a')));
+
+        // same
+        assert.ok(new LiteralType(1).kindof(new LiteralType(1)));
+        assert.ok(new LiteralType('abc').kindof(new LiteralType('abc')));
+        assert.ok(new LiteralType(null).kindof(new LiteralType(null)));
+        assert.ok(new LiteralType(true).kindof(new LiteralType(true)));
+        assert.ok(Type.Number.kindof(Type.Number));
+        assert.ok(Type.Boolean.kindof(Type.Boolean));
+        assert.ok(Type.String.kindof(Type.String));
+        assert.ok(Type.Null.kindof(Type.Null));
+        assert.ok(Type.Array.kindof(Type.Array));
+        assert.ok(Type.Object.kindof(Type.Object));
+        assert.ok(new ArrayType(Type.Number).kindof(new ArrayType(Type.Number)));
+        assert.ok(new ObjectType({}).kindof(new ObjectType({})));
+        assert.ok(new ObjectType({abc: Type.String}).kindof(new ObjectType({abc: Type.String})));
+        assert.ok(new ObjectType({abc: Type.String}, ['abc']).kindof(new ObjectType({abc: Type.String}, ['abc'])));
+        assert.ok(new ObjectType({}, null, {name: 'abc', type: Type.Number}).kindof(new ObjectType({}, null, {name: 'def', type: Type.Number})));
+
+        // literal
+        assert.ok(new LiteralType(1).kindof(Type.Number));
+        assert.ok(new LiteralType('abc').kindof(Type.String));
+        assert.ok(new LiteralType(null).kindof(Type.Null));
+        assert.ok(new LiteralType(true).kindof(Type.Boolean));
+
+        // union
+        assert.ok(new LiteralType(1).kindof(StringOrNumber));
+        assert.ok(new LiteralType('abc').kindof(StringOrNumber));
+        assert.ok(Type.Number.kindof(StringOrNumber));
+        assert.ok(Type.String.kindof(StringOrNumber));
+        assert.ok(!Type.Array.kindof(StringOrNumber));
+        assert.ok(!Type.Array.kindof(StringOrNumber));
+        assert.ok(new LiteralType(1).kindof(_1_2));
+        assert.ok(new LiteralType(2).kindof(_1_2));
+        assert.ok(!new LiteralType(3).kindof(_1_2));
+        assert.ok(!new LiteralType('abc').kindof(_1_2));
+        assert.ok(!Type.Number.kindof(_1_2));
+        assert.ok(!Type.String.kindof(_1_2));
+        assert.ok(_1_2.kindof(Type.Number));
+        assert.ok(_1_2.kindof(abcOrNumber));
+        assert.ok(_1_2.kindof(StringOrNumber));
+        assert.ok(!StringOrNumber.kindof(_1_2));
+        assert.ok(abcOrNumber.kindof(StringOrNumber));
+        assert.ok(!StringOrNumber.kindof(abcOrNumber));
+        assert.ok(new LiteralType('abc').kindof(abcOrNumber));
+        assert.ok(!new LiteralType('aaa').kindof(abcOrNumber));
+        assert.ok(new LiteralType(123).kindof(abcOrNumber));
+
+        // null
+        assert.ok(new LiteralType(null).kindof(Type.Null));
+        assert.ok(new LiteralType(null).kindof(StringOrNumber));
+
+        // object
+        assert.ok(new ObjectType({'abc': new LiteralType(123)}).kindof(new ObjectType({'abc': new LiteralType(123)})));
+        assert.ok(new ObjectType({'abc': new LiteralType(123)}).kindof(new ObjectType({'abc': Type.Number})));
+        assert.ok(new ObjectType({'abc': Type.Number}).kindof(new ObjectType({'abc': Type.Number})));
+        assert.ok(!new ObjectType({'abc': Type.Number}).kindof(new ObjectType({'abc': new LiteralType(123)})));
+        assert.ok(new ObjectType({abc: Type.String, def: Type.String}, ['abc']).kindof(new ObjectType({abc: Type.String}, ['abc'])));
+        assert.ok(new ObjectType({abc: Type.String}, ['abc']).kindof(new ObjectType({abc: Type.String, def: Type.String}, ['abc'])));
+        assert.ok(!new ObjectType({abc: Type.String}, ['abc']).kindof(new ObjectType({abc: Type.String, def: Type.String}, ['abc', 'def'])));
+        assert.ok(new ObjectType({abc: Type.String, def: Type.String}, ['abc', 'def']).kindof(new ObjectType({abc: Type.String}, ['abc'])));
+
+        // array/tuple
+        assert.ok(new ArrayType(Type.Number).kindof(new ArrayType(Type.Number)));
+        assert.ok(new ArrayType(Type.Number).kindof(new ArrayType(Type.Any)));
+        assert.ok(new ArrayType(Type.Any).kindof(new ArrayType(Type.Number)));
+        assert.ok(new ArrayType(Type.Any).kindof(new ArrayType(Type.Any)));
+        assert.ok(!new ArrayType(Type.String).kindof(new ArrayType(Type.Number)));
+        assert.ok(ArrayType.tuple([new LiteralType(1), new LiteralType(2)]).kindof(new ArrayType(Type.Number)));
+        assert.ok(ArrayType.tuple([new LiteralType(1), new LiteralType(2)]).kindof(new ArrayType(Type.Any)));
+        assert.ok(!ArrayType.tuple([new LiteralType(1), new LiteralType(2)]).kindof(new ArrayType(Type.String)));
+        assert.ok(ArrayType.tuple([new LiteralType(1), new LiteralType(2)]).kindof(ArrayType.tuple([new LiteralType(1), new LiteralType(2)])));
+        assert.ok(ArrayType.tuple([new LiteralType(1), new LiteralType(2)]).kindof(ArrayType.tuple([new LiteralType(1), Type.Number])));
+        assert.ok(!ArrayType.tuple([new LiteralType(1), Type.Number]).kindof(ArrayType.tuple([new LiteralType(1), new LiteralType(2)])));
+        assert.ok(ArrayType.tuple([new LiteralType(1), new LiteralType(2)]).kindof(ArrayType.tuple([Type.Number, Type.Number])));
+        assert.ok(ArrayType.tuple([new LiteralType(1), new LiteralType(2)]).kindof(ArrayType.tuple([Type.Number])));
+        assert.ok(!ArrayType.tuple([new LiteralType(1), new LiteralType(2)]).kindof(ArrayType.tuple([new LiteralType(1)])));
+        assert.ok(!ArrayType.tuple([new LiteralType(1), new LiteralType('123')]).kindof(ArrayType.tuple([Type.Number])));
+        assert.ok(!ArrayType.tuple([new LiteralType(1), new LiteralType('123')]).kindof(ArrayType.tuple([Type.Number])));
     });
 
     test("get current expression", () => {

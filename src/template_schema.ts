@@ -1,4 +1,4 @@
-import { Schema, ValidationResult, SchemaFormat, validateJsonNode } from "./schema";
+import { Schema, ValidationResult, SchemaFormat, validateJsonNode, ISchema, parseSchema } from "./schema";
 import * as json from 'jsonc-parser';
 
 type PropertyMap = {
@@ -67,6 +67,7 @@ function EventSchema(description?: string): Schema {
     return {
         type: "object",
         description,
+        additionalProperties: true,
         properties: {
             "openUrl:": SimpleSchema("string", "打开指定的 URL"),
             "updateState:": SimpleSchema("object", "更新状态。值应该为一个字典，将状态中对应的值更新。注意不是替换整个状态，只是更改对应的 key"),
@@ -83,13 +84,13 @@ function EventSchema(description?: string): Schema {
                         
                     }
                 ],
+                snippet: '"$0"',
                 description: "显示 Alert，主要用于调试"
             },
             "runAction:": {
                 oneOf: [
                     {
-                        type: "string",
-                        description: "Action 名称"
+                        type: "string"
                     },
                     {
                         type: "object",
@@ -97,16 +98,15 @@ function EventSchema(description?: string): Schema {
                         properties: {
                             "name": SimpleSchema("string", "Action 名称"),
                             "params": SimpleSchema("object", "触发 Action 时传入的参数"),
-                        },
-                        description: "触发自定义 Action"
+                        }
                     }
-                ]
+                ],
+                description: "触发自定义 Action"
             },
             "postNotification:": {
                 oneOf: [
                     {
-                        type: "string",
-                        description: "Notification 名称"
+                        type: "string"
                     },
                     {
                         type: "object",
@@ -114,31 +114,47 @@ function EventSchema(description?: string): Schema {
                         properties: {
                             "name": SimpleSchema("string", "Notification 名称"),
                             "params": SimpleSchema("object", "Notification 的 userInfo"),
-                        },
-                        description: "发送 Notification"
+                        }
                     }
-                ]   
+                ],
+                description: "发送 Notification"
             },
         }
     };
 }
 
-const propertiesMap: { [type: string]: PropertyMap} = {
-    common: {
-        "type": EnumSchema({
-            "node": "基本元素",
-            "stack": "flex 容器元素",
-            "text": "文本元素，用于显示文本，支持富文本",
-            "image": `图片元素，可展示本地图片和网络图片。网络图片自动缓存。
+const nodeTypes = {
+    "node": "基本元素",
+    "stack": "flex 容器元素",
+    "text": "文本元素，用于显示文本，支持富文本",
+    "image": `图片元素，可展示本地图片和网络图片。网络图片自动缓存。
 展示本地图片时，使用 image 属性，如 "image": "O2O.bundle/arrow"。
 展示网络图片时，使用 image-url 指定网络图片，image 指定加载中显示的图片，error-image 指定下载失败时显示的图片。`,
-            "button": "按钮元素，可以设置按下时的文字颜色等",
-            "scroll": `滚动容器元素，使用 children 定义子元素。
+    "button": "按钮元素，可以设置按下时的文字颜色等",
+    "scroll": `滚动容器元素，使用 children 定义子元素。
 注意：scroll 元素的尺寸不会根据它的子元素自适应。`,
-            "paging": "分页元素，使用 children 定义子元素，每个子元素就是一页",
-            "line": "线条元素，主要用于展示虚线，其粗细、长度由布局属性控制",
-            "indicator": "加载指示器，俗称菊花"
-        }, "元素类型"),
+    "paging": "分页元素，使用 children 定义子元素，每个子元素就是一页",
+    "line": "线条元素，主要用于展示虚线，其粗细、长度由布局属性控制",
+    "indicator": "加载指示器，俗称菊花"
+};
+
+const childrenSchema: Schema = {
+    type: "array",
+    items: {
+        type: "object",
+        format: "node"
+    },
+    snippet: `[
+  {
+    $0
+  }
+]`,
+    description: "容器的子元素"
+};
+
+const propertiesMap: { [type: string]: PropertyMap} = {
+    common: {
+        "type": EnumSchema(nodeTypes, "元素类型"),
         "tag": {
             type: "integer",
             description: "元素的 tag，用于在 native 查找该 view。必须是整数"
@@ -152,9 +168,17 @@ const propertiesMap: { [type: string]: PropertyMap} = {
             description: "为 true 时，元素不显示，且不加入布局"
         },
         "repeat": {
-            type: "integer",
-            min: 0,
-            description: "模版衍生机制。repeat 为元素重复的次数或重复的数组。注意：根节点元素使用 repeat 无效"
+            oneOf: [
+                {
+                    type: "integer",
+                    min: 0
+                },
+                {
+                    type: "array"
+                }
+            ],
+            description: "模版衍生机制。repeat 为元素重复的次数或重复的数组。注意：根节点元素使用 repeat 无效",
+            errorMessage: "`repeat` 只能为整数或数组"
         },
         "vars": {
             oneOf: [
@@ -168,15 +192,7 @@ const propertiesMap: { [type: string]: PropertyMap} = {
         },
         "class": {
             type: "string",
-            description: "引用在 styles 中定义的样式。可以引用多个样式，用空格分开，靠后的样式覆盖前面的样式"
-        },
-        "children": {
-            type: "array",
-            items: {
-                type: "object",
-                format: "node"
-            },
-            description: "容器的子元素"
+            description: "引用在 `styles` 中定义的样式。可以引用多个样式，用空格分开，靠后的样式覆盖前面的样式"
         },
         "on-tap": EventSchema("元素被点击时触发"),
         "on-display": EventSchema("元素显示时触发。在列表中滑出可见区域再滑回来会重新触发"),
@@ -185,15 +201,25 @@ const propertiesMap: { [type: string]: PropertyMap} = {
         "on-update-disappear": EventSchema("更新状态后，元素消失时（显示→更新状态→隐藏）"),
         "on-update-reuse": EventSchema("更新状态后，元素复用时（显示→更新状态→显示）"),
     },
+    node: {
+        "children": childrenSchema,
+    },
+    stack: {
+        "children": childrenSchema,
+    },
     image: {
         "on-complete": EventSchema("图片下载完成时触发"),
     },
+    scroll: {
+        "children": childrenSchema,
+    },
     paging: {
         "on-switch": EventSchema("（手动或自动）翻页时触发"),
+        "children": childrenSchema,
     }
 };
 
-const view_properties = {
+const viewProperties = {
     'backgroundColor': 'background-color',
     'alpha': 'alpha',
     'clipsToBounds': 'clip',
@@ -215,7 +241,13 @@ const stylesMap: { [type: string]: PropertyMap} = {
             "max": 1,
             "description": "元素的透明度，默认为 1"
         },
-        "border-width": SimpleSchema("number", `边框宽度，默认为 0。可以用 "1px"表示 1 像素的边框`),
+        "border-width": {
+            oneOf: [
+                SimpleSchema("number"),
+                EnumSchema(['1px']),
+            ],
+            description: `边框宽度，默认为 0。可以用 "1px"表示 1 像素的边框`
+        },
         "border-color": ColorSchema("边框颜色，默认为黑色"),
         "corner-radius": SimpleSchema("number", `圆角半径，默认为 0。
 可以使用 \`corner-radius-top-left\`, \`corner-radius-top-right\`, \`corner-radius-bottom-left\`, \`corner-radius-bottom-right\` 分别指定每个角的圆角半径`),
@@ -230,10 +262,10 @@ const stylesMap: { [type: string]: PropertyMap} = {
         "properties": {
             type: "object",
             additionalProperties: true,
-            properties: Object.keys(view_properties).reduce((p, c) => ({
+            properties: Object.keys(viewProperties).reduce((p, c) => ({
                 ...p,
                 [c]: {
-                    deprecatedMessage: `请使用 \`style\` 中的属性 \`${view_properties[c]}\``
+                    deprecatedMessage: `请使用 \`style\` 中的属性 \`${viewProperties[c]}\``
                 }
             }), {}),
             description: `通过反射给 view 设置属性，如：
@@ -349,7 +381,7 @@ fixed 元素并不是一定处于其它元素的最上方，而是同其它元�
         "highlight-background-color": ColorSchema("按下时的高亮颜色"),
     },
     text: {
-        "text": SimpleSchema("string", "显示的文字" ),
+        "text": SimpleSchema("string", "显示的文字"),
         "html-text": SimpleSchema("string", "使用 HTML 表示的富文本，指定这个属性后，text 属性将被忽略"),
         "color": ColorSchema("文字颜色。默认为黑色"),
         "font-size": { type: "number", min: 0, description: "字体大小。" },
@@ -383,7 +415,7 @@ fixed 元素并不是一定处于其它元素的最上方，而是同其它元�
         },
         "kern": SimpleSchema("number", "字间距。需要注意文字的最右边也会有一个字距大小的空白，一般可以通过设置 `margin-right` 来修正。如：  \n```\n\"kern\": 5,\n\"margin-right\": -5\n```"),
         "line-spacing": SimpleSchema("number", "行间距"),
-        "adjusts-font-size": SimpleSchema("string", "是否调整字号以适应控件的宽度，默认为false"),
+        "adjusts-font-size": SimpleSchema("boolean", "是否调整字号以适应控件的宽度，默认为false"),
         "baseline-adjustment": EnumSchema({
             "none": "Adjust text relative to the top-left corner of the bounding box. This is the default adjustment.",
             "baseline": "Adjust text relative to the position of its baseline.",
@@ -397,30 +429,54 @@ fixed 元素并不是一定处于其它元素的最上方，而是同其它元�
         },
     },
     button: {
-        "title": ObjectSchema({
-            "normal": SimpleSchema("string", "普通状态的样式"),
-            "highlighted": SimpleSchema("string", "按下状态的样式"),
-            // "disabled": SimpleSchema("string", "禁用状态的样式"),
-            // "selected": SimpleSchema("string", "选择状态的样式"),
-        }, "显示的文字"),
-        "image": ObjectSchema({
-            "normal": SimpleSchema("string", "普通状态的样式"),
-            "highlighted": SimpleSchema("string", "按下状态的样式"),
-            // "disabled": SimpleSchema("string", "禁用状态的样式"),
-            // "selected": SimpleSchema("string", "选择状态的样式"),
-        }, "显示的图片，只能为本地图片，图片固定显示在文字左边。支持状态"),
-        "background-image": ObjectSchema({
-            "normal": SimpleSchema("string", "普通状态的样式"),
-            "highlighted": SimpleSchema("string", "按下状态的样式"),
-            // "disabled": SimpleSchema("string", "禁用状态的样式"),
-            // "selected": SimpleSchema("string", "选择状态的样式"),
-        }, "按钮背景图片，只能为本地图片，也可以设置为颜色。支持状态"),
-        "title-color": ObjectSchema({
-            "normal": ColorSchema("普通状态的样式"),
-            "highlighted": ColorSchema("按下状态的样式"),
-            // "disabled": ColorSchema("禁用状态的样式"),
-            // "selected": ColorSchema("选择状态的样式"),
-        }, "文字颜色。默认为黑色"),
+        "title": {
+            oneOf: [
+                SimpleSchema("string", "按钮标题"),
+                ObjectSchema({
+                    "normal": SimpleSchema("string", "普通状态的标题"),
+                    "highlighted": SimpleSchema("string", "按下状态的标题"),
+                    // "disabled": SimpleSchema("string", "禁用状态的标题"),
+                    // "selected": SimpleSchema("string", "选择状态的标题"),
+                }, "按钮标题")
+            ],
+            snippet: '"$0"'
+        },
+        "image": {
+            oneOf: [
+                SimpleSchema("string", "显示的图片，只能为本地图片，图片固定显示在文字左边。支持状态"),
+                ObjectSchema({
+                    "normal": SimpleSchema("string", "普通状态的图片"),
+                    "highlighted": SimpleSchema("string", "按下状态的图片"),
+                    // "disabled": SimpleSchema("string", "禁用状态的图片"),
+                    // "selected": SimpleSchema("string", "选择状态的图片"),
+                }, "显示的图片，只能为本地图片，图片固定显示在文字左边。支持状态")
+            ],
+            snippet: '"$0"'
+        },
+        "background-image": {
+            oneOf: [
+                SimpleSchema("string", "按钮背景图片，只能为本地图片，也可以设置为颜色。支持状态"),
+                ObjectSchema({
+                    "normal": SimpleSchema("string", "普通状态的背景图片"),
+                    "highlighted": SimpleSchema("string", "按下状态的背景图片"),
+                    // "disabled": SimpleSchema("string", "禁用状态的背景图片"),
+                    // "selected": SimpleSchema("string", "选择状态的背景图片"),
+                }, "按钮背景图片，只能为本地图片，也可以设置为颜色。支持状态")
+            ],
+            snippet: '"$0"'
+        },
+        "title-color": {
+            oneOf: [
+                SimpleSchema("string", "文字颜色。默认为黑色"),
+                ObjectSchema({
+                    "normal": SimpleSchema("string", "普通状态的文字颜色"),
+                    "highlighted": SimpleSchema("string", "按下状态的文字颜色"),
+                    // "disabled": SimpleSchema("string", "禁用状态的文字颜色"),
+                    // "selected": SimpleSchema("string", "选择状态的文字颜色"),
+                }, "文字颜色。默认为黑色")
+            ],
+            snippet: '"$0"'
+        },
         "font-size": { type: "number", min: 0, description: "字体大小。" },
         "font-name": SimpleSchema("string", "字体名。默认为系统字体"),
         "font-style": EnumSchema(["ultra-light", "thin", "light", "normal", "medium", "bold", "heavy", "black", "italic", "bold-italic"], "字体样式"),
@@ -451,6 +507,7 @@ fixed 元素并不是一定处于其它元素的最上方，而是同其它元�
             "scale-aspect-fit": "图片按长边缩放，图片能完全显示，可能填不满元素",
             "scale-aspect-fill": "图片按短边缩放，图片能填满元素，可能显示不完全"
         }, "图片缩放模式"),
+        "backing-view": SimpleSchema("string", "显示图片的 view 的类名"),
     },
     scroll: {
         "scroll-direction": EnumSchema({
@@ -517,52 +574,57 @@ fixed 元素并不是一定处于其它元素的最上方，而是同其它元�
 
 const colors = ["black", "darkgray", "lightgray", "white", "gray", "red", "green", "blue", "cyan", "yellow", "magenta", "orange", "purple", "brown", "transparent"];
 
+const colorSchema: Schema = {
+    oneOf: [
+        {
+            type: 'string',
+            enum: colors,
+            // errorMessage: `只支持以下颜色常量：${colors.map(c => `\`${c}\``).join(', ')}`
+        },
+        {
+            type: 'string',
+            pattern: '^#[0-9A-Fa-f]{3,4}$|^#[0-9A-Fa-f]{6}$|^#[0-9A-Fa-f]{8}$',
+            // errorMessage: '颜色格式错误，支持的颜色格式如下：`#rgb`, `#rrggbb`, `#argb`, `#aarrggbb`'
+        }
+    ],
+    errorMessage: '颜色格式错误'
+}
+
 SchemaFormat.registerFormat('color', {
     validateJsonNode(node: json.Node, offset: number, matchingSchemas: Schema[]): ValidationResult[] {
-        if (matchingSchemas) {
-            matchingSchemas.splice(0, matchingSchemas.length, { type: 'string', enum: colors });
-        }
-        if (node && node.type === 'string') {
-            if (node.value.startsWith('#')) {
-                if (!node.value.match('^#[0-9A-Fa-f]{3,4}$|^#[0-9A-Fa-f]{6}$|^#[0-9A-Fa-f]{8}$')) {
-                    return [new ValidationResult(`颜色格式错误，支持的颜色格式如下：\`#rgb\`, \`#rrggbb\`, \`#argb\`, \`#aarrggbb\``, node)];
-                }
-            }
-            else {
-                if (colors.indexOf(node.value) < 0) {
-                    return [new ValidationResult(`只支持以下颜色常量：${colors.map(c => `\`${c}\``).join(', ')}`, node)];
-                }
-            }
-            return [];
-        }
-        return [new ValidationResult('颜色需要为 `string` 类型', node)];
+        return validateJsonNode​​(node, colorSchema, offset, matchingSchemas);
     }
 });
 
-const nodeSchemaCache: { [type: string]: Schema } = {};
-SchemaFormat.registerFormat('node', {
-    validateJsonNode(node: json.Node, offset: number, matchingSchemas: Schema[]): ValidationResult[] {
+export class NodeSchema implements ISchema {
+    private static nodeSchemaCache: { [type: string]: Schema } = {};
+    public getSchema(node: json.Node) {
         if (node && node.type === 'object') {
             let typeNode = json.findNodeAtLocation(node, ['type']);
-            let type = typeNode ? json.getNodeValue(typeNode) 
-                                : json.findNodeAtLocation(node, ['children'])
-                                ? 'stack' : 'node';
-            let schema = nodeSchemaCache[type];
+            let type = typeNode ? json.getNodeValue(typeNode) : json.findNodeAtLocation(node, ['children']) ? 'stack' : 'node';
+            let schema = NodeSchema.nodeSchemaCache[type];
+            let isCustomType = !(type in nodeTypes);
             if (!schema) {
-                let s = {
+                let s: Schema = {
                     type: 'object',
+                    additionalProperties: isCustomType,
+                    patternProperties: {
+                        '^on-.+$': isCustomType ? EventSchema() : false,
+                    },
                     properties: {
                         ...propertiesMap.common || {},
                         ...propertiesMap[type] || {},
                         style: {
                             type: 'object',
+                            additionalProperties: isCustomType,
                             properties: {
                                 ...stylesMap.common || {},
                                 ...stylesMap[type] || {},
                             },
                             description: "元素的样式和布局属性"
                         }
-                    }
+                    },
+                    description: "布局元素"
                 };
                 let events = Object.keys(s.properties).filter(k => k.startsWith('on-'));
                 events.forEach(e => {
@@ -572,16 +634,23 @@ SchemaFormat.registerFormat('node', {
                         s.properties[e + '-once'].description = schema.description + '（只触发一次）';
                     }
                 });
-                nodeSchemaCache[type] = s;
+                NodeSchema.nodeSchemaCache[type] = s;
                 schema = s;
             }
-            return validateJsonNode(node, schema, offset, matchingSchemas);
+            return schema;
         }
-        return [new ValidationResult('node 需要为 `object` 类型', node)];
+        return null;
     }
-});
+    validateJsonNode(node: json.Node, offset: number, matchingSchemas: Schema[]): ValidationResult[] {
+        // if (node && node.type === 'object') {
+            return validateJsonNode(node, this.getSchema(node), offset, matchingSchemas);
+        // }
+        // return [new ValidationResult('node 需要为 `object` 类型', node)];
+    }
+}
+SchemaFormat.registerFormat('node', new NodeSchema());
 
-export const templateSchema: Schema = {
+export const templateSchema: Schema = parseSchema({
     "definitions": {
         "variables_table": VariablesTableSchema,
         "node": {
@@ -612,7 +681,7 @@ export const templateSchema: Schema = {
             "type": "object",
             "patternProperties": {
                 "^[a-zA-Z_][-a-zA-Z0-9_]*$": {
-                    // TODO
+                    additionalProperties: true
                 }
             },
             "description": "样式表，定义一些可以被重复使用的样式，在元素中通过 class 属性引用"
@@ -640,4 +709,4 @@ export const templateSchema: Schema = {
             "description": "接收 native 通知"
         },
     }
-};
+});

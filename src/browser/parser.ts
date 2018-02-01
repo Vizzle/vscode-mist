@@ -1,6 +1,5 @@
 import { Lexer, TokenType, LexerErrorCode, Token } from "./lexer";
-import { Type, IType, UnionType, ObjectType, ArrayType, IntersectionType } from "./type";
-
+import { Type, IType, UnionType, ObjectType, ArrayType, LiteralType } from "./type";
 
 export enum ParserErrorCode {
     None,
@@ -239,7 +238,8 @@ export class LiteralNode extends ExpressionNode {
     }
 
     getType(context: ExpressionContext): IType {
-        return IType.typeof(this.value);
+        // return IType.typeof(this.value);
+        return new LiteralType​​(this.value);
     }
 
     check(context: ExpressionContext) {
@@ -297,7 +297,7 @@ class ArrayExpressionNode extends ExpressionNode {
 
     compute(context: ExpressionContext) {
         let list = this.list.map(v => v.compute(context));
-        list.every(i => i !== None) ? list : None;
+        return list.every(i => i !== None) ? list : None;
     }
 
     computeValue(context: ExpressionContext) {
@@ -306,7 +306,8 @@ class ArrayExpressionNode extends ExpressionNode {
     }
 
     getType(context: ExpressionContext): IType {
-        return new ArrayType(IntersectionType.type(this.list.map(v => v.getType(context))));
+        return ArrayType.tuple(this.list.map(v => v.getType(context)));
+        // return new ArrayType(UnionType.type(this.list.map(v => v.getType(context))));
     }
 
     check(context: ExpressionContext) {
@@ -367,6 +368,10 @@ class ConditionalExpressionNode extends ExpressionNode {
     truePart?: ExpressionNode;
     falsePart: ExpressionNode;
 
+    private static isNull(exp: ExpressionNode) {
+        return exp instanceof LiteralNode && exp.value === null;
+    }
+
     constructor(condition: ExpressionNode, truePart: ExpressionNode, falsePart: ExpressionNode) {
         super();
         this.condition = condition;
@@ -385,10 +390,6 @@ class ConditionalExpressionNode extends ExpressionNode {
     computeValue(context: ExpressionContext) {
         let r = this.condition.computeValue(context);
         return r ? (this.truePart ? this.truePart.computeValue(context) : r) : this.falsePart.computeValue(context);
-    }
-
-    private static isNull(exp: ExpressionNode) {
-        return exp instanceof LiteralNode && exp.value === null;
     }
 
     getType(context: ExpressionContext): IType {
@@ -480,8 +481,8 @@ class UnaryExpressionNode extends ExpressionNode {
                 break;
             case UnaryOp.Negative:
                 let type = this.oprand.getType(context);
-                if (type !== Type.Number && type !== Type.Any) {
-                    errors.push(new ExpressionError(this, '`-` 运算符只能用于 `number` 和 `any` 类型'));
+                if (!type.kindof(Type.Number)) {
+                    errors.push(new ExpressionError(this, '`-` 运算符只能用于 `number` 类型'));
                 }
                 break;
             default:
@@ -705,11 +706,11 @@ class BinaryExpressionNode extends ExpressionNode {
             case BinaryOp.Mod:
                 return Type.Number;
             case BinaryOp.Add:
-                if (type1 === Type.Number && type2 === Type.Number) {
+                if (type1.kindof(Type.Number, true) && type2.kindof(Type.Number, true)) {
                     return Type.Number;
                 }
-                if (type1 === Type.String || type2 === Type.String) {
-                    return Type.String
+                if (type1.kindof(Type.String, true) || type2.kindof(Type.String, true)) {
+                    return Type.String;
                 }
                 return Type.Any;
             case BinaryOp.Index:
@@ -720,15 +721,7 @@ class BinaryExpressionNode extends ExpressionNode {
                     }
                     return Type.Any;
                 }
-                else if (type1 instanceof ArrayType) {
-                    return type1.getElementsType();
-                }
-                else if (type1 === Type.String) {
-                    return Type.String;
-                }
-                else {
-                    return Type.Any;
-                }
+                return type1.getTypeAtIndex(type2);
             default:
                 return Type.Any;
         }
@@ -754,6 +747,7 @@ class BinaryExpressionNode extends ExpressionNode {
     }
 
     check(context: ExpressionContext) {
+        const StringOrNumberType = UnionType.type([Type.String, Type.Number]);
         let errors = this.oprand1.check(context).concat(this.oprand2.check(context));
         let type1 = this.oprand1.getType(context);
         let type2 = this.oprand2.getType(context);
@@ -771,24 +765,24 @@ class BinaryExpressionNode extends ExpressionNode {
             case BinaryOp.Mul:
             case BinaryOp.Div:
             case BinaryOp.Mod:
-                if ((type1 !== Type.Number && type1 !== Type.Any) || (type2 !== Type.Number && type2 !== Type.Any)) {
-                    errors.push(new ExpressionError(this, `\`${this.operatorName()}\` 运算符只能用于 \`number\` 和 \`any\` 类型`));
+                if (!type1.kindof(Type.Number) || !type2.kindof(Type.Number)) {
+                    errors.push(new ExpressionError(this, `\`${this.operatorName()}\` 运算符只能用于 \`number\` 类型`));
                 }
                 break;
             case BinaryOp.Add:
-                if ((type1 !== Type.Number && type1 !== Type.String && type1 !== Type.Any) || (type2 !== Type.Number && type2 !== Type.String && type2 !== Type.Any)) {
-                    errors.push(new ExpressionError(this, `\`+\` 运算符只能用于 \`number\`, \`string\` 和 \`any\` 类型`));
+                if (!type1.kindof(StringOrNumberType) || !type2.kindof(StringOrNumberType)) {
+                    errors.push(new ExpressionError(this, `\`+\` 运算符只能用于 \`number\` 或 \`string\` 类型`));
                 }
                 break;
             case BinaryOp.Index:
                 if (type1 instanceof ObjectType || type1 === Type.Object || type1 === Type.Any) {
-                    if (type2 !== Type.String && type2 !== Type.Number && type2 !== Type.Any) {
-                        errors.push(new ExpressionError(this.oprand2, `索引类型只能为 \`string\`, \`number\` 和 \`any\` 类型`));
+                    if (!type2.kindof(StringOrNumberType)) {
+                        errors.push(new ExpressionError(this.oprand2, `索引类型只能为 \`string\` 或 \`number\` 类型`));
                     }
                 }
-                else if (type1 instanceof ArrayType || type1 === Type.Array || type1 === Type.String) {
-                    if (type2 !== Type.Number && type2 !== Type.Any) {
-                        errors.push(new ExpressionError(this.oprand2, `索引类型只能为 \`number\` 和 \`any\` 类型`));
+                else if (type1.kindof(new ArrayType(Type.Any)) || type1 === Type.Array || type1.kindof(Type.String)) {
+                    if (!type2.kindof(Type.Number)) {
+                        errors.push(new ExpressionError(this.oprand2, `索引类型只能为 \`number\` 类型`));
                     }
                 }
                 else {
@@ -956,7 +950,7 @@ class FunctionExpressionNode extends ExpressionNode {
             else {
                 method.params.forEach((p, i) => {
                     let type = this.parameters[i].getType(context);
-                    if (type !== p.type && type !== Type.Any && p.type !== Type.Any) {
+                    if (!type.kindof(p.type)) {
                         errors.push(new ExpressionError(this.parameters[i], `类型 \`${type.getName()}\` 的参数不能赋给类型 \`${p.type.getName()}\` 的参数 \`${p.name}\``));
                     }
                 });

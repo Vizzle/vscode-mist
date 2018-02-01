@@ -72,29 +72,97 @@ export abstract class IType {
         if (a instanceof ObjectType && b instanceof ObjectType) {
             return ObjectType.isSame(a, b);
         }
+        if (a instanceof LiteralType && b instanceof LiteralType) {
+            return LiteralType.isSame(a, b);
+        }
         return false;
     }
-    public static typeof(obj: any): IType {
+    public static typeof(obj: any, isConst: boolean = false): IType {
         if (obj instanceof IType) {
             return obj;
         }
         if (obj === undefined || obj === null) {
+            if (isConst && obj === null) return new LiteralType​​(null);
             return Type.Any;
         }
         let type = typeof(obj);
         if (type === 'string' || type === 'number' || type === 'boolean') {
-            return Type.getType(type);
+            return isConst ? new LiteralType​​(obj) : Type.getType(type);
         }
         if (obj instanceof Array) {
-            return new ArrayType(IntersectionType.type(obj.map(o => this.typeof(o))));
+            let types = obj.map(o => this.typeof(o, isConst));
+            return isConst && obj.length > 0 ? ArrayType.tuple(types) : new ArrayType(UnionType.type(types));
         }
-        return new ObjectType(Object.keys(obj).reduce((ret, k) => {ret[k] = this.typeof(obj[k]); return ret}, {}));
+        return new ObjectType(Object.keys(obj).reduce((ret, k) => {ret[k] = this.typeof(obj[k], isConst); return ret}, {}));
     }
     public abstract getName(): string;
     public abstract getAllProperties(): { [name: string]: Property };
     public abstract getProperty(name: string): Property;
     public abstract getAllMethods(): { [name: string]: Method[] };
     public abstract getMethods(name: string): Method[];
+    public getTypeAtIndex(index: IType): IType {
+        return Type.Any;
+    }
+    public kindof(type: IType, unionCheck: boolean = false): boolean {
+        // everything kindof array
+        if (type === Type.Any) {
+            return true;
+        }
+        else if (this instanceof Type && this === Type.Any) {
+            return !unionCheck;
+        }
+        else if (IType.isSame(this, type)) {
+            return true;
+        }
+        // T kindof T1 & T2 if T kindof T1 and T kindof T2
+        else if (type instanceof IntersectionType) {
+            return type.getTypes().every(t => this.kindof(t, unionCheck));
+        }
+        // T1 & T2 kindof T if T1 kindof T or T2 kindof T
+        else if (this instanceof IntersectionType) {
+            return this.getTypes().some(t => t.kindof(type, unionCheck));
+        }
+        // T1 | T2 kindof T if T1 kindof T and T2 kindof T
+        else if (this instanceof UnionType) {
+            return this.getTypes().every(t => t.kindof(type, unionCheck));
+        }
+        // T kindof T1 | T2 if T kindof T1 or T kindof T2
+        else if (type instanceof UnionType) {
+            return type.getTypes().some(t => this.kindof(t, unionCheck));
+        }
+        else if (this instanceof LiteralType​​) {
+            // currently all types accept the null value
+            if (this.getValue() === null) return true;
+            return this.getType().kindof(type, unionCheck);
+        }
+        else if (this instanceof ArrayType && type instanceof ArrayType) {
+            if (type.isTuple()) {
+                if (this.isTuple() && this.getElementsType().kindof(type.getElementsType(), unionCheck)) {
+                    let thisTupleTypes = this.getTupleTypes();
+                    let tupleTypes = type.getTupleTypes();
+                    return thisTupleTypes.length >= tupleTypes.length && tupleTypes.every((t, i) => thisTupleTypes[i].kindof(t));
+                }
+                return false;
+            }
+            else {
+                return this.getElementsType().kindof(type.getElementsType(), unionCheck);
+            }
+        }
+        else if (this instanceof ObjectType && type instanceof ObjectType) {
+            let t = this;
+            let required = type.getRequiredProperties();
+            return Object.keys(type.getMap()).every(k => {
+                let thisKeyType = t.getMap()[k];
+                if (thisKeyType) {
+                    return thisKeyType.kindof(type.getMap()[k], unionCheck);
+                }
+                else {
+                    return required.indexOf(k) < 0;
+                }
+            });
+        }
+        return false;
+    }
     public getMethod(name: string, paramsCount: number): Method {
         let methods = this.getMethods(name);
         if (methods) {
@@ -105,22 +173,21 @@ export abstract class IType {
 }
 
 export class Type extends IType {
-
     static readonly types: { [name: string]: Type } = {};
 
+    public static Boolean = Type.registerType(new Type('boolean'));
     public static Number = Type.registerType(new Type('number')).registerPropertys({
         "intValue": new Property(Type.Number, "数字的整数值", true, n => Math.floor(n)),
         "doubleValue": new Property(Type.Number, "数字的浮点数值", true, n => n),
         "floatValue": new Property(Type.Number, "数字的浮点数值", true, n => n),
-        "boolValue": new Property(Type.Number, "数字的布尔值", true, n => n !== 0),
+        "boolValue": new Property(Type.Boolean, "数字的布尔值", true, n => n !== 0),
     });
-    public static Boolean = Type.registerType(new Type('boolean'));
     public static String = Type.registerType(new Type('string')).registerPropertys({
         "length": new Property(Type.Number, "字符串长度", true, str => str.length),
         "intValue": new Property(Type.Number, "字符串的整数值", true, str => parseInt(str)),
         "doubleValue": new Property(Type.Number, "字符串的浮点数值", true, str => parseFloat(str)),
         "floatValue": new Property(Type.Number, "字符串的浮点数值", true, str => parseFloat(str)),
-        "boolValue": new Property(Type.Number, "字符串的布尔值", true, (s: string) => /^\s*[TtYy1-9]/.test(s)),
+        "boolValue": new Property(Type.Boolean, "字符串的布尔值", true, (s: string) => /^\s*[TtYy1-9]/.test(s)),
     });
     public static Any = Type.registerType(new Type('any'));
     public static Null = Type.registerType(new Type('null'));
@@ -220,7 +287,44 @@ export class Type extends IType {
     public getClassMethod(name: string, paramsCount: number) {
         return this.classMethods[name].find(m => m.params.length === paramsCount);
     }
-    
+
+    public getTypeAtIndex(index: IType): IType {
+        if (this === Type.String) {
+            return Type.String;
+        }
+        return super.getTypeAtIndex(index);
+    }
+}
+
+export class LiteralType extends IType {
+    public static isSame(a: LiteralType, b: LiteralType) {
+        return a.value === b.value;
+    }
+    public constructor (private value, private discription?: string) {
+        super();
+    }
+    public getValue(): any {
+        return this.value;
+    }
+    public getType(): IType {
+        if (this.value === null) return Type.Null;
+        return IType.typeof(this.value);
+    }
+    public getName(): string {
+        return JSON.stringify(this.value);
+    }
+    public getAllProperties(): { [name: string]: Property; } {
+        return Type.typeof(this.value).getAllProperties();
+    }
+    public getProperty(name: string): Property {
+        return Type.typeof(this.value).getProperty(name);
+    }
+    public getAllMethods(): { [name: string]: Method[]; } {
+        return Type.typeof(this.value).getAllMethods();
+    }
+    public getMethods(name: string): Method[] {
+        return Type.typeof(this.value).getMethods(name);
+    }
 }
 
 export abstract class CombinedType extends IType {
@@ -231,6 +335,9 @@ export abstract class CombinedType extends IType {
     public constructor(...types: IType[]) {
         super();
         this.types = types;
+    }
+    public getTypes(): IType[] {
+        return this.types;
     }
 }
 
@@ -285,7 +392,7 @@ export class IntersectionType extends CombinedType {
     }
 
     public getName(): string {
-        return '(' + this.types.map(t => t.getName()).join(' & ') + ')';
+        return this.types.map(t => t.getName()).join(' & ');
     }
 
     public getAllProperties(): { [name: string]: Property } {
@@ -377,7 +484,22 @@ export class UnionType extends CombinedType {
             return Type.Any;
         }
         ts = [...new Set(ts)];
-        ts = ts.filter((t, i) => ts.findIndex(s => IType.isSame(t, s)) === i);
+
+        // 去掉多余的类型，比如 'abc' | string => string
+        for (var i = 0; i < ts.length; i++) {
+            for (var j = i + 1; j < ts.length; j++) {
+                if (ts[i].kindof(ts[j], true)) {
+                    ts.splice(i, 1);
+                    i--;
+                    break;
+                }
+                else if (ts[j].kindof(ts[i], true)) {
+                    ts.splice(j, 1);
+                    break;
+                }
+            }
+        }
+
         if (ts.length === 0) {
             return Type.Any;
         }
@@ -394,7 +516,7 @@ export class UnionType extends CombinedType {
     }
 
     public getName(): string {
-        return '(' + this.types.map(t => t.getName()).join(' | ') + ')';
+        return this.types.map(t => t.getName()).join(' | ');
     }
 
     public getAllProperties(): { [name: string]: Property } {
@@ -453,6 +575,7 @@ export class UnionType extends CombinedType {
 
     public getMethods(name: string): Method[] {
         let msList = this.types.map(t => t.getMethods(name)).filter(p => p);
+        if (msList.length === 0) return [];
         let ms = msList.slice(1).reduce((p, c) => {
             let ret = [];
             p.forEach((v, i) => {
@@ -465,10 +588,21 @@ export class UnionType extends CombinedType {
         }, [...msList[0]]);
         return ms;
     }
+
+    public getTypeAtIndex(index: IType): IType {
+        return UnionType.type(this.types.map(t => t.getTypeAtIndex(index)));
+    }
 }
 
 export class ArrayType extends IType {
     private elementsType: IType;
+    private tupleTypes: IType[];
+
+    public static tuple(types: IType[]) {
+        let type = new ArrayType(UnionType.type(types));
+        type.tupleTypes = types;
+        return type;
+    }
 
     public static isSame(a: ArrayType, b: ArrayType) {
         return IType.isSame(a.elementsType, b.elementsType);
@@ -480,11 +614,20 @@ export class ArrayType extends IType {
     }
 
     public getName(): string {
-        return this.elementsType.getName() + '[]';
+        const getTypeName = (t: IType) => t instanceof UnionType || t instanceof IntersectionType ? `(${t.getName()})` : t.getName();
+        return this.tupleTypes ? `[${this.tupleTypes.map(t => t.getName()).join(', ')}]` : (getTypeName(this.elementsType) + '[]');
     }
 
     public getElementsType(): IType {
         return this.elementsType;
+    }
+
+    public getTupleTypes(): IType[] {
+        return this.tupleTypes;
+    }
+
+    public isTuple(): boolean {
+        return !!this.tupleTypes;
     }
 
     public getAllProperties(): { [name: string]: Property; } {
@@ -503,6 +646,19 @@ export class ArrayType extends IType {
         return Type.getType('array').getMethods(name);
     }
 
+    public getTypeAtIndex(index: IType): IType {
+        if (!index.kindof(Type.Number)) {
+            return Type.Any;
+        }
+        if (index instanceof LiteralType && this.isTuple()) {
+            let i = index.getValue();
+            let tupleTypes = this.getTupleTypes();
+            if (i < tupleTypes.length) {
+                return tupleTypes[i];
+            }
+        }
+        return this.getElementsType();
+    }
 }
 
 export class ObjectType extends IType {
@@ -515,18 +671,22 @@ export class ObjectType extends IType {
     }
 
     private map: { [key: string]: IType };
+    private required: string[];
     private indexType: { name: string, type: IType };
 
     public static isSame(a: ObjectType, b: ObjectType) {
         let keysA = Object.keys(a.map);
         let keysB = Object.keys(b.map);
-        return keysA.length === keysB.length && keysA.every(k => IType.isSame(a.map[k], b.map[k]));
+        let indexTypeA = a.indexType ? a.indexType.type : null;
+        let indexTypeB = b.indexType ? b.indexType.type : null;
+        return indexTypeA === indexTypeB && keysA.length === keysB.length && keysA.every(k => IType.isSame(a.map[k], b.map[k]));
     }
 
-    public constructor(map: { [key: string]: IType }, indexType?: { name: string, type: IType }) {
+    public constructor(map: { [key: string]: IType }, requiredProperties?: string[], indexType?: { name: string, type: IType }) {
         super();
         this.map = map;
         this.indexType = indexType;
+        this.required = requiredProperties || [];
     }
 
     public setIndexType(name: string = 'key', type: IType = Type.Any) {
@@ -543,7 +703,7 @@ export class ObjectType extends IType {
         if (keys.length === 0 && !this.indexType) {
             return '{}';
         }
-        let props = keys.map(k => `"${k}": ${this.map[k].getName()};`);
+        let props = keys.map(k => `"${k}"${this.required.indexOf(k) >= 0 ? '!' : ''}: ${this.map[k].getName()};`);
         if (this.indexType) {
             props.splice(0, 0, `[${this.indexType.name}: string]: ${this.indexType.type.getName()};`);
         }
@@ -555,6 +715,10 @@ export class ObjectType extends IType {
 
     public getAllProperties(): { [name: string]: Property; } {
         return Object.keys(this.map).reduce((p, c) => { p[c] = new Property(this.map[c]); return p; }, {});
+    }
+
+    public getRequiredProperties() {
+        return this.required;
     }
 
     public getProperty(name: string): Property {
