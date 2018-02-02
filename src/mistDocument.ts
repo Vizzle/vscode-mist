@@ -830,17 +830,7 @@ export class MistDocument {
                                     else if (position.line + 1 < document.lineCount && document.lineAt(position.line + 1).text.match(/^\s*"/)) {
                                         comma = true;
                                     }
-                                    let value = '$0';
-                                    let type = this.schemaType(s);
-                                    switch (type) {
-                                        case 'string': value = '"$0"'; break;
-                                        case 'object': value = '{\n  $0\n}'; break;
-                                        case 'array': value = '[\n  $0\n]'; break;
-                                        case 'null': value = '${0:null}'; break;
-                                    }
-                                    if (s && typeof(s) === 'object' && s.snippet) {
-                                        value = s.snippet;
-                                    }
+                                    let value = this.schemaSnippet(s) || '$0';
                                     valueText += `: ${value}`;
                                     if (comma) {
                                         valueText += ',';
@@ -1788,25 +1778,48 @@ export class MistDocument {
         return typeof(value);
     }
 
-    private schemaType(s: Schema): string {
+    private schemaSnippet(s: Schema): string {
+        function schemaForType(type: string) {
+            switch (type) {
+                case 'string': return '"$0"';
+                case 'object': return '{\n  $0\n}';
+                case 'array': return '[\n  $0\n]';
+                case 'null': return '${0:null}';
+            }
+            return '';
+        }
         if (s && typeof(s) === 'object') {
-            if (s.type) return s.type;
+            if (s.snippet) return s.snippet;
+            if (s.oneOf) {
+                let schemas = s.oneOf.filter(s => s && typeof(s) === 'object' && !s.deprecatedMessage);
+                if (schemas.length === 1) {
+                    return this.schemaSnippet(schemas[0]);
+                }
+                let set = [...new Set(s.oneOf.filter(s => s && typeof(s) === 'object' && !s.deprecatedMessage).map(s => this.schemaSnippet(s)))];
+                if (set.length === 1) {
+                    return set[0];
+                }
+                return '';
+            }
+            if (s.type === 'object' && s.required && s.required.length > 0) {
+                let ret = `{
+${s.required.map(p => `"${p}": ${this.schemaSnippet(s.properties[p]) || '$0'}`).join(',\n').split('\n').map(s => '  ' + s).join('\n')}
+}`;
+                var n = 0;
+                ret = ret.replace(/\$\d+/mg, s => {
+                    return `$${++n}`;
+                })
+                return ret;
+            }
+            if (s.type) return schemaForType(s.type);
             if (s.enum) {
                 let set = [...new Set(s.enum.map(e => this.valueType(e)))];
                 if (set.length === 1) {
                     return set[0];
                 }
-                return null;
-            }
-            if (s.oneOf) {
-                let set = [...new Set(s.oneOf.filter(s => s && typeof(s) === 'object' && !s.deprecatedMessage).map(s => this.schemaType(s)))];
-                if (set.length === 1) {
-                    return set[0];
-                }
-                return null;
             }
         }
-        return null;
+        return '';
     }
 
     private schemaEnums(s: Schema): [any, string, vscode.CompletionItemKind][] {
