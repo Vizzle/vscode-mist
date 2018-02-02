@@ -82,12 +82,12 @@ export abstract class IType {
             return obj;
         }
         if (obj === undefined || obj === null) {
-            if (isConst && obj === null) return new LiteralType​​(null);
+            if (isConst && obj === null) return new LiteralType(null);
             return Type.Any;
         }
         let type = typeof(obj);
         if (type === 'string' || type === 'number' || type === 'boolean') {
-            return isConst ? new LiteralType​​(obj) : Type.getType(type);
+            return isConst ? new LiteralType(obj) : Type.getType(type);
         }
         if (obj instanceof Array) {
             let types = obj.map(o => this.typeof(o, isConst));
@@ -130,7 +130,7 @@ export abstract class IType {
         else if (type instanceof UnionType) {
             return type.getTypes().some(t => this.kindof(t, unionCheck));
         }
-        else if (this instanceof LiteralType​​) {
+        else if (this instanceof LiteralType) {
             // currently all types accept the null value
             if (this.getValue() === null) return true;
             return this.getType().kindof(type, unionCheck);
@@ -175,6 +175,41 @@ export abstract class IType {
 export class Type extends IType {
     static readonly types: { [name: string]: Type } = {};
 
+    public static registerType(type: Type) {
+        this.types[type.name] = type;
+        return this.types[type.name];
+    }
+
+    public registerProperty(name: string, property: Property) {
+        this.properties[name] = property;
+        property.registerToType(this);
+        return this;
+    }
+
+    public registerPropertys(properties: { [name: string]: Property }) {
+        Object.keys(properties).forEach(k => this.registerProperty(k, properties[k]));
+        return this;
+    }
+
+    public registerMethod(name: string, method: Method | Method[]) {
+        let methods = this.methods[name];
+        let methodsToRegister = method instanceof Method ? [method] : method;
+        methodsToRegister.forEach(m => {
+            if (!methods) {
+                methods = [];
+                this.methods[name] = methods;
+            }
+            methods.push(m);
+            m.registerToType(this);
+        });
+        return this;
+    }
+
+    public registerMethods(methods: { [name: string]: Method | Method[] }) {
+        Object.keys(methods).forEach(k => this.registerMethod(k, methods[k]));
+        return this;
+    }
+
     public static Boolean = Type.registerType(new Type('boolean'));
     public static Number = Type.registerType(new Type('number')).registerPropertys({
         "intValue": new Property(Type.Number, "数字的整数值", true, n => Math.floor(n)),
@@ -210,11 +245,6 @@ export class Type extends IType {
         return this.types[name];
     }
 
-    public static registerType(type: Type) {
-        this.types[type.name] = type;
-        return this.types[type.name];
-    }
-
     public constructor(name: string, description?: string) {
         super();
         this.name = name;
@@ -222,36 +252,6 @@ export class Type extends IType {
         this.properties = {};
         this.methods = {};
         this.classMethods = {};
-    }
-
-    public registerProperty(name: string, property: Property) {
-        this.properties[name] = property;
-        property.registerToType(this);
-        return this;
-    }
-
-    public registerPropertys(properties: { [name: string]: Property }) {
-        Object.keys(properties).forEach(k => this.registerProperty(k, properties[k]));
-        return this;
-    }
-
-    public registerMethod(name: string, method: Method | Method[]) {
-        let methods = this.methods[name];
-        let methodsToRegister = method instanceof Method ? [method] : method;
-        methodsToRegister.forEach(m => {
-            if (!methods) {
-                methods = [];
-                this.methods[name] = methods;
-            }
-            methods.push(m);
-            m.registerToType(this);
-        });
-        return this;
-    }
-
-    public registerMethods(methods: { [name: string]: Method | Method[] }) {
-        Object.keys(methods).forEach(k => this.registerMethod(k, methods[k]));
-        return this;
     }
 
     public getName(): string {

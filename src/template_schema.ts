@@ -556,13 +556,13 @@ const colorSchema: Schema = {
 
 SchemaFormat.registerFormat('color', {
     validateJsonNode(node: json.Node, offset: number, matchingSchemas: Schema[]): ValidationResult[] {
-        return validateJsonNode​​(node, colorSchema, offset, matchingSchemas);
+        return validateJsonNode(node, colorSchema, offset, matchingSchemas);
     }
 });
 
 SchemaFormat.registerFormat('event', {
     validateJsonNode(node: json.Node, offset: number, matchingSchemas: Schema[]): ValidationResult[] {
-        return validateJsonNode​​(node, NodeSchema.getEventSchema(), offset, matchingSchemas);
+        return validateJsonNode(node, NodeSchema.getEventSchema(), offset, matchingSchemas);
     }
 });
 
@@ -648,7 +648,7 @@ export class NodeSchema implements ISchema {
             let isCustomType = !(type in nodeTypes);
             let config = NodeSchema.getConfig();
             if (!schema) {
-                let s: Schema = {
+                let s = {
                     type: 'object',
                     additionalProperties: isCustomType,
                     patternProperties: {
