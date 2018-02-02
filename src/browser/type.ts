@@ -211,7 +211,8 @@ export class Type extends IType {
     }
 
     public static Boolean = Type.registerType(new Type('boolean'));
-    public static Number = Type.registerType(new Type('number')).registerPropertys({
+    public static Number = Type.registerType(new Type('number'));
+    private static _dummy = Type.Number.registerPropertys({
         "intValue": new Property(Type.Number, "数字的整数值", true, n => Math.floor(n)),
         "doubleValue": new Property(Type.Number, "数字的浮点数值", true, n => n),
         "floatValue": new Property(Type.Number, "数字的浮点数值", true, n => n),

@@ -959,7 +959,7 @@ export class MistDocument {
         }
 
         let contentsFromProperty = (name: string, prop: Property): vscode.MarkedString[] => {
-            let contents:vscode.MarkedString[] = [];
+            let contents: vscode.MarkedString[] = [];
             contents.push({language: 'typescript', value: this.propertyName(name, prop)});
             if (prop.description) {
                 contents.push(prop.description);
@@ -968,7 +968,7 @@ export class MistDocument {
         }
         
         let contentsFromMethod = (name: string, fun: Method, count: number): vscode.MarkedString[] => {
-            let contents:vscode.MarkedString[] = [];
+            let contents: vscode.MarkedString[] = [];
             contents.push({language: 'typescript', value: this.methodName(name, fun, count)});
             if (fun.description) {
                 contents.push(fun.description);
@@ -1166,7 +1166,7 @@ export class MistDocument {
             if (this.hasExpression(parsed)) {
                 isExp = true;
                 if (!v.type) {
-                    v.type = isConst ? this.computeExpressionTypeInObject(parsed, typeContext, isConst) : this.getDataType(parsed);
+                    v.type = this.computeExpressionTypeInObject(parsed, typeContext, isConst);
                 }
             }
             if (!v.type) {
@@ -1338,7 +1338,7 @@ export class MistDocument {
         });
 
         validateProperty(json.findNodeAtLocation(this.rootNode, ['state']), templateSchema);
-        pushVariable(new Variable('state', this.getDataType(this.template.state || null), '模版状态', true));
+        pushVariable(new Variable('state', this.template.state || null, '模版状态', true));
 
         this.rootNode.children.forEach(c => {
             let key = c.children[0].value;

@@ -71,7 +71,7 @@ function LengthSchema(percentage: boolean, enums: string[], description?: string
     return {
         oneOf: [
             { type: "number" },
-            { type: "string", pattern: `^\\d+(\\.\\d+)?(${units.join('|')}${percentage ? '|%' : ''})?$` },
+            { type: "string", pattern: `^-?\\d+(\\.\\d+)?(${units.join('|')}${percentage ? '|%' : ''})?$` },
             ...(enums && enums.length > 0 ? [{ type: "string", enum: enums }] : [])
         ],
         description,
@@ -118,7 +118,13 @@ const childrenSchema: Schema = {
 
 const propertiesMap: { [type: string]: PropertyMap} = {
     common: {
-        "type": EnumSchema(nodeTypes, "元素类型"),
+        "type": {
+            oneOf: [
+                EnumSchema(nodeTypes),
+                SimpleSchema('string')
+            ],
+            description: "元素类型"
+        },
         "tag": {
             type: "integer",
             description: "元素的 tag，用于在 native 查找该 view。必须是整数"
@@ -689,10 +695,7 @@ export class NodeSchema implements ISchema {
         return null;
     }
     validateJsonNode(node: json.Node, offset: number, matchingSchemas: Schema[]): ValidationResult[] {
-        // if (node && node.type === 'object') {
-            return validateJsonNode(node, this.getSchema(node), offset, matchingSchemas);
-        // }
-        // return [new ValidationResult('node 需要为 `object` 类型', node)];
+        return validateJsonNode(node, this.getSchema(node), offset, matchingSchemas);
     }
 }
 SchemaFormat.registerFormat('node', new NodeSchema());
