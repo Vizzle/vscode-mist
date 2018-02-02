@@ -1057,7 +1057,7 @@ export class MistDocument {
         let offset = document.offsetAt(position);
         validateJsonNode(node, templateSchema, offset, matchingSchemas);
         if (matchingSchemas.length > 0) {
-            let s = matchingSchemas[matchingSchemas.length - 1];
+            let s = matchingSchemas[0]; // TODO
             if (!location.isAtPropertyKey && s && typeof(s) === 'object') {
                 if (s.enum && s.enumDescriptions) {
                     let value = getNodeValue(json.findNodeAtLocation(node, location.path));
@@ -1445,11 +1445,13 @@ export class MistDocument {
             return map;
         }
         
+        let types = data['custom-types'] || {};
         let properties = readTypesPropertiesMap(data['custom-properties']);
         let styleProperties = readTypesPropertiesMap(data['custom-style-properties']);
         let actions = readPropertiesMap(data['custom-actions']);
 
         return {
+            types,
             properties,
             styleProperties,
             actions

@@ -6,6 +6,9 @@ type PropertyMap = {
 };
 
 export type MistCustomConfig = {
+    types: {
+        [type: string]: string;
+    };
     properties: {
         [type: string]: {
             [name: string]: Schema;
@@ -15,11 +18,195 @@ export type MistCustomConfig = {
         [type: string]: {
             [name: string]: Schema;
         }
-    },
+    };
     actions: {
         [name: string]: Schema;
     };
 }
+
+const colors = ["black", "darkgray", "lightgray", "white", "gray", "red", "green", "blue", "cyan", "yellow", "magenta", "orange", "purple", "brown", "transparent"];
+
+const colorSchema: Schema = {
+    oneOf: [
+        {
+            type: 'string',
+            enum: colors,
+            // errorMessage: `只支持以下颜色常量：${colors.map(c => `\`${c}\``).join(', ')}`
+        },
+        {
+            type: 'string',
+            pattern: '^#[0-9A-Fa-f]{3,4}$|^#[0-9A-Fa-f]{6}$|^#[0-9A-Fa-f]{8}$',
+            // errorMessage: '颜色格式错误，支持的颜色格式如下：`#rgb`, `#rrggbb`, `#argb`, `#aarrggbb`'
+        }
+    ],
+    errorMessage: '颜色格式错误'
+}
+
+SchemaFormat.registerFormat('color', {
+    validateJsonNode(node: json.Node, offset: number, matchingSchemas: Schema[]): ValidationResult[] {
+        return validateJsonNode(node, colorSchema, offset, matchingSchemas);
+    }
+});
+
+SchemaFormat.registerFormat('event', {
+    validateJsonNode(node: json.Node, offset: number, matchingSchemas: Schema[]): ValidationResult[] {
+        return validateJsonNode(node, NodeSchema.getEventSchema(), offset, matchingSchemas);
+    }
+});
+
+export class NodeSchema implements ISchema {
+    private static nodeSchemaCache: { [type: string]: Schema } = {};
+    private static config: MistCustomConfig;
+    private static nodeTypes = {
+        "node": "基本元素",
+        "stack": "flex 容器元素",
+        "text": "文本元素，用于显示文本，支持富文本",
+        "image": `图片元素，可展示本地图片和网络图片。网络图片自动缓存。
+    展示本地图片时，使用 image 属性，如 "image": "O2O.bundle/arrow"。
+    展示网络图片时，使用 image-url 指定网络图片，image 指定加载中显示的图片，error-image 指定下载失败时显示的图片。`,
+        "button": "按钮元素，可以设置按下时的文字颜色等",
+        "scroll": `滚动容器元素，使用 children 定义子元素。
+    注意：scroll 元素的尺寸不会根据它的子元素自适应。`,
+        "paging": "分页元素，使用 children 定义子元素，每个子元素就是一页",
+        "line": "线条元素，主要用于展示虚线，其粗细、长度由布局属性控制",
+        "indicator": "加载指示器，俗称菊花"
+    };
+    public static setConfig(config: MistCustomConfig) {
+        this.config = config;
+        this.nodeSchemaCache = {};
+    }
+    private static getConfig() {
+        return this.config || {
+            properties: {},
+            styleProperties: {},
+            actions: {},
+            types: {}
+        };
+    }
+    public static getEventSchema(): Schema {
+        let config = this.getConfig();
+        return {
+            type: "object",
+            additionalProperties: true,
+            properties: {
+                "openUrl:": SimpleSchema("string", "打开指定的 URL"),
+                "updateState:": SimpleSchema("object", "更新状态。值应该为一个字典，将状态中对应的值更新。注意不是替换整个状态，只是更改对应的 key"),
+                "alert:": {
+                    oneOf: [
+                        SimpleSchema("string", "Alert 内容"),
+                        {
+                            type: "object",
+                            required: ["message"],
+                            properties: {
+                                "title": SimpleSchema("string"),
+                                "message": SimpleSchema("object"),
+                            },
+                            
+                        }
+                    ],
+                    snippet: '"$0"',
+                    description: "显示 Alert，主要用于调试"
+                },
+                "runAction:": {
+                    oneOf: [
+                        {
+                            type: "string"
+                        },
+                        {
+                            type: "object",
+                            required: ["name"],
+                            properties: {
+                                "name": SimpleSchema("string", "Action 名称"),
+                                "params": SimpleSchema("object", "触发 Action 时传入的参数"),
+                            }
+                        }
+                    ],
+                    description: "触发自定义 Action"
+                },
+                "postNotification:": {
+                    oneOf: [
+                        {
+                            type: "string"
+                        },
+                        {
+                            type: "object",
+                            required: ["name"],
+                            properties: {
+                                "name": SimpleSchema("string", "Notification 名称"),
+                                "params": SimpleSchema("object", "Notification 的 userInfo"),
+                            }
+                        }
+                    ],
+                    description: "发送 Notification"
+                },
+                ...config.actions || {},
+            }
+        };
+    }
+    public static getTypes(): { [name: string]: string } {
+        let config = NodeSchema.getConfig();
+        return { ...this.nodeTypes, ...config.types };
+    }
+    public getSchema(node: json.Node) {
+        if (node && node.type === 'object') {
+            let typeNode = json.findNodeAtLocation(node, ['type']);
+            let type = typeNode ? json.getNodeValue(typeNode) : json.findNodeAtLocation(node, ['children']) ? 'stack' : 'node';
+            let schema = NodeSchema.nodeSchemaCache[type];
+            let isCustomType = !(type in NodeSchema.getTypes());
+            let config = NodeSchema.getConfig();
+            if (!schema) {
+                let s = {
+                    type: 'object',
+                    additionalProperties: isCustomType,
+                    patternProperties: {
+                        '^on-.+$': isCustomType ? EventSchema() : false,
+                    },
+                    properties: {
+                        ...propertiesMap.common || {},
+                        ...propertiesMap[type] || {},
+                        style: {
+                            type: 'object',
+                            additionalProperties: isCustomType,
+                            properties: {
+                                ...stylesMap.common || {},
+                                ...stylesMap[type] || {},
+                                ...config.styleProperties['common'] || {},
+                                ...config.styleProperties[type] || {}
+                            },
+                            description: "元素的样式和布局属性"
+                        },
+                        ...config.properties['common'] || {},
+                        ...config.properties[type] || {},
+                        "type": {
+                            oneOf: [
+                                EnumSchema(NodeSchema.getTypes()),
+                                SimpleSchema('string')
+                            ],
+                            description: "元素类型"
+                        },
+                    },
+                    description: "布局元素"
+                };
+                let events = Object.keys(s.properties).filter(k => k.startsWith('on-'));
+                events.forEach(e => {
+                    let schema = s.properties[e];
+                    s.properties[e + '-once'] = { ...schema };
+                    if (schema.description) {
+                        s.properties[e + '-once'].description = schema.description + '（只触发一次）';
+                    }
+                });
+                NodeSchema.nodeSchemaCache[type] = s;
+                schema = s;
+            }
+            return schema;
+        }
+        return null;
+    }
+    validateJsonNode(node: json.Node, offset: number, matchingSchemas: Schema[]): ValidationResult[] {
+        return validateJsonNode(node, this.getSchema(node), offset, matchingSchemas);
+    }
+}
+SchemaFormat.registerFormat('node', new NodeSchema());
 
 const VariablesTableSchema: Schema = {
     type: "object",
@@ -87,21 +274,6 @@ function EventSchema(description?: string): Schema {
     };
 }
 
-const nodeTypes = {
-    "node": "基本元素",
-    "stack": "flex 容器元素",
-    "text": "文本元素，用于显示文本，支持富文本",
-    "image": `图片元素，可展示本地图片和网络图片。网络图片自动缓存。
-展示本地图片时，使用 image 属性，如 "image": "O2O.bundle/arrow"。
-展示网络图片时，使用 image-url 指定网络图片，image 指定加载中显示的图片，error-image 指定下载失败时显示的图片。`,
-    "button": "按钮元素，可以设置按下时的文字颜色等",
-    "scroll": `滚动容器元素，使用 children 定义子元素。
-注意：scroll 元素的尺寸不会根据它的子元素自适应。`,
-    "paging": "分页元素，使用 children 定义子元素，每个子元素就是一页",
-    "line": "线条元素，主要用于展示虚线，其粗细、长度由布局属性控制",
-    "indicator": "加载指示器，俗称菊花"
-};
-
 const childrenSchema: Schema = {
     type: "array",
     items: {
@@ -118,13 +290,6 @@ const childrenSchema: Schema = {
 
 const propertiesMap: { [type: string]: PropertyMap} = {
     common: {
-        "type": {
-            oneOf: [
-                EnumSchema(nodeTypes),
-                SimpleSchema('string')
-            ],
-            description: "元素类型"
-        },
         "tag": {
             type: "integer",
             description: "元素的 tag，用于在 native 查找该 view。必须是整数"
@@ -541,164 +706,6 @@ fixed 元素并不是一定处于其它元素的最上方，而是同其它元�
         },
     },
 }
-
-const colors = ["black", "darkgray", "lightgray", "white", "gray", "red", "green", "blue", "cyan", "yellow", "magenta", "orange", "purple", "brown", "transparent"];
-
-const colorSchema: Schema = {
-    oneOf: [
-        {
-            type: 'string',
-            enum: colors,
-            // errorMessage: `只支持以下颜色常量：${colors.map(c => `\`${c}\``).join(', ')}`
-        },
-        {
-            type: 'string',
-            pattern: '^#[0-9A-Fa-f]{3,4}$|^#[0-9A-Fa-f]{6}$|^#[0-9A-Fa-f]{8}$',
-            // errorMessage: '颜色格式错误，支持的颜色格式如下：`#rgb`, `#rrggbb`, `#argb`, `#aarrggbb`'
-        }
-    ],
-    errorMessage: '颜色格式错误'
-}
-
-SchemaFormat.registerFormat('color', {
-    validateJsonNode(node: json.Node, offset: number, matchingSchemas: Schema[]): ValidationResult[] {
-        return validateJsonNode(node, colorSchema, offset, matchingSchemas);
-    }
-});
-
-SchemaFormat.registerFormat('event', {
-    validateJsonNode(node: json.Node, offset: number, matchingSchemas: Schema[]): ValidationResult[] {
-        return validateJsonNode(node, NodeSchema.getEventSchema(), offset, matchingSchemas);
-    }
-});
-
-export class NodeSchema implements ISchema {
-    private static nodeSchemaCache: { [type: string]: Schema } = {};
-    private static config: MistCustomConfig;
-    public static setConfig(config: MistCustomConfig) {
-        this.config = config;
-        this.nodeSchemaCache = {};
-    }
-    private static getConfig() {
-        return this.config || {
-            properties: {},
-            styleProperties: {},
-            actions: {}
-        };
-    }
-    public static getEventSchema(): Schema {
-        let config = this.getConfig();
-        return {
-            type: "object",
-            additionalProperties: true,
-            properties: {
-                "openUrl:": SimpleSchema("string", "打开指定的 URL"),
-                "updateState:": SimpleSchema("object", "更新状态。值应该为一个字典，将状态中对应的值更新。注意不是替换整个状态，只是更改对应的 key"),
-                "alert:": {
-                    oneOf: [
-                        SimpleSchema("string", "Alert 内容"),
-                        {
-                            type: "object",
-                            required: ["message"],
-                            properties: {
-                                "title": SimpleSchema("string"),
-                                "message": SimpleSchema("object"),
-                            },
-                            
-                        }
-                    ],
-                    snippet: '"$0"',
-                    description: "显示 Alert，主要用于调试"
-                },
-                "runAction:": {
-                    oneOf: [
-                        {
-                            type: "string"
-                        },
-                        {
-                            type: "object",
-                            required: ["name"],
-                            properties: {
-                                "name": SimpleSchema("string", "Action 名称"),
-                                "params": SimpleSchema("object", "触发 Action 时传入的参数"),
-                            }
-                        }
-                    ],
-                    description: "触发自定义 Action"
-                },
-                "postNotification:": {
-                    oneOf: [
-                        {
-                            type: "string"
-                        },
-                        {
-                            type: "object",
-                            required: ["name"],
-                            properties: {
-                                "name": SimpleSchema("string", "Notification 名称"),
-                                "params": SimpleSchema("object", "Notification 的 userInfo"),
-                            }
-                        }
-                    ],
-                    description: "发送 Notification"
-                },
-                ...config.actions || {},
-            }
-        };
-    }
-    public getSchema(node: json.Node) {
-        if (node && node.type === 'object') {
-            let typeNode = json.findNodeAtLocation(node, ['type']);
-            let type = typeNode ? json.getNodeValue(typeNode) : json.findNodeAtLocation(node, ['children']) ? 'stack' : 'node';
-            let schema = NodeSchema.nodeSchemaCache[type];
-            let isCustomType = !(type in nodeTypes);
-            let config = NodeSchema.getConfig();
-            if (!schema) {
-                let s = {
-                    type: 'object',
-                    additionalProperties: isCustomType,
-                    patternProperties: {
-                        '^on-.+$': isCustomType ? EventSchema() : false,
-                    },
-                    properties: {
-                        ...propertiesMap.common || {},
-                        ...propertiesMap[type] || {},
-                        style: {
-                            type: 'object',
-                            additionalProperties: isCustomType,
-                            properties: {
-                                ...stylesMap.common || {},
-                                ...stylesMap[type] || {},
-                                ...config.styleProperties.common || {},
-                                ...config.styleProperties[type] || {}
-                            },
-                            description: "元素的样式和布局属性"
-                        },
-                        ...config.properties.common || {},
-                        ...config.properties[type] || {}
-                    },
-                    description: "布局元素"
-                };
-                let events = Object.keys(s.properties).filter(k => k.startsWith('on-'));
-                events.forEach(e => {
-                    let schema = s.properties[e];
-                    s.properties[e + '-once'] = { ...schema };
-                    if (schema.description) {
-                        s.properties[e + '-once'].description = schema.description + '（只触发一次）';
-                    }
-                });
-                NodeSchema.nodeSchemaCache[type] = s;
-                schema = s;
-            }
-            return schema;
-        }
-        return null;
-    }
-    validateJsonNode(node: json.Node, offset: number, matchingSchemas: Schema[]): ValidationResult[] {
-        return validateJsonNode(node, this.getSchema(node), offset, matchingSchemas);
-    }
-}
-SchemaFormat.registerFormat('node', new NodeSchema());
 
 export const templateSchema: Schema = parseSchema({
     "definitions": {
