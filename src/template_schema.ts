@@ -5,6 +5,22 @@ type PropertyMap = {
     [name: string]: Schema;
 };
 
+export type MistCustomConfig = {
+    properties: {
+        [type: string]: {
+            [name: string]: Schema;
+        }
+    };
+    styleProperties: {
+        [type: string]: {
+            [name: string]: Schema;
+        }
+    },
+    actions: {
+        [name: string]: Schema;
+    };
+}
+
 const VariablesTableSchema: Schema = {
     type: "object",
     patternProperties: {
@@ -65,61 +81,9 @@ function LengthSchema(percentage: boolean, enums: string[], description?: string
 
 function EventSchema(description?: string): Schema {
     return {
-        type: "object",
+        type: 'object',
+        format: 'event',
         description,
-        additionalProperties: true,
-        properties: {
-            "openUrl:": SimpleSchema("string", "打开指定的 URL"),
-            "updateState:": SimpleSchema("object", "更新状态。值应该为一个字典，将状态中对应的值更新。注意不是替换整个状态，只是更改对应的 key"),
-            "alert:": {
-                oneOf: [
-                    SimpleSchema("string", "Alert 内容"),
-                    {
-                        type: "object",
-                        required: ["message"],
-                        properties: {
-                            "title": SimpleSchema("string"),
-                            "message": SimpleSchema("object"),
-                        },
-                        
-                    }
-                ],
-                snippet: '"$0"',
-                description: "显示 Alert，主要用于调试"
-            },
-            "runAction:": {
-                oneOf: [
-                    {
-                        type: "string"
-                    },
-                    {
-                        type: "object",
-                        required: ["name"],
-                        properties: {
-                            "name": SimpleSchema("string", "Action 名称"),
-                            "params": SimpleSchema("object", "触发 Action 时传入的参数"),
-                        }
-                    }
-                ],
-                description: "触发自定义 Action"
-            },
-            "postNotification:": {
-                oneOf: [
-                    {
-                        type: "string"
-                    },
-                    {
-                        type: "object",
-                        required: ["name"],
-                        properties: {
-                            "name": SimpleSchema("string", "Notification 名称"),
-                            "params": SimpleSchema("object", "Notification 的 userInfo"),
-                        }
-                    }
-                ],
-                description: "发送 Notification"
-            },
-        }
     };
 }
 
@@ -596,14 +560,93 @@ SchemaFormat.registerFormat('color', {
     }
 });
 
+SchemaFormat.registerFormat('event', {
+    validateJsonNode(node: json.Node, offset: number, matchingSchemas: Schema[]): ValidationResult[] {
+        return validateJsonNode​​(node, NodeSchema.getEventSchema(), offset, matchingSchemas);
+    }
+});
+
 export class NodeSchema implements ISchema {
     private static nodeSchemaCache: { [type: string]: Schema } = {};
+    private static config: MistCustomConfig;
+    public static setConfig(config: MistCustomConfig) {
+        this.config = config;
+        this.nodeSchemaCache = {};
+    }
+    private static getConfig() {
+        return this.config || {
+            properties: {},
+            styleProperties: {},
+            actions: {}
+        };
+    }
+    public static getEventSchema(): Schema {
+        let config = this.getConfig();
+        return {
+            type: "object",
+            additionalProperties: true,
+            properties: {
+                "openUrl:": SimpleSchema("string", "打开指定的 URL"),
+                "updateState:": SimpleSchema("object", "更新状态。值应该为一个字典，将状态中对应的值更新。注意不是替换整个状态，只是更改对应的 key"),
+                "alert:": {
+                    oneOf: [
+                        SimpleSchema("string", "Alert 内容"),
+                        {
+                            type: "object",
+                            required: ["message"],
+                            properties: {
+                                "title": SimpleSchema("string"),
+                                "message": SimpleSchema("object"),
+                            },
+                            
+                        }
+                    ],
+                    snippet: '"$0"',
+                    description: "显示 Alert，主要用于调试"
+                },
+                "runAction:": {
+                    oneOf: [
+                        {
+                            type: "string"
+                        },
+                        {
+                            type: "object",
+                            required: ["name"],
+                            properties: {
+                                "name": SimpleSchema("string", "Action 名称"),
+                                "params": SimpleSchema("object", "触发 Action 时传入的参数"),
+                            }
+                        }
+                    ],
+                    description: "触发自定义 Action"
+                },
+                "postNotification:": {
+                    oneOf: [
+                        {
+                            type: "string"
+                        },
+                        {
+                            type: "object",
+                            required: ["name"],
+                            properties: {
+                                "name": SimpleSchema("string", "Notification 名称"),
+                                "params": SimpleSchema("object", "Notification 的 userInfo"),
+                            }
+                        }
+                    ],
+                    description: "发送 Notification"
+                },
+                ...config.actions || {},
+            }
+        };
+    }
     public getSchema(node: json.Node) {
         if (node && node.type === 'object') {
             let typeNode = json.findNodeAtLocation(node, ['type']);
             let type = typeNode ? json.getNodeValue(typeNode) : json.findNodeAtLocation(node, ['children']) ? 'stack' : 'node';
             let schema = NodeSchema.nodeSchemaCache[type];
             let isCustomType = !(type in nodeTypes);
+            let config = NodeSchema.getConfig();
             if (!schema) {
                 let s: Schema = {
                     type: 'object',
@@ -620,9 +663,13 @@ export class NodeSchema implements ISchema {
                             properties: {
                                 ...stylesMap.common || {},
                                 ...stylesMap[type] || {},
+                                ...config.styleProperties.common || {},
+                                ...config.styleProperties[type] || {}
                             },
                             description: "元素的样式和布局属性"
-                        }
+                        },
+                        ...config.properties.common || {},
+                        ...config.properties[type] || {}
                     },
                     description: "布局元素"
                 };

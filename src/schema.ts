@@ -53,8 +53,9 @@ export class SchemaFormat {
     }
 }
 
-export function parseSchema(schema: Schema) {
-    return _resolveRefs(schema);
+export function parseSchema(schema: Schema, reference?: any): Schema {
+    if (!schema) return schema;
+    return _resolveRefs(schema, reference);
 }
 
 export function validateJsonNode(node: json.Node, schema: Schema, offset: number = -1, matchingSchemas: Schema[] = []): ValidationResult[] {
@@ -110,10 +111,16 @@ function valueToJsonNode(value: any): json.Node {
     return node;
 }
 
-function _resolveRefs(schema: Schema): Schema {
+function _resolveRefs(schema: Schema, reference?: any): Schema {
+    if (!reference) {
+        reference = schema;
+    }
     let visitedObjects = [];
     let readPath = (path: string) => {
-        return path.split('/').reduce((p, c) => c === '#' ? schema : p ? p[c] : null, null) || true;
+        if (!path.startsWith('#/')) {
+            path = '#/' + path;
+        }
+        return path.split('/').reduce((p, c) => c === '#' ? reference : p ? p[c] : null, null) || true;
     }
     let resolveRef = (s: Schema) => {
         if (s && typeof(s) === 'object' && s.$ref) {

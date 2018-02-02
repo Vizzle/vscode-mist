@@ -23,13 +23,6 @@ export default class Snippets {
   "title": "\${1:Button Title}"
 }`,
 
-"children": 
-`"children": [
-  {
-    $0
-  }
-]`,
-
 "stack": 
 `"style": {
   "direction": "$1"

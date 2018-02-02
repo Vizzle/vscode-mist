@@ -1,0 +1,167 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema",
+    "type": "object",
+    "definitions": {
+        "schema": {
+            "oneOf": [
+                {
+                    "type": "boolean"
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": [
+                                "string",
+                                "number",
+                                "integer",
+                                "boolean",
+                                "object",
+                                "array"
+                            ],
+                            "description": "属性类型"
+                        },
+                        "format": {
+                            "type": "string",
+                            "enum": [
+                                "node",
+                                "color",
+                                "event"
+                            ],
+                            "description": "描述属性格式"
+                        },
+                        "description": {
+                            "type": "string",
+                            "description": "属性的描述"
+                        },
+                        "deprecatedMessage": {
+                            "type": "string",
+                            "description": "废弃属性的描述信息，隐式指定该属性为已废弃属性"
+                        },
+                        "errorMessage": {
+                            "type": "string",
+                            "description": "当该属性匹配失败时，显示自定义错误信息"
+                        },
+                        "properties": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "$ref": "#/definitions/schema"
+                            },
+                            "description": "定义该 `object` 拥有的属性"
+                        },
+                        "patternProperties": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "$ref": "#/definitions/schema"
+                            },
+                            "description": "定义符合指定正则表达式的属性"
+                        },
+                        "additionalProperties": {
+                            "$ref": "#/definitions/schema",
+                            "description": "定义不符合 `properties` 和 `patternProperties` 的属性的 Schema"
+                        },
+                        "required": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "指定该 `object` 的必需属性"
+                        },
+                        "items": {
+                            "$ref": "#/definitions/schema",
+                            "description": "定义数组元素"
+                        },
+                        "min": {
+                            "type": "number",
+                            "description": "数字类型的最小值"
+                        },
+                        "max": {
+                            "type": "number",
+                            "description": "数字类型的最大值"
+                        },
+                        "enum": {
+                            "type": "array",
+                            "description": "枚举可用的属性值"
+                        },
+                        "enumDescriptions": {
+                            "type": "array",
+                            "description": "枚举值的描述，元素数量应与 `enum` 属性的元素数量一致"
+                        },
+                        "pattern": {
+                            "type": "string",
+                            "description": "字符串需要满足的正则表达式（在字符串中查找，而非匹配整个字符串）"
+                        },
+                        "oneOf": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/schema"
+                            },
+                            "description": "满足其中一种类型"
+                        },
+                        "snippet": {
+                            "type": "string",
+                            "description": "该属性对应的代码片段，格式参考 https://code.visualstudio.com/docs/editor/userdefinedsnippets#_snippet-syntax"
+                        },
+                        "$ref": {
+                            "type": "string",
+                            "description": "引用 `definitions` 中定义的 Schema"
+                        }
+                    }
+                }
+            ]
+        },
+        "properties": {
+            "type": "object",
+            "additionalProperties": {
+                "$ref": "#/definitions/schema"
+            }
+        }
+    },
+    "additionalProperties": false,
+    "properties": {
+        "definitions": {
+            "type": "object",
+            "additionalProperties": {
+                "$ref": "#/definitions/schema"
+            },
+            "description": "定义 Schema，使用 `$ref` 来引用"
+        },
+        "custom-properties": {
+            "type": "object",
+            "properties": {
+                "common": {
+                    "$ref": "#/definitions/properties",
+                    "description": "公共属性，所有组件都支持的属性"
+                }
+            },
+            "additionalProperties": {
+                "$ref": "#/definitions/properties",
+                "description": "组件的扩展属性"
+            },
+            "description": "定义扩展属性的类型描述（`style` 外的属性）。`common` 为公共属性，其它组件使用类型名称，如 `text`, `image`"
+        },
+        "custom-style-properties": {
+            "type": "object",
+            "properties": {
+                "common": {
+                    "$ref": "#/definitions/properties",
+                    "description": "公共属性，所有组件都支持的属性"
+                }
+            },
+            "additionalProperties": {
+                "$ref": "#/definitions/properties",
+                "description": "组件的扩展属性"
+            },
+            "description": "定义扩展属性的类型描述（`style` 里的属性）。`common` 为公共属性，其它组件使用类型名称，如 `text`, `image`"
+        },
+        "custom-actions": {
+            "type": "object",
+            "additionalProperties": {
+                "$ref": "#/definitions/schema"
+            },
+            "description": "自定义 action"
+        }
+    }
+}

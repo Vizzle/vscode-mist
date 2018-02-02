@@ -20,6 +20,12 @@
     "main": "./out/src/mistMain",
     "icon": "media/mist.png",
     "contributes": {
+        "jsonValidation": [
+            {
+                "fileMatch": "mist-extension.json",
+                "url": "./schema/mist_config_schema.json"
+            }
+        ],
         "configurationDefaults": {
             "[mist]": {
                 "editor.tabSize": 2,

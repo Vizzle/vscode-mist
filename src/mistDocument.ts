@@ -10,8 +10,8 @@ import { Type, IType, Method, Parameter, Property, ArrayType, UnionType, ObjectT
 import { ExpressionContext, Parser, None, ExpressionNode, LiteralNode, ParseResult, ExpressionErrorLevel } from "./browser/parser";
 import Snippets from "./snippets";
 import { parse, parseExpressionInObject } from "./browser/template";
-import { Schema, validateJsonNode, SchemaObject } from "./schema";
-import { templateSchema, NodeSchema } from "./template_schema";
+import { Schema, validateJsonNode, SchemaObject, parseSchema } from "./schema";
+import { templateSchema, NodeSchema, MistCustomConfig } from "./template_schema";
 
 enum ExpType {
     Void,
@@ -582,6 +582,7 @@ class TrackExpressionContext extends ExpressionContext {
 
 export class MistDocument {
     static documents: { [path: string]: MistDocument } = {}
+    static configs: { [dir: string]: MistCustomConfig } = {}
 
     public readonly document: TextDocument;
     private datas: MistData[];
@@ -687,6 +688,7 @@ export class MistDocument {
     }
 
     public provideCompletionItems(position: vscode.Position, token: vscode.CancellationToken) {
+        NodeSchema.setConfig(this.getConfig());
         let document = this.document;
         let location = json.getLocation(document.getText(), document.offsetAt(position));
         this.parseTemplate();
@@ -928,6 +930,7 @@ export class MistDocument {
     }
 
     public provideHover(position: vscode.Position, token: vscode.CancellationToken): vscode.ProviderResult<vscode.Hover> {
+        NodeSchema.setConfig(this.getConfig());
         function findNodeAtLocation(root: json.Node, path: json.JSONPath): json.Node {
             if (!root) {
                 return void 0;
@@ -1158,6 +1161,7 @@ export class MistDocument {
     }
 
     public validate(): vscode.Diagnostic[] {
+        NodeSchema.setConfig(this.getConfig());
         this.parseTemplate();
         if (!this.template) return [];
         let vars: Variable[] = [];
@@ -1430,6 +1434,50 @@ export class MistDocument {
         validateNode(this.nodeTree);
         
         return diagnostics;
+    }
+
+    private readConfig(data: any): MistCustomConfig {
+        let definitions = data.definitions;
+        definitions = parseSchema(definitions, definitions);
+        
+        let readPropertiesMap = map => {
+            if (!map) return {};
+            Object.keys(map).forEach(p => {
+                map[p] = parseSchema(map[p], definitions);
+            });
+            return map;
+        }
+        let readTypesPropertiesMap = map => {
+            if (!map) return {};
+            Object.keys(map).forEach(type => {
+                readPropertiesMap(map[type]);
+            });
+            return map;
+        }
+        
+        let properties = readTypesPropertiesMap(data['custom-properties']);
+        let styleProperties = readTypesPropertiesMap(data['custom-style-properties']);
+        let actions = readPropertiesMap(data['custom-actions']);
+
+        return {
+            properties,
+            styleProperties,
+            actions
+        };
+    }
+
+    private getConfig() {
+        let dir = this.dir();
+        let config = MistDocument.configs[dir];
+        if (!config) {
+            let configPath = dir + '/mist-extension.json';
+            if (fs.existsSync(configPath)) {
+                let content = fs.readFileSync(configPath).toString();
+                config = this.readConfig(JSON.parse(content));
+                MistDocument.configs[dir] = config;
+            }
+        }
+        return config;
     }
 
     private onDidChangeTextDocument(event: TextDocumentChangeEvent) {
