@@ -250,6 +250,7 @@ class Client {
                 callback: () => {
                     this.dataName = d.name;
                     this.render();
+                    this.send('selectData', { name: d.name, path: this.path })
                 }
             }
         }));
@@ -348,6 +349,9 @@ class Client {
                 this.datas = data.datas;
                 this.updateDatasDropdown();
                 this.render();
+                break;
+            case 'selectData':
+                this.datasDropdown.select(this.datas.findIndex(d => d.name === data.name));
                 break;
         }
     }

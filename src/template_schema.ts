@@ -323,6 +323,7 @@ const propertiesMap: { [type: string]: PropertyMap} = {
                     items: VariablesTableSchema
                 }
             ],
+            snippet: "{\n  $0\n}",
             description: "定义变量（宏）"
         },
         "class": {

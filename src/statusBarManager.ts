@@ -2,6 +2,7 @@ import { StatusBarItem } from "vscode";
 import * as vscode from "vscode";
 import * as path from "path";
 import { MistDocument } from "./mistDocument";
+import { MistContentProvider } from "./previewProvider";
 
 
 export class StatusBarManager {
@@ -20,13 +21,15 @@ export class StatusBarManager {
             });
             vscode.window.showQuickPick(items).then(r => {
                 if (!r) return;
-                doc.setData(r.detail, r.description ? parseInt(r.description.substr(1)) - 1 : 0);
+                let name = r.label + (r.description ? ' ' + r.description : '');
+                doc.setData(name);
                 this.updateDataItemForDocument(doc);
+                MistContentProvider.sharedInstance.send('selectData', {name});
             });
         });
     }
 
-    private static updateDataItemForDocument(doc: MistDocument) {
+    public static updateDataItemForDocument(doc: MistDocument) {
         let datas = doc.getDatas();
         if (doc.getData()) {
             let text = '$(file-text) ' + doc.getData().description();

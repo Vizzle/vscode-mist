@@ -661,9 +661,15 @@ export class MistDocument {
         return this.datas;
     }
 
-    public setData(file: string, index: number) {
-        this.dataFile = file;
-        this.dataIndex = index;
+    public setData(name: string) {
+        let datas = this.getDatas();
+        if (datas.length === 0) return;
+        let data = datas.find(d => d.description() === name);
+        if (!data) {
+            data = datas[0];
+        }
+        this.dataFile = data.file;
+        this.dataIndex = data.index;
     }
 
     public getData() {

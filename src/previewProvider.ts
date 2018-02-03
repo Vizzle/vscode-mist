@@ -14,6 +14,7 @@ import { ImageHelper } from './imageHelper';
 import { extensions } from 'vscode';
 import Device from './browser/previewDevice';
 import { bindData } from './browser/template';
+import { StatusBarManager } from './statusBarManager';
 
 export function isMistFile(document: vscode.TextDocument) {
     return document.languageId === 'mist'
@@ -41,6 +42,16 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
     private _listening: Promise<number>;
     private _clients: PreviewClient[] = [];
     private _updateTimer = null;
+    private static _sharedInstance: MistContentProvider;
+
+    public static context: vscode.ExtensionContext;
+
+    public static get sharedInstance(): MistContentProvider {
+        if (!this._sharedInstance) {
+            this._sharedInstance = new MistContentProvider(this.context);
+        }
+        return this._sharedInstance;
+    }
 
     constructor(private context: vscode.ExtensionContext) {
         let httpServer = http.createServer((request, response) => {
@@ -94,6 +105,15 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
                     this.revealNode(vscode.Uri.parse(data.path), data.index);
                     break;
                 }
+                case 'selectData':
+                {
+                    let mistDoc = MistDocument.getDocumentByUri(vscode.Uri.parse(data.path));
+                    if (mistDoc) {
+                        mistDoc.setData(data.name);
+                        StatusBarManager.updateDataItemForDocument(mistDoc);
+                    }
+                    break;
+                }
                 }
             });
 
@@ -115,27 +135,33 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
         return null;
     }
 
-    render() {
+    public send(type: string, params: any) {
         if (this._clients.length > 0) {
             this._clients.forEach(c => {
-                let mistDoc = this.getDocument();
-                if (!mistDoc) return;
-                let template = mistDoc.getTemplate();
-                let images = ImageHelper.getImageFiles(mistDoc.document);
                 c.client.send(JSON.stringify({
-                    path: mistDoc.document.uri.toString(),
-                    type: 'data',
-                    template,
-                    images,
-                    datas: mistDoc.getDatas().map(d => {
-                        return {
-                            name: d.description(),
-                            data: d.data
-                        }
-                    }),
+                    type,
+                    ...params
                 }));
             });
         }
+    }
+
+    render() {
+        let mistDoc = this.getDocument();
+        if (!mistDoc) return;
+        let template = mistDoc.getTemplate();
+        let images = ImageHelper.getImageFiles(mistDoc.document);
+        this.send('data', {
+            path: mistDoc.document.uri.toString(),
+            template,
+            images,
+            datas: mistDoc.getDatas().map(d => {
+                return {
+                    name: d.description(),
+                    data: d.data
+                }
+            })
+        })
     }
 
     public update(uri: string) {
@@ -169,7 +195,7 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
         }
 
         let index = indexes ? indexes.join(',') : null;
-        this._clients.forEach(c => c.client.send(JSON.stringify({ 'type': 'select', index })));
+        this.send('select', {index});
     }
 
     public revealNode(uri: vscode.Uri, nodeIndex: string) {

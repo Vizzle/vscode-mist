@@ -170,7 +170,8 @@ function registerMistServer(context: ExtensionContext) {
 }
 
 function registerPreviewProvider(context: ExtensionContext) {
-    const contentProvider = new MistContentProvider(context);
+    MistContentProvider.context = context;
+    const contentProvider = MistContentProvider.sharedInstance;
     const contentProviderRegistration = vscode.workspace.registerTextDocumentContentProvider('mist-preview', contentProvider);
     context.subscriptions.push(contentProviderRegistration);
 
