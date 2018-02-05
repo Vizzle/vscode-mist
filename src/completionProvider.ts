@@ -41,10 +41,7 @@ export default class MistCompletionProvider implements vscode.CompletionItemProv
         if (!this.isTriggerCharacter(event.contentChanges[0].text)) {
             return;
         }
-        if (event.contentChanges[0].text != '.') {
-            vscode.commands.executeCommand("editor.action.triggerSuggest");
-            return;
-        }
+        
         let doc = textEditor.document;
         let sel = textEditor.selection.start.translate(0, 1);
         let items = this.provideCompletionItems(doc, sel, null);

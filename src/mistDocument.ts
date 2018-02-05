@@ -1277,6 +1277,7 @@ export class MistDocument {
         }
 
         let resolveExpressionsInNode = (node: json.Node) => {
+            if (node.value instanceof IType) return;
             if (node.type === 'string') {
                 let parsed = parseExpressionInObject(node.value);
                 if (parsed === null) {
