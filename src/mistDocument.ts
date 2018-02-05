@@ -699,6 +699,21 @@ export class MistDocument {
         let location = json.getLocation(document.getText(), document.offsetAt(position));
         this.parseTemplate();
 
+        // 在上一行没有以逗号结尾时，也认为在 key 里
+        if (!location.isAtPropertyKey) {
+            let wordRange = document.getWordRangeAtPosition(position);
+            let p = wordRange ? wordRange.start : position;
+            let line = document.getText(new vscode.Range(new vscode.Position(p.line, 0), p)).trim();
+            if (line === '') {
+                location.isAtPropertyKey = true;
+                location.previousNode = null;
+                location.path = [...location.path.slice(0, -1), ""];
+            }
+            else if (line === '"') {
+                location.isAtPropertyKey = true;
+            }
+        }
+
         // expression suggestions
         var items: CompletionItem[] = [];
         if (!location.isAtPropertyKey) {
