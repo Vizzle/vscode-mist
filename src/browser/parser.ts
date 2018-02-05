@@ -239,7 +239,7 @@ export class LiteralNode extends ExpressionNode {
 
     getType(context: ExpressionContext): IType {
         // return IType.typeof(this.value);
-        return new LiteralType​​(this.value);
+        return new LiteralType(this.value);
     }
 
     check(context: ExpressionContext) {
@@ -903,11 +903,27 @@ class FunctionExpressionNode extends ExpressionNode {
         }
         if (this.parameters) {
             let method = targetType.getMethod(this.action.identifier, this.parameters.length);
-            return method ? method.type : Type.Any;
+            if (method) {
+                return method.type;
+            }
+            if (this.parameters.length === 0) {
+                let prop = targetType.getProperty(this.action.identifier);
+                if (prop) {
+                    return prop.type;
+                }
+            }
+            return Type.Any;
         }
         else {
             let p = targetType.getProperty(this.action.identifier);
-            return p ? p.type : Type.Any;
+            if (p) {
+                return p.type;
+            }
+            let method = targetType.getMethod(this.action.identifier, 0);
+            if (method) {
+                return method.type;
+            }
+            return Type.Any;
         }
     }
 
