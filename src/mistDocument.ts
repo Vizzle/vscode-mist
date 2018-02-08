@@ -271,16 +271,10 @@ export class MistData {
     static openDir(dir: string) {
         if (!(dir in this.dataMap)) {
             this.dataMap[dir] = {};
-            fs.readdir(dir, (err, files) => {
-                if (err) {
-                    vscode.window.showErrorMessage(err.message);
-                    return;
-                }
-                let result = new Array<MistData>();
-                files.filter(f => f.endsWith(".json")).map(f => {
-                    let file = `${dir}/${f}`;
-                    this.openFile(file);
-                });
+            let files = fs.readdirSync(dir);
+            files.filter(f => f.endsWith(".json")).map(f => {
+                let file = `${dir}/${f}`;
+                this.openFile(file);
             });
         }
     }
@@ -669,7 +663,7 @@ export class MistDocument {
             data = datas[0];
         }
         this.dataFile = data.file;
-        this.dataIndex = data.index;
+        this.dataIndex = data.index || 0;
     }
 
     public getData() {

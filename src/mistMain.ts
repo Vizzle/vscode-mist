@@ -18,8 +18,8 @@ import { MistSignatureHelpProvider } from './signatureHelpProvider';
 import { StatusBarManager } from './statusBarManager';
 
 export function activate(context: ExtensionContext) {
-    setupStatusBarManager(context);
     setupMistDocument(context);
+    setupStatusBarManager(context);
     registerConvertor(context);
     registerMistServer(context);
     registerShowData(context);

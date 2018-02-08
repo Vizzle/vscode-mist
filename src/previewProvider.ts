@@ -151,6 +151,8 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
         if (!mistDoc) return;
         let template = mistDoc.getTemplate();
         let images = ImageHelper.getImageFiles(mistDoc.document);
+        let data = mistDoc.getData();
+        let dataName = data ? data.description() : null;
         this.send('data', {
             path: mistDoc.document.uri.toString(),
             template,
@@ -160,7 +162,8 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
                     name: d.description(),
                     data: d.data
                 }
-            })
+            }),
+            selectedData: dataName
         })
     }
 

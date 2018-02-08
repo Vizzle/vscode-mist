@@ -337,6 +337,13 @@ class Client {
         }
     }
 
+    private selectData(name: string) {
+        let index = this.datas.findIndex(d => d.name === name);
+        if (index) {
+            this.datasDropdown.select(index);
+        }
+    }
+
     private onMessage(data: any) {
         switch (data.type) {
             case 'select':
@@ -348,10 +355,13 @@ class Client {
                 this.images = data.images.map(i => new ImageInfo(i.name, i.files));
                 this.datas = data.datas;
                 this.updateDatasDropdown();
+                if (data.selectedData) {
+                    this.selectData(data.selectedData);
+                }
                 this.render();
                 break;
             case 'selectData':
-                this.datasDropdown.select(this.datas.findIndex(d => d.name === data.name));
+                this.selectData(data.name);
                 break;
         }
     }

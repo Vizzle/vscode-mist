@@ -27,9 +27,12 @@ export class StatusBarManager {
                 MistContentProvider.sharedInstance.send('selectData', {name});
             });
         });
+
+        this.onDidChangeActiveTextEditor(vscode.window.activeTextEditor);
     }
 
     public static updateDataItemForDocument(doc: MistDocument) {
+        if (!doc) return;
         let datas = doc.getDatas();
         if (doc.getData()) {
             let text = '$(file-text) ' + doc.getData().description();
