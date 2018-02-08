@@ -212,13 +212,16 @@ export class Type extends IType {
 
     public static Boolean = Type.registerType(new Type('boolean'));
     public static Number = Type.registerType(new Type('number'));
+    public static String = Type.registerType(new Type('string'));
     private static _dummy = Type.Number.registerPropertys({
         "intValue": new Property(Type.Number, "数字的整数值", true, n => Math.floor(n)),
         "doubleValue": new Property(Type.Number, "数字的浮点数值", true, n => n),
         "floatValue": new Property(Type.Number, "数字的浮点数值", true, n => n),
         "boolValue": new Property(Type.Boolean, "数字的布尔值", true, n => n !== 0),
+        "toFixed": new Property(Type.String, "返回数字的定点数表示形式", true, (n: number, fractionDigits) => n.toFixed(fractionDigits)),
+        "toPrecision": new Property(Type.String, "返回数字的浮点数表示，指定有效数字", true, (n: number, precision) => n.toPrecision(precision)),
     });
-    public static String = Type.registerType(new Type('string')).registerPropertys({
+    private static _dummy2 = Type.String.registerPropertys({
         "length": new Property(Type.Number, "字符串长度", true, str => str.length),
         "intValue": new Property(Type.Number, "字符串的整数值", true, str => parseInt(str)),
         "doubleValue": new Property(Type.Number, "字符串的浮点数值", true, str => parseFloat(str)),
