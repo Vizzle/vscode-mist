@@ -5,13 +5,16 @@ export default class Snippets {
 "style": {
   "text": "\${1:Text}",
   "font-size": \${2:13},
-  "color": "\${3:black}"
+  "color": "\${3:black}"$4
 }`,
 
 "image": 
 `"type": "image",
 "style": {
-  "image": "\${1:Image Name}"
+  "clip": true,
+  "flex-shrink": 0,
+  "content-mode": "\${1:scale-aspect-fill}",
+  "image": "\${2:Image Name}"$3
 }`,
 
 "button": 
@@ -70,5 +73,22 @@ export default class Snippets {
     $0
   }
 ]`,
+
+"dash line": 
+`"type": "line",
+"style": {
+  "color": "\${1:#888}",
+  "space-length": \${2:2},
+  "dash-length": \${3:2}
+}`,
+
+"indicator": 
+`"type": "indicator",
+"style": {
+  "color": "\${1:#888}",
+  "width": \${2:15},
+  "height": \${3:15}
+}`,
+
     };
 }
