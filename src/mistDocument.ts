@@ -693,9 +693,11 @@ export class MistDocument {
         let location = json.getLocation(document.getText(), document.offsetAt(position));
         this.parseTemplate();
 
+        let getWordRange = () => document.getWordRangeAtPosition(position, /[-_a-zA-Z0-9]+/);
+
         // 在上一行没有以逗号结尾时，也认为在 key 里
         if (!location.isAtPropertyKey) {
-            let wordRange = document.getWordRangeAtPosition(position);
+            let wordRange = getWordRange();
             let p = wordRange ? wordRange.start : position;
             let line = document.getText(new vscode.Range(new vscode.Position(p.line, 0), p)).trim();
             if (line === '') {
@@ -867,6 +869,7 @@ export class MistDocument {
                                         item.range = new vscode.Range(document.positionAt(location.previousNode.offset), document.positionAt(location.previousNode.offset + location.previousNode.length));
                                     }
                                 } else {
+                                    item.range = getWordRange();
                                     item.insertText = new vscode.SnippetString(`"${k}"${valueText()}`);
                                 }
                                 return item;
@@ -886,6 +889,7 @@ export class MistDocument {
                                 title: "Move To Line End",
                                 command: "mist.moveToLineEnd"
                             };
+                            item.range = getWordRange();
                             return item;
                         })); 
                     }
@@ -895,6 +899,7 @@ export class MistDocument {
                             if (e[1]) {
                                 item.detail = e[1];
                             }
+                            item.range = getWordRange();
                             return item;
                         })); 
                     }
