@@ -31,6 +31,7 @@ export function activate(context: ExtensionContext) {
     registerValidateWorkspace(context);
     registerFormatter(context);
     registerColorDecorations(context);
+    registerAppendComma(context);
 }
 
 function setupStatusBarManager(context: ExtensionContext) {
@@ -519,4 +520,32 @@ function registerColorDecorations(context: ExtensionContext) {
     }
 
     updateAllEditors();
+}
+
+function registerAppendComma(context: ExtensionContext) {
+    context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(event => {
+        if (event.document.languageId === 'mist') {
+            let positions = [];
+            event.contentChanges.forEach(e => {
+                if (e.text.startsWith('\n')) {
+                    let p = e.range.start;
+                    let range = new vscode.Range(new vscode.Position(p.line, 0), p);
+                    let text = event.document.getText(range);
+                    if (text.match(/((:\s*(true|false|null|-?\d+(\.\d+)?([eE][+-]?\d+)?|"[.*]"))|["\]}])\s*$/)) {
+                        positions.push(p);
+                    }
+                }
+            });
+            if (positions.length > 0) {
+                let editor = vscode.window.activeTextEditor;
+                if (editor.document === event.document) {
+                    editor.edit(edit => {
+                        for (let p of positions) {
+                            edit.insert(p, ',');
+                        }
+                    }, { undoStopBefore: false, undoStopAfter: true });
+                }
+            }
+        }
+    }));
 }
