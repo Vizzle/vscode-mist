@@ -128,6 +128,7 @@ function _resolveRefs(schema: Schema, reference?: any): Schema {
             delete s.$ref;
             let r: Schema = readPath($ref);
             if (typeof(r) === 'object') {
+                r = {...r};
                 if (s.description) r.description = s.description;
                 if (s.errorMessage) r.errorMessage = s.errorMessage;
                 if (s.deprecatedMessage) r.deprecatedMessage = s.deprecatedMessage;
