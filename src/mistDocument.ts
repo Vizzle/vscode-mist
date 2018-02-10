@@ -786,8 +786,11 @@ export class MistDocument {
             }
             else {
                 let nodePath = this.nodePath(location.path);
-                if (nodePath && nodePath.length >= 2 && nodePath[0] === 'style' && (nodePath[1] === 'image' || nodePath[1] === 'error-image' || nodePath[1] === 'background-image')) {
-                    return ImageHelper.provideCompletionItems(this, token);
+                if (nodePath && location.previousNode && nodePath.length >= 2 && nodePath[0] === 'style' && (nodePath[1] === 'image' || nodePath[1] === 'error-image' || nodePath[1] === 'background-image')) {
+                    let range = new vscode.Range(document.positionAt(location.previousNode.offset + 1), document.positionAt(location.previousNode.offset + location.previousNode.length - 1));
+                    let items = ImageHelper.provideCompletionItems(this, token)
+                    items.forEach(item => item.range = range);
+                    return items;
                 }
             }
         }
