@@ -527,7 +527,10 @@ function registerAppendComma(context: ExtensionContext) {
         if (event.document.languageId === 'mist') {
             let positions = [];
             event.contentChanges.forEach(e => {
-                if (e.text.startsWith('\n')) {
+                if (e.text.startsWith('\n') && e.range.start.line === e.range.end.line) {
+                    if (event.document.getText().substr(event.document.offsetAt(e.range.start)).trim().length === 0) {
+                        return;
+                    }
                     let p = e.range.start;
                     let range = new vscode.Range(new vscode.Position(p.line, 0), p);
                     let text = event.document.getText(range);
