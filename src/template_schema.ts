@@ -1,11 +1,15 @@
 import { Schema, ValidationResult, SchemaFormat, validateJsonNode, ISchema, parseSchema } from "./schema";
 import * as json from 'jsonc-parser';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as vscode from 'vscode';
+import { xhr, XHRResponse, getErrorStatusDescription } from 'request-light';
 
 type PropertyMap = {
     [name: string]: Schema;
 };
 
-export type MistCustomConfig = {
+type MistCustomConfig = {
     types: {
         [type: string]: string;
     };
@@ -57,6 +61,8 @@ SchemaFormat.registerFormat('event', {
 export class NodeSchema implements ISchema {
     private static nodeSchemaCache: { [type: string]: Schema } = {};
     private static config: MistCustomConfig;
+    private static configs: { [dir: string]: MistCustomConfig } = {};
+    private static currentDir: string;
     private static nodeTypes = {
         "node": "基本元素\n\n[查看文档](https://vizzle.github.io/MIST/components/node.html)",
         "stack": "flex 容器元素\n\n[查看文档](https://vizzle.github.io/MIST/components/stack.html)",
@@ -75,9 +81,109 @@ export class NodeSchema implements ISchema {
         "line": "线条元素，主要用于展示虚线，其粗细、长度由布局属性控制\n\n[查看文档](https://vizzle.github.io/MIST/components/line.html)",
         "indicator": "加载指示器，俗称菊花\n\n[查看文档](https://vizzle.github.io/MIST/components/indicator.html)"
     };
-    public static setConfig(config: MistCustomConfig) {
+    public static setCurrentDir(dir: string) {
+        if (this.currentDir !== dir) {
+            this.currentDir = dir;
+            let config = this.configs[dir];
+            this.setConfig(config);
+            if (!config) {
+                this.readConfigInDir(dir).then(config => {
+                    this.configs[dir] = config;
+                    this.setConfig(config);
+                });
+            }
+        }
+    }
+    private static setConfig(config: MistCustomConfig) {
         this.config = config;
         this.nodeSchemaCache = {};
+    }
+    private static readConfigInDir(dir: string): Promise<any> {
+        let configPath = dir + '/mist-extension.json';
+        return this.readUri(configPath).catch(error => '{}').then(content => {
+            return this.readConfig(JSON.parse(content), dir);
+        });
+    }
+    private static readUri(uri: string): Promise<string> {
+        if (uri.startsWith('http')) {
+            let headers = { 'Accept-Encoding': 'gzip, deflate' };
+            return xhr({ url: uri, followRedirects: 5, headers }).then(response => {
+                return response.responseText;
+            }, (error: XHRResponse) => {
+                return Promise.reject(error.responseText || getErrorStatusDescription(error.status) || error.toString());
+            });
+        }
+        else {
+            if (uri.startsWith('file://')) {
+                uri = vscode.Uri.parse(uri).fsPath;
+            }
+            return new Promise((resolve, reject) => {
+                fs.exists(uri, exists => {
+                    if (exists) {
+                        fs.readFile(uri, (err, data) => {
+                            if (!err) {
+                                resolve(data.toString());
+                            }
+                            else {
+                                return reject(err);
+                            }
+                        });
+                    }
+                    else {
+                        return reject('`' + uri + '` file dose not exist.');
+                    }
+                });
+            });
+        }
+    }
+    private static readConfig(data: any, dir: string): Promise<MistCustomConfig> {
+        if (data.extends) {
+            let uri: string = data.extends;
+            delete data.extends;
+            if (!uri.startsWith('file://') && !uri.startsWith('http') && !path.isAbsolute(uri)) {
+                uri = path.join(dir, uri);
+            }
+            return this.readUri(uri).catch(error => '{}').then(content => {
+                let extendsData = JSON.parse(content);
+                return Promise.all([this.readConfig(extendsData, path.dirname(uri)), this.readConfig(data, dir)]).then(r => {
+                    let [extendsConfig, config] = r;
+                    config.types = { ...extendsConfig.types, ...config.types };
+                    config.actions = { ...extendsConfig.actions, ...config.actions };
+                    config.properties = { ...extendsConfig.properties, ...config.properties };
+                    config.styleProperties = { ...extendsConfig.styleProperties, ...config.styleProperties };
+                    return config;
+                });
+            });
+        }
+        let definitions = data.definitions;
+        definitions = parseSchema(definitions, definitions);
+        
+        let readPropertiesMap = map => {
+            if (!map) return {};
+            Object.keys(map).forEach(p => {
+                map[p] = parseSchema(map[p], definitions);
+            });
+            return map;
+        }
+        let readTypesPropertiesMap = map => {
+            if (!map) return {};
+            Object.keys(map).forEach(type => {
+                readPropertiesMap(map[type]);
+            });
+            return map;
+        }
+        
+        let types = data['custom-types'] || {};
+        let properties = readTypesPropertiesMap(data['custom-properties']);
+        let styleProperties = readTypesPropertiesMap(data['custom-style-properties']);
+        let actions = readPropertiesMap(data['custom-actions']);
+
+        return Promise.resolve({
+            types,
+            properties,
+            styleProperties,
+            actions
+        });
     }
     private static getConfig() {
         return this.config || {

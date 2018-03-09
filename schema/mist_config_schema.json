@@ -121,6 +121,10 @@
     },
     "additionalProperties": false,
     "properties": {
+        "extends": {
+            "type": "string",
+            "description": "从另一份配置文件继承，可以是文件路径（支持相对路径）或 URL"
+        },
         "definitions": {
             "type": "object",
             "additionalProperties": {
