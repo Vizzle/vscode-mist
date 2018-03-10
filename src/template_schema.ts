@@ -444,6 +444,7 @@ const propertiesMap: { [type: string]: PropertyMap} = {
             description: "引用在 `styles` 中定义的样式。可以引用多个样式，用空格分开，靠后的样式覆盖前面的样式\n\n[查看文档](https://vizzle.github.io/MIST/basics/Property.html#class)"
         },
         "on-tap": EventSchema("元素被点击时触发\n\n[查看文档](https://vizzle.github.io/MIST/basics/Property.html#on-tap)"),
+        "on-long-press": EventSchema("元素被长按时触发"),
         "on-display": EventSchema("元素显示时触发。在列表中滑出可见区域再滑回来会重新触发\n\n[查看文档](https://vizzle.github.io/MIST/basics/Property.html#on-display)"),
         "on-create": EventSchema("元素被创建时触发，此时还没显示\n\n[查看文档](https://vizzle.github.io/MIST/basics/Property.html#on-create)"),
         "on-update-appear": EventSchema("更新状态后，元素出现时（隐藏→更新状态→显示）"),
