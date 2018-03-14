@@ -13,8 +13,8 @@ export default class Snippets {
 "style": {
   "clip": true,
   "flex-shrink": 0,
-  "content-mode": "\${1:scale-aspect-fill}",
-  "image": "\${2:Image Name}"$3
+  "content-mode": "scale-aspect-fill",
+  "image": "\${1:Image Name}"$2
 }`,
 
 "button": 
@@ -25,16 +25,6 @@ export default class Snippets {
 "style": {
   "title": "\${1:Button Title}"
 }`,
-
-"stack": 
-`"style": {
-  "direction": "$1"
-},
-"children": [
-  {
-    $0
-  }
-]`,
 
 "vertical stack": 
 `"style": {

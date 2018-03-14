@@ -79,7 +79,14 @@ export class NodeSchema implements ISchema {
 [查看文档](https://vizzle.github.io/MIST/components/scroll.html)`,
         "paging": "分页元素，使用 children 定义子元素，每个子元素就是一页\n\n[查看文档](https://vizzle.github.io/MIST/components/paging.html)",
         "line": "线条元素，主要用于展示虚线，其粗细、长度由布局属性控制\n\n[查看文档](https://vizzle.github.io/MIST/components/line.html)",
-        "indicator": "加载指示器，俗称菊花\n\n[查看文档](https://vizzle.github.io/MIST/components/indicator.html)"
+        "indicator": "加载指示器，俗称菊花\n\n[查看文档](https://vizzle.github.io/MIST/components/indicator.html)",
+        "text-field": "单行文本输入框",
+        "text-view": "多行文本输入框",
+        "switch": "开关组件",
+        "segmented-control": "分段显示组件",
+        "picker": "选择组件",
+        "web-view": "网页组件",
+        "map": "地图组件",
     };
     public static setCurrentDir(dir: string) {
         if (this.currentDir !== dir) {
@@ -447,9 +454,9 @@ const propertiesMap: { [type: string]: PropertyMap} = {
         "on-long-press": EventSchema("元素被长按时触发"),
         "on-display": EventSchema("元素显示时触发。在列表中滑出可见区域再滑回来会重新触发\n\n[查看文档](https://vizzle.github.io/MIST/basics/Property.html#on-display)"),
         "on-create": EventSchema("元素被创建时触发，此时还没显示\n\n[查看文档](https://vizzle.github.io/MIST/basics/Property.html#on-create)"),
-        "on-update-appear": EventSchema("更新状态后，元素出现时（隐藏→更新状态→显示）"),
-        "on-update-disappear": EventSchema("更新状态后，元素消失时（显示→更新状态→隐藏）"),
-        "on-update-reuse": EventSchema("更新状态后，元素复用时（显示→更新状态→显示）"),
+        // "on-update-appear": EventSchema("更新状态后，元素出现时（隐藏→更新状态→显示）"),
+        // "on-update-disappear": EventSchema("更新状态后，元素消失时（显示→更新状态→隐藏）"),
+        // "on-update-reuse": EventSchema("更新状态后，元素复用时（显示→更新状态→显示）"),
     },
     node: {
         
@@ -460,12 +467,47 @@ const propertiesMap: { [type: string]: PropertyMap} = {
     image: {
         "on-complete": EventSchema("图片下载完成时触发\n\n[查看文档](https://vizzle.github.io/MIST/components/image.html#on-complete)"),
     },
+    text: {
+        "on-link": EventSchema("文本中的链接被点击时触发，可以使用 `_event_.link` 获取点击的链接。\n（链接通过在 `html-text` 属性中使用 `<a>` 标签插入）"),
+    },
     scroll: {
         "children": childrenSchema,
     },
     paging: {
         "on-switch": EventSchema("（手动或自动）翻页时触发\n\n[查看文档](https://vizzle.github.io/MIST/components/paging.html#on-switch)"),
         "children": childrenSchema,
+    },
+    "text-field": {
+        "on-focus": EventSchema("获取焦点时触发"),
+        "on-blur": EventSchema("失去焦点时触发"),
+        "on-change": EventSchema("文本变化时触发"),
+        "on-submit": EventSchema("点击返回键时触发"),
+    },
+    "text-view": {
+        "on-focus": EventSchema("获取焦点时触发"),
+        "on-blur": EventSchema("失去焦点时触发"),
+        "on-change": EventSchema("文本改变时触发"),
+        "on-submit": EventSchema("点击返回键时触发"),
+        "on-scroll": EventSchema("滑动时触发"),
+    },
+    switch: {
+        "on-change": EventSchema("状态改变时触发"),
+    },
+    "segmented-control": {
+        "on-change": EventSchema("选中项目改变时触发"),
+    },
+    picker: {
+        "on-change": EventSchema("选中项目改变时触发"),
+    },
+    "web-view": {
+        "on-loading-start": EventSchema("加载开始"),
+        "on-loading-finish": EventSchema("加载完成"),
+        "on-loading-error": EventSchema("加载错误"),
+    },
+    map: {
+        "on-annotation-focus": EventSchema("地图标注选中"),
+        "on-annotation-blur": EventSchema("地图标注取消选中"),
+        "on-annotation-drag-state-change": EventSchema("地图标注拖动状态发生变化"),
     }
 };
 
@@ -480,6 +522,61 @@ const viewProperties = {
     'layer.cornerRadius': 'corner-radius',
     'layer.opacity': 'alpha',
     'layer.masksToBounds': 'clip',
+}
+
+const textCommon: PropertyMap = {
+    "text": SimpleSchema("string", "显示的文字"),
+    "color": ColorSchema("文字颜色。默认为黑色"),
+    "font-size": { type: "number", min: 0, description: "字体大小。" },
+    "font-name": SimpleSchema("string", "字体名。默认为系统字体"),
+    "font-style": EnumSchema(["ultra-light", "thin", "light", "normal", "medium", "bold", "heavy", "black", "italic", "bold-italic"], "字体样式"),
+    "alignment": EnumSchema({
+        "left": "文字靠左边显示",
+        "center": "文字居中显示",
+        "right": "文字靠右边显示",
+        "justify": "文字两端对齐。只对多行文字有效，且最后一行文字仍然靠左显示"
+    }, "文字水平对齐方式。默认为 `left`"),
+}
+
+const textViewCommon: PropertyMap = {
+    ...textCommon,
+    "auto-focus": SimpleSchema("boolean", "自动获取焦点，默认为 `false`"),
+    "editable": SimpleSchema("boolean", "是否可编辑，默认为 `false`"),
+    "max-length": {
+        type: "number",
+        min: 0,
+        description: "最大输入长度，默认为 `-1`，不限制输入长度"
+    },
+    "placeholder": SimpleSchema("string", "没有输入文本时的提示文字"),
+    "placeholder-color": ColorSchema("提示文字的颜色"),
+    "keyboard-type": EnumSchema({
+        "default": "Default type for the current input method.",
+        "ascii-capable": "Displays a keyboard which can enter ASCII characters",
+        "number-punctuation": "Numbers and assorted punctuation.",
+        "url": "A type optimized for URL entry (shows . / .com prominently).",
+        "number": "A number pad with locale-appropriate digits (0-9, ۰-۹, ०-९, etc.). Suitable for PIN entry.",
+        "phone": "A phone pad (1-9, *, 0, #, with letters under the numbers).",
+        "name-phone": "A type optimized for entering a person's name or phone number.",
+        "email": "A type optimized for multiple email address entry (shows space @ . prominently).",
+        "decimal": "A number pad with a decimal point.",
+        "twitter": "A type optimized for twitter text entry (easy access to @ #)",
+        "web": "A default keyboard type with URL-oriented addition (shows space . prominently).",
+    }, "键盘类型，默认为 `default`"),
+    "keyboard-appearance": EnumSchema(["default", "dark", "light"], "键盘外观，默认为 `default`"),
+    "return-key-type": EnumSchema([
+        "default",
+        "go",
+        "google",
+        "join",
+        "next",
+        "route",
+        "search",
+        "send",
+        "yahoo",
+        "done",
+        "emergency-call"
+    ], "返回按键文本，默认为 `default`"),
+    "blur-on-submit": SimpleSchema("boolean", "点击返回按键是否失去焦点，默认为 `true`"),
 }
 
 const stylesMap: { [type: string]: PropertyMap} = {
@@ -867,6 +964,145 @@ const stylesMap: { [type: string]: PropertyMap} = {
             description: "虚线的空白长度，不设置时为实线\n\n[查看文档](https://vizzle.github.io/MIST/components/line.html#space-length)"
         },
     },
+    "text-field": {
+        ...textViewCommon,
+        "password-mode": SimpleSchema("boolean", "密码输入模式"),
+        "clear-button-mode": EnumSchema([
+            "never",
+            "while-editing",
+            "unless-editing",
+            "always"
+        ], "清除按钮模式，默认为 `never`"),
+    },
+    "text-view": {
+        ...textViewCommon,
+    },
+    switch: {
+        "on": SimpleSchema("boolean", "是否为打开状态"),
+        "enabled": SimpleSchema("boolean", "是否可用，默认为 `true`"),
+        "color": ColorSchema("打开状态的背景颜色，默认为绿色"),
+        "thumb-color": ColorSchema("按钮的颜色，默认为白色"),
+    },
+    "segmented-control": {
+        "items": {
+            type: "array",
+            items: SimpleSchema("string"),
+            description: "`segmented-control` 显示的项目列表"
+        },
+        "selected-index": {
+            type: "number",
+            min: -1,
+            description: "当前选中项目的索引，默认为 `-1`，即不选中任何项目"
+        },
+        "enabled": SimpleSchema("boolean", "是否可用，默认为 `true`")
+    },
+    picker: {
+        "items": {
+            type: "array",
+            items: SimpleSchema("string"),
+            description: "`picker` 显示的项目列表"
+        },
+        "selected-index": {
+            type: "number",
+            min: 0,
+            description: "当前选中项目的索引，默认为 `0`"
+        },
+    },
+    "web-view": {
+        "source": {
+            type: "object",
+            properties: {
+                "html": SimpleSchema("string", "显示的 html 内容。可通过 `baseUrl` 设置 html 的 base url"),
+                "baseUrl": SimpleSchema("string", "html 的 base url"),
+                "url": SimpleSchema("string", "显示的 url 链接"),
+            },
+            description: "`web-view` 显示内容"
+        },
+        "scales-page-to-fit": SimpleSchema("boolean", "是否自适应缩放并允许用户缩放页面，默认为 `false`"),
+    },
+    map: {
+        "map-type": EnumSchema({
+            "standard" : "平面图",
+            "satellite" : "卫星图",
+            "hybrid" : "平面图与卫星图的混合",
+        }, "切换地图类型，默认为 `standard`"),
+        "shows-user-location": SimpleSchema("boolean", "展示用户位置，默认为 `false`"),
+        "follow-user-location": SimpleSchema("boolean", "跟随用户位置，默认为 `false`"),
+        "shows-annotation-callouts": SimpleSchema("boolean", "是否显示地图标记的描述信息，默认为 `false`"),
+        "zoom-enabled": SimpleSchema("boolean", "是否允许用户缩放地图，默认为 `true`"),
+        "scroll-enabled": SimpleSchema("boolean", "是否允许用户拖动地图，默认为 `true`"),
+        "rotate-enabled": SimpleSchema("boolean", "是否允许用户旋转地图，默认为 `true`"),
+        "pitch-enabled": SimpleSchema("boolean", "是否允许用户切换到 3D 视角，默认为 `true`"),
+        "region": {
+            type: "object",
+            required: ["latitude", "longitude", "latitude-delta", "longitude-delta"],
+            properties: {
+                "latitude": SimpleSchema("number", "中心点的纬度"),
+                "longitude": SimpleSchema("number", "中心点的经度"),
+                "latitude-delta": SimpleSchema("number", "纬度范围"),
+                "longitude-delta": SimpleSchema("number", "经度范围"),
+            },
+            description: "地图显示的经纬度区间"
+        },
+        "annotations": {
+            snippet: `[
+  {
+    $0
+  }
+]`,
+            type: "array",
+            items: {
+                type: "object",
+                required: ["latitude", "longitude"],
+                properties: {
+                    "id": SimpleSchema("string"),
+                    "latitude": SimpleSchema("number", "纬度"),
+                    "longitude": SimpleSchema("number", "经度"),
+                    "title": SimpleSchema("string", "标题"),
+                    "subtitle": SimpleSchema("string", "副标题"),
+                    "image": SimpleSchema("string", "更改显示的图片，默认为一个大头钉📍"),
+                    "animate-drop": SimpleSchema("boolean", "大头钉出现时是否有掉落动画，默认为 `false`"),
+                    "draggable": SimpleSchema("boolean", "是否可拖动，默认为 `false`"),
+                }
+            },
+            description: "地图上显示标注"
+        },
+        "overlays": {
+            snippet: `[
+  {
+    $0
+  }
+]`,
+            type: "array",
+            items: {
+                type: "object",
+                required: ["coordinates"],
+                properties: {
+                    "id": SimpleSchema("string"),
+                    "stroke-color": SimpleSchema("string", "线条颜色"),
+                    "line-width": SimpleSchema("number", "线条宽度"),
+                    "coordinates": {
+                        snippet: `[
+  {
+    $0
+  }
+]`,
+                        type: "array",
+                        items: {
+                            type: "object",
+                            required: ["latitude", "longitude"],
+                            properties: {
+                                "latitude": SimpleSchema("number", "纬度"),
+                                "longitude": SimpleSchema("number", "经度"),
+                            }
+                        },
+                        description: "多边形坐标点，用经纬度表示"
+                    },
+                }
+            },
+            description: "地图上绘制多边形区域"
+        },
+    }
 }
 
 export const templateSchema: Schema = parseSchema({
