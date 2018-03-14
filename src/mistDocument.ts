@@ -836,17 +836,16 @@ export class MistDocument {
                                     }
                                 }
     
-                                let valueText = () => {
+                                let valueText = (inQuote: boolean) => {
                                     if (!location.isAtPropertyKey) {
                                         return '';
                                     }
                     
                                     let valueText = '';
                                     let comma = false;
-                                    if (document.lineAt(position.line).text.substr(position.character + 1).match(/^\s*"/)) {
-                                        comma = true;
-                                    }
-                                    else if (position.line + 1 < document.lineCount && document.lineAt(position.line + 1).text.match(/^\s*"/)) {
+                                    let pos = inQuote ? position.translate(0, 1) : position;
+                                    let text = document.getText(new vscode.Range(pos, pos.translate(5, 0)));
+                                    if (text.match(/^\s*"/)) {
                                         comma = true;
                                     }
                                     let value = this.schemaSnippet(s) || '$0';
@@ -863,7 +862,7 @@ export class MistDocument {
                                     let delta = offset - location.previousNode.offset;
                                     let inQuote = delta > 0 && delta < location.previousNode.length;
                                     if (inQuote) {
-                                        item.insertText = new vscode.SnippetString(`${k}"${valueText()}`);
+                                        item.insertText = new vscode.SnippetString(`${k}"${valueText(true)}`);
                                         item.range = new vscode.Range(document.positionAt(location.previousNode.offset + 1), document.positionAt(location.previousNode.offset + location.previousNode.length));
                                     }
                                     else {
@@ -872,8 +871,17 @@ export class MistDocument {
                                     }
                                 } else {
                                     item.range = getWordRange();
-                                    item.insertText = new vscode.SnippetString(`"${k}"${valueText()}`);
+                                    item.insertText = new vscode.SnippetString(`"${k}"${valueText(false)}`);
                                 }
+
+                                let text = typeof(item.insertText) === 'string' ? item.insertText : item.insertText.value;
+                                if (!text.includes('\n')) {
+                                    item.command = {
+                                        title: "",
+                                        command: "mist.triggerSuggest"
+                                    };
+                                }
+                                
                                 return item;
                             }));
                     }
@@ -901,6 +909,10 @@ export class MistDocument {
                             if (e[1]) {
                                 item.detail = e[1];
                             }
+                            item.command = {
+                                title: "Move To Line End",
+                                command: "mist.moveToLineEnd"
+                            };
                             item.range = getWordRange();
                             return item;
                         })); 

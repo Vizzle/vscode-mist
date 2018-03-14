@@ -370,9 +370,21 @@ function registerCompletionProvider(context: ExtensionContext) {
             completionProvider.documentDidChange(textEditor, event);
         }
     }));
-    vscode.commands.registerTextEditorCommand("mist.moveToLineEnd", (textEditor, edit) => {
+    vscode.commands.registerCommand("mist.moveToLineEnd", () => {
+        let textEditor = vscode.window.activeTextEditor;
+        if (!textEditor) return;
         let pos = textEditor.selection.end.translate(0, 2);
         textEditor.selection = new vscode.Selection(pos, pos); 
+    });
+    vscode.commands.registerCommand("mist.triggerSuggest", () => {
+        let textEditor = vscode.window.activeTextEditor;
+        if (!textEditor) return;
+        let doc = textEditor.document;
+        let sel = textEditor.selection.start;
+        let items = completionProvider.provideCompletionItems(doc, sel, null);
+        if (items && items.length > 0) {
+            vscode.commands.executeCommand("editor.action.triggerSuggest");
+        }
     });
 }
 

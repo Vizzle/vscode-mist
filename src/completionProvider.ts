@@ -18,23 +18,20 @@ export default class MistCompletionProvider implements vscode.CompletionItemProv
     }
     
     selectionDidChange(textEditor: vscode.TextEditor) {
-        if (textEditor.selection.start.compareTo(textEditor.selection.end) != 0) {
+        if (textEditor.selection.start.compareTo(textEditor.selection.end) !== 0) {
             return;
         }
 
         let doc = textEditor.document;
         let sel = textEditor.selection.start;
-        if (textEditor.document.getText(new vscode.Range(doc.positionAt(doc.offsetAt(sel) - 1), doc.positionAt(doc.offsetAt(sel) + 1))) == '""') {
-            let items = this.provideCompletionItems(doc, sel, null);
-            if (items && items.length > 0) {
-                vscode.commands.executeCommand("editor.action.triggerSuggest");
-            }
+        if (textEditor.document.getText(new vscode.Range(doc.positionAt(doc.offsetAt(sel) - 1), doc.positionAt(doc.offsetAt(sel) + 1))) === '""') {
+            vscode.commands.executeCommand("mist.triggerSuggest");
         }
     }
 
     private static triggerRE = /[a-zA-Z_.]/;
     isTriggerCharacter(c: string) {
-        return c.length == 1 && MistCompletionProvider.triggerRE.test(c);
+        return c.length === 1 && MistCompletionProvider.triggerRE.test(c);
     }
 
     documentDidChange(textEditor: vscode.TextEditor, event: vscode.TextDocumentChangeEvent) {
