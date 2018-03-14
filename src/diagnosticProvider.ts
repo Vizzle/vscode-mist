@@ -5,6 +5,7 @@ import * as json from 'jsonc-parser'
 import * as cp from 'child_process'
 import * as net from 'net'
 import { MistDocument, JsonString } from './mistDocument';
+import { NodeSchema } from './template_schema';
 
 export default class MistDiagnosticProvider {
     private diagnosticCollection: vscode.DiagnosticCollection;
@@ -19,10 +20,13 @@ export default class MistDiagnosticProvider {
         this.diagnosticCollection.dispose();
     }
 
-    public validate(document: vscode.TextDocument) {
+    public async validate(document: vscode.TextDocument) {
         if (document.languageId !== 'mist') {
             return;
         }
+
+        let mistDoc = MistDocument.getDocumentByUri(document.uri);
+        await NodeSchema.setCurrentDir(mistDoc.dir());
 
         let errors: vscode.Diagnostic[] = [];
         let objectStack = [];
@@ -68,7 +72,6 @@ export default class MistDiagnosticProvider {
             }
         });
 
-        let mistDoc = MistDocument.getDocumentByUri(document.uri);
         let expAnalyseErrors = mistDoc ? mistDoc.validate() : [];
         
         Promise.all([errors, expAnalyseErrors]).then(values => {

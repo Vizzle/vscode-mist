@@ -88,16 +88,15 @@ export class NodeSchema implements ISchema {
         "web-view": "网页组件",
         "map": "地图组件",
     };
-    public static setCurrentDir(dir: string) {
+    public static async setCurrentDir(dir: string) {
         if (this.currentDir !== dir) {
             this.currentDir = dir;
             let config = this.configs[dir];
             this.setConfig(config);
             if (!config) {
-                this.readConfigInDir(dir).then(config => {
-                    this.configs[dir] = config;
-                    this.setConfig(config);
-                });
+                let config = await this.readConfigInDir(dir)
+                this.configs[dir] = config;
+                this.setConfig(config);
             }
         }
     }
@@ -105,7 +104,7 @@ export class NodeSchema implements ISchema {
         this.config = config;
         this.nodeSchemaCache = {};
     }
-    private static readConfigInDir(dir: string): Promise<any> {
+    private static async readConfigInDir(dir: string): Promise<MistCustomConfig> {
         let configPath = dir + '/mist-extension.json';
         return this.readUri(configPath).catch(error => '{}').then(content => {
             return this.readConfig(JSON.parse(content), dir);
