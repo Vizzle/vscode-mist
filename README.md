@@ -12,12 +12,20 @@
 
 ## 代码提示
 
-编写 Mist 模版时会根据上下文提示当前可用属性，鼠标移到属性名或枚举值上可以显示属性描述。
+编写 Mist 模版时会根据上下文提示当前可用属性名称和属性值，鼠标移到属性名或枚举值上可以显示描述。
 
-<video width="770px" controls style="border-radius:4px" autoplay loop>
-  <source src="https://gw.alipayobjects.com/os/rmsportal/scfbArcHAZkpWhRSwIff.mp4" type="video/mp4">
-Your browser does not support the video tag.
-</video>
+编写表达式时，也会提示可用变量、属性、函数，并支持函数参数提示、鼠标 Hover 提示。
+
+按住 `⌘` 键点击表达式中的变量名，能跳转到变量定义的地方。然后可以使用 `⌃-`/`⌃⇧-` 来 `后退`/`前进`。
+
+## 错误检查
+
+可以对模版进行错误检查，包括：
+
+- Json 语法错误、重复属性
+- 表达式语法错误，不存在的属性、方法
+- 未引用变量
+- 模版属性的类型检查
 
 ## 模版布局结构
 
@@ -46,3 +54,13 @@ Your browser does not support the video tag.
 点击编辑器右上角的 <img src="https://raw.githubusercontent.com/Vizzle/vscode-mist/master/readme/start_icon.png" width="14px"/> `Start Mist Debug Server` 按钮开启调试服务器。开启后图标会变成停止图标，点击可以关闭服务器。
 
 目前有个小问题是，使用过这个功能后模版文件夹下会自动添加一个 `.vscode` 文件夹，里面保存了 `Mist` 插件的配置文件，可以把这个文件夹添加到 `.gitignore` 里。
+
+## 预览
+
+提供基础的预览功能，支持 `node`, `stack`, `text`, `image`, `button`, `scroll`, `line`, `paging` 元素。
+
+点击编辑器右上角的 <img src="https://raw.githubusercontent.com/Vizzle/vscode-mist/master/readme/preview.png" width="14px"/> `Open Preview to the Side` 按钮打开预览。
+
+![](https://raw.githubusercontent.com/Vizzle/vscode-mist/master/readme/preview_demo.png)
+
+预览界面提供 `检查元素`、`显示边框`、`切换数据`、`更改预览设备`、`更改缩放比例` 功能。在预览界面的元素上右键点击可以快速使用 `检查元素` 功能。
