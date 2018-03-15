@@ -339,7 +339,7 @@ class Client {
 
     private selectData(name: string) {
         let index = this.datas.findIndex(d => d.name === name);
-        if (index) {
+        if (index >= 0) {
             this.datasDropdown.select(index);
         }
     }
