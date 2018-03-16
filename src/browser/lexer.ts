@@ -214,7 +214,7 @@ export class Lexer {
     }
 
     private _next(): TokenType {
-        for(;;) {
+        for (;;) {
             this.token.offset = this.pointer;
             
             let c = this.c;
@@ -236,7 +236,7 @@ export class Lexer {
                         return TokenType.And;
                     }
                     else {
-                        TokenType.Unknown
+                        return TokenType.Unknown
                     }
                 case CharCode.Bar:
                     this._nextChar();
@@ -245,7 +245,7 @@ export class Lexer {
                         return TokenType.Or;
                     }
                     else {
-                        TokenType.Unknown
+                        return TokenType.Unknown
                     }
                 case CharCode.Equals:
                     this._nextChar();
@@ -254,7 +254,7 @@ export class Lexer {
                         return TokenType.Equal;
                     }
                     else {
-                        TokenType.Unknown
+                        return TokenType.Unknown
                     }
                 case CharCode.Exclamation:
                     this._nextChar();
@@ -520,16 +520,16 @@ export class Lexer {
         
         this._nextChar();
         let start = this.pointer;
-        var segment_start = start;
-        var segment_len = 0;
+        var segmentStart = start;
+        var segmentLen = 0;
 
         var ret = '';
         let pushCurrentSegment = () => {
-            if (segment_len > 0) {
-                ret += this.source.substr(segment_start, segment_len);
-                segment_len = 0;
+            if (segmentLen > 0) {
+                ret += this.source.substr(segmentStart, segmentLen);
+                segmentLen = 0;
             }
-            segment_start = this.pointer + 1;
+            segmentStart = this.pointer + 1;
         };
         
         while (this.c !== quote) {
@@ -609,7 +609,7 @@ export class Lexer {
                     if (iscntrl(this.c)) {
                         this.error = LexerErrorCode.InvalidCharacter;
                     }
-                    segment_len++;
+                    segmentLen++;
                     this._nextChar();
                     break;
             }
@@ -621,7 +621,7 @@ export class Lexer {
             this.token.value = ret;
         }
         else {
-            this.token.value = this.source.substr(start, segment_len);
+            this.token.value = this.source.substr(start, segmentLen);
         }
     }
 }
