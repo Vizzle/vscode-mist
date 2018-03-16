@@ -112,13 +112,30 @@ function alignString(align) {
     }
 }
 
+const COLOR_NAMES = {
+    "black": "black",
+    "darkgray": "darkgray",
+    "lightgray": "lightgray",
+    "white": "white",
+    "gray": "gray",
+    "red": "red",
+    "green": "green",
+    "blue": "blue",
+    "cyan": "cyan",
+    "yellow": "yellow",
+    "magenta": "magenta",
+    "orange": "orange",
+    "purple": "purple",
+    "brown": "brown",
+    "clear": "transparent",
+    "transparent": "transparent",
+};
+
 function convertColor(color: string): string {
-    if (color === 'clear') {
-        return 'transparent';
-    }
+    if (typeof(color) !== 'string') return null;
 
     if (!color.startsWith('#')) {
-        return color;
+        return COLOR_NAMES[color];
     }
 
     if (color.length === 5) {
@@ -400,6 +417,48 @@ function setScrollStyle(el: HTMLElement, style, result) {
     blank.style.width = (result.scrollWidth || 0) + 'px';
     blank.style.height = (result.scrollHeight || 0) + 'px';
     el.appendChild(blank);
+}
+
+function setPagingIndicator(el: HTMLElement, style, childrenCount) {
+    if (style['page-control'] && childrenCount > 0) {
+        const dotSize = 7;
+        const spaceSize = 9;
+        let scale = ('page-control-scale' in style ? style['page-control-scale'] : 1) * config.scale;
+        let size = dotSize * scale;
+        let dotContainer = document.createElement('div');
+        dotContainer.style.width = (size * childrenCount + spaceSize * scale * (childrenCount - 1)) + 'px';
+        dotContainer.style.height = size + 'px';
+        dotContainer.style.display = 'flex';
+        dotContainer.style.justifyContent = 'space-between';
+        dotContainer.style.marginLeft = 'page-control-margin-left' in style ? style['page-control-margin-left'] * config.scale + 'px' : 'auto';
+        dotContainer.style.marginRight = 'page-control-margin-right' in style ? style['page-control-margin-right'] * config.scale + 'px' : 'auto';
+        dotContainer.style.marginTop = 'page-control-margin-top' in style ? style['page-control-margin-top'] * config.scale + 'px' : 'auto';
+        dotContainer.style.marginBottom = 'page-control-margin-bottom' in style ? style['page-control-margin-bottom'] * config.scale + 'px' : 'auto';
+
+        for (var i = 0; i < childrenCount; i++) {
+            let dot = document.createElement('div');
+            dot.style.width = size + 'px';
+            dot.style.height = size + 'px';
+            dot.style.borderRadius = (size / 2) + 'px';
+            if (i === 0) {
+                dot.style.backgroundColor = convertColor(style['page-control-selected-color']) || 'rgba(255,255,255,1)';
+            }
+            else {
+                dot.style.backgroundColor = convertColor(style['page-control-color']) || 'rgba(255,255,255,0.5)';
+            }
+            dotContainer.appendChild(dot);
+        }
+
+        let flexContainer = document.createElement('div');
+        flexContainer.style.display = 'flex';
+        flexContainer.style.position = 'absolute';
+        flexContainer.style.left = '0';
+        flexContainer.style.top = '0';
+        flexContainer.style.right = '0';
+        flexContainer.style.bottom = '0';
+        flexContainer.appendChild(dotContainer);
+        el.appendChild(flexContainer);
+    }
 }
 
 function elementFromLayout(layout): HTMLElement {
@@ -732,18 +791,23 @@ export function render(_layout, clientWidth: number, scale: number, images: stri
                 }
             }
             if (l.children instanceof Array) {
+                var style = l.style || {};
+                let childrenCount = (l.children || []).length;
                 // TODO
                 if (l.type === 'paging' && l.children && l.children.length > 1) {
                     l.children = l.children.slice(0, 1);
                 }
                 for (var i in l.children) {
                     // 避免 border 占据空间
-                    if ((l.style || {})['border-width']) {
+                    if (style['border-width']) {
                         var borderWidth = parseFloat(lengthString(length((l.style || {})['border-width'])));
                         l.children[i].result.left -= borderWidth;
                         l.children[i].result.top -= borderWidth;
                     }
                     el.appendChild(_render(l.children[i]));
+                }
+                if (l.type === 'paging') {
+                    setPagingIndicator(el, style, childrenCount);
                 }
             }
             return el;
