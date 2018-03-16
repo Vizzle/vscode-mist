@@ -875,7 +875,7 @@ export class MistDocument {
                                 }
 
                                 let text = typeof(item.insertText) === 'string' ? item.insertText : item.insertText.value;
-                                if (!text.includes('\n')) {
+                                if (!text.includes('\n') && !k.startsWith('margin') && k !== 'width' && k !== 'height' && k !== 'flex-basis') {
                                     item.command = {
                                         title: "",
                                         command: "mist.triggerSuggest"
