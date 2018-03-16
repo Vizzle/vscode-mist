@@ -57,7 +57,7 @@ enum BinaryOp {
     Index,
 }
 
-let bin_op_priority: [number, number][] = [
+let BIN_OP_PRIORITY: [number, number][] = [
     [0, 0],
     [6, 6], [6, 6], [7, 7], [7, 7], [7, 7],         // +  -  *  /  %
     [2, 2], [1, 1],                                 // &&  ||
@@ -145,7 +145,7 @@ export function boolValue(obj: any): boolean {
     }
     switch (typeof(obj)) {
         case 'number':
-            return obj != 0;
+            return obj !== 0;
         case 'boolean':
             return obj;
         default:
@@ -218,8 +218,8 @@ export abstract class ExpressionNode {
     abstract check(context: ExpressionContext): ExpressionError[];
 }
 
-export class _None {}
-export let None = new _None();
+export class NoneClass {}
+export let None = new NoneClass();
 
 export class LiteralNode extends ExpressionNode {
     value: any;
@@ -328,7 +328,7 @@ class ObjectExpressionNode extends ExpressionNode {
         if (computed.some(l => l.some(i => i === None))) {
             return None;
         }
-        return computed.reduce((p, c) => {p[c[0]] = c[1]; return p;}, {});
+        return computed.reduce((p, c) => { p[c[0]] = c[1]; return p; }, {});
     }
 
     computeValue(context: ExpressionContext) {
@@ -343,7 +343,7 @@ class ObjectExpressionNode extends ExpressionNode {
     }
 
     getType(context: ExpressionContext): IType {
-        return new ObjectType(this.list.filter(t => t[0] instanceof LiteralNode).map(t => [t[0].compute(context) as string, t[1].getType(context)]).reduce((p, c) => {p[c[0] as string] = c[1]; return p;}, {}));
+        return new ObjectType(this.list.filter(t => t[0] instanceof LiteralNode).map(t => [t[0].compute(context) as string, t[1].getType(context)]).reduce((p, c) => { p[c[0] as string] = c[1]; return p; }, {}));
     }
 
     check(context: ExpressionContext) {
@@ -583,7 +583,7 @@ class BinaryExpressionNode extends ExpressionNode {
                 return value1 / value2;
             case BinaryOp.Mod:
             {
-                if (value2 == 0) {
+                if (value2 === 0) {
                     // should not mod with zero
                     return 0;
                 }
@@ -667,7 +667,7 @@ class BinaryExpressionNode extends ExpressionNode {
                 return value1 / value2;
             case BinaryOp.Mod:
             {
-                if (value2 == 0) {
+                if (value2 === 0) {
                     // should not mod with zero
                     return 0;
                 }
@@ -1064,7 +1064,7 @@ export class Parser {
     }
 
     private parseOperator(op: TokenType) {
-        if (this.lexer.token.type == op) {
+        if (this.lexer.token.type === op) {
             let token = this.lexer.token;
             this.lexer.next();
             return token;
@@ -1091,7 +1091,7 @@ export class Parser {
     private parseConditionalExpression() {
         let expression = this.parseSubExpression();
         if (expression) {
-            if (this.lexer.token.type == TokenType.Question) {
+            if (this.lexer.token.type === TokenType.Question) {
                 this.lexer.next();
                 let trueExpression = null;
                 if (!this.parseOperator(TokenType.Colon)) {
@@ -1161,7 +1161,7 @@ export class Parser {
         let exp: ExpressionNode;
         let type = this.lexer.token.type;
         unOp = this.getUnaryOp(type);
-        if (unOp != UnaryOp.None) {
+        if (unOp !== UnaryOp.None) {
             let start = this.lexer.token.offset;
             this.lexer.next();
             exp = this.parseSubExpression(8);
@@ -1179,9 +1179,9 @@ export class Parser {
         
         type = this.lexer.token.type;
         binOp = this.getBinaryOp(type);
-        while (binOp && bin_op_priority[binOp][0] > priorityLimit) {
+        while (binOp && BIN_OP_PRIORITY[binOp][0] > priorityLimit) {
             this.lexer.next();
-            let subexp = this.parseSubExpression(bin_op_priority[binOp][1]);
+            let subexp = this.parseSubExpression(BIN_OP_PRIORITY[binOp][1]);
             if (!subexp) {
                 if (!this.error) {
                     this.error = ParserErrorCode.ExpressionExpected;
@@ -1233,7 +1233,7 @@ export class Parser {
     }
 
     private parseExpressionList(): ExpressionNode[] {
-        if (this.lexer.token.type == TokenType.Comma) {
+        if (this.lexer.token.type === TokenType.Comma) {
             this.error = ParserErrorCode.UnexpectedComma;
             return null;
         }
@@ -1262,7 +1262,7 @@ export class Parser {
     }
 
     private parseKeyValueList() {
-        if (this.lexer.token.type == TokenType.Comma) {
+        if (this.lexer.token.type === TokenType.Comma) {
             this.error = ParserErrorCode.UnexpectedComma;
             return null;
         }
@@ -1385,7 +1385,7 @@ export class Parser {
     }
 
     private parseIdentifier() {
-        if (this.lexer.token.type == TokenType.Id) {
+        if (this.lexer.token.type === TokenType.Id) {
             let token = this.lexer.token;
             this.lexer.next();
             return new IdentifierNode(token.value).setRangeWithToken(token);
