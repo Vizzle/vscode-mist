@@ -201,6 +201,9 @@
 							"include": "#function-call-innards"
 						}
 					]
+				},
+				{
+					"include": "#exp"
 				}
 			]
 		},
