@@ -14,6 +14,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { workspace, commands, Disposable, ExtensionContext, TextEditor, TextEditorEdit } from 'vscode';
 import * as httpServer from 'http-server';
+import * as request from 'request';
 import { MistSignatureHelpProvider } from './signatureHelpProvider';
 import { StatusBarManager } from './statusBarManager';
 
@@ -117,6 +118,68 @@ function registerMistServer(context: ExtensionContext) {
 
     context.subscriptions.push(commands.registerCommand('mist.stopServer', uri => {
         stopServer();
+    }));
+
+    context.subscriptions.push(commands.registerCommand('mist.debugAndroid', args => {
+        // push current file to Android
+        require('child_process').exec('adb shell ip route', function(error, stdout, stderr) {
+            var ptr = stdout.indexOf("scope link  src ");
+            if (ptr <= 0) {
+                console.log("failed read ip from adb!");
+                vscode.window.showErrorMessage("从adb获取手机IP失败，请使用USB连接手机。");
+                return;
+            }
+
+            var ptr = ptr + "scope link  src ".length;
+            var ip = stdout.substr(ptr).trim();
+            console.log("device [" + ip + "]");
+
+            var fileUri = vscode.window.activeTextEditor.document.uri;
+            var file = fileUri.toString().substring(7);
+            var filePath = path.parse(file); 
+            var templateName = filePath.name;
+            filePath = path.parse(filePath.dir);
+            var templateConfigPath = filePath.dir + "/.template_config.json";
+            fs.exists(templateConfigPath, async function(tplConfigExist) {
+                if(!tplConfigExist) {
+                    vscode.window.showErrorMessage("配置文件不存在。请填写业务前缀并保存（如：KOUBEI）。");
+                    let doc = await vscode.workspace.openTextDocument(vscode.Uri.parse(`untitled:${templateConfigPath}`));
+                    let editor = await vscode.window.showTextDocument(doc);
+                    editor.insertSnippet(new vscode.SnippetString(
+`{
+    "bizCode": "$0"
+}`))
+                    return;
+                }
+                console.log("current file : " + fileUri + " template_config file : " + templateConfigPath + (tplConfigExist ? "": " is not exist!"));
+
+                var cfg_content = fs.readFileSync(templateConfigPath, "UTF-8");
+                var cfg = JSON.parse(cfg_content);
+                console.log("bizCode:" + cfg.bizCode);
+
+                let templateContent;
+                try {
+                    templateContent = encodeURI(JSON.stringify(JSON.parse(vscode.window.activeTextEditor.document.getText())));
+                } catch (e) {
+                    vscode.window.showErrorMessage("模板格式错误：" + e.message);
+                    return;
+                }
+
+                var content = 'templateName=' + cfg.bizCode + "@" + templateName + "&templateHtml=" + templateContent;// + "// timestamp = " + process.hrtime();
+
+                let headers = { 'Content-Type':'application/x-www-form-urlencoded' };
+                let url = `http://${ip}:9012/update`;
+                request.post({
+                    url,
+                    form: content
+                }, (err, res, data) => {
+                    console.log(err, res, data)
+                    if (err) {
+                        vscode.window.showErrorMessage("传输模板到手机失败：" + err.message);
+                    }
+                })
+            });
+        });
     }));
 
     context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(document => {

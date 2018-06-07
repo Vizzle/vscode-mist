@@ -96,6 +96,15 @@
                 }
             },
             {
+                "command": "mist.debugAndroid",
+                "title": "Send To Android Phone",
+                "category": "Mist",
+                "icon": {
+                    "light": "./media/light/android.svg",
+                    "dark": "./media/dark/android.svg"
+                }
+            },
+            {
                 "command": "mist.showData",
                 "title": "Show Data File",
                 "category": "Mist",
@@ -132,14 +141,19 @@
                     "group": "navigation@1"
                 },
                 {
+                    "when": "editorLangId == mist",
+                    "command": "mist.debugAndroid",
+                    "group": "navigation@2"
+                },
+                {
                     "when": "resourceLangId == mist",
                     "command": "mist.showData",
-                    "group": "navigation@2"
+                    "group": "navigation@3"
                 },
                 {
                     "when": "editorLangId == mist",
                     "command": "mist.showPreviewToSide",
-                    "group": "navigation@3"
+                    "group": "navigation@4"
                 }
             ],
             "editor/context": [
@@ -187,17 +201,19 @@
         "postinstall": "node ./node_modules/vscode/bin/install"
     },
     "dependencies": {
-        "jsonc-parser": "^0.4.0",
         "http-server": "^0.9.0",
+        "jsonc-parser": "^0.4.0",
+        "request": "^2.87.0",
         "request-light": "^0.2.2",
         "ws": "^1.1.1"
     },
     "devDependencies": {
-        "typescript": "^2.0.3",
-        "vscode": "^1.0.0",
-        "mocha": "^2.3.3",
-        "@types/node": "^6.0.40",
         "@types/mocha": "^2.2.32",
-        "@types/ws": "0.0.36"
+        "@types/node": "^6.0.40",
+        "@types/request": "^2.47.0",
+        "@types/ws": "0.0.36",
+        "mocha": "^2.3.3",
+        "typescript": "^2.0.3",
+        "vscode": "^1.0.0"
     }
 }
