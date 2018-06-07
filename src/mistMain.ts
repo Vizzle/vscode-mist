@@ -23,7 +23,6 @@ export function activate(context: ExtensionContext) {
     setupStatusBarManager(context);
     registerConvertor(context);
     registerMistServer(context);
-    registerShowData(context);
     registerPreviewProvider(context);
     registerNodeTreeProvider(context);
     registerCompletionProvider(context);
@@ -141,7 +140,7 @@ function registerMistServer(context: ExtensionContext) {
             filePath = path.parse(filePath.dir);
             var templateConfigPath = filePath.dir + "/.template_config.json";
             fs.exists(templateConfigPath, async function(tplConfigExist) {
-                if(!tplConfigExist) {
+                if (!tplConfigExist) {
                     vscode.window.showErrorMessage("配置文件不存在。请填写业务前缀并保存（如：KOUBEI）。");
                     let doc = await vscode.workspace.openTextDocument(vscode.Uri.parse(`untitled:${templateConfigPath}`));
                     let editor = await vscode.window.showTextDocument(doc);
@@ -151,7 +150,7 @@ function registerMistServer(context: ExtensionContext) {
 }`))
                     return;
                 }
-                console.log("current file : " + fileUri + " template_config file : " + templateConfigPath + (tplConfigExist ? "": " is not exist!"));
+                console.log("current file : " + fileUri + " template_config file : " + templateConfigPath + (tplConfigExist ? "" : " is not exist!"));
 
                 var cfg_content = fs.readFileSync(templateConfigPath, "UTF-8");
                 var cfg = JSON.parse(cfg_content);
@@ -342,52 +341,6 @@ function registerConvertor(context: ExtensionContext) {
 
                     let info = "转换完成，其中 " + successCount + " 个成功，" + failedCount + " 个失败" + (allTodoCount > 0 ? "，共有 " + allTodoCount + " 个需要检查的地方，已用 '// TODO' 标记" : "");
                     vscode.window.showInformationMessage(info);
-                });
-            }
-        });
-    }));
-}
-
-function registerShowData(context: ExtensionContext) {
-    context.subscriptions.push(commands.registerCommand('mist.showData', args => {
-        let file = vscode.window.activeTextEditor.document.uri.fsPath;
-        let dir = path.dirname(file);
-        let templateId = path.basename(file, ".mist");
-        fs.readdir(dir, (err, files) => {
-            if (err) {
-                vscode.window.showErrorMessage(err.message);
-                return;
-            }
-            let result = [];
-            files.filter(f => f.endsWith(".json")).map(f => {
-                let file = `${dir}/${f}`;
-                let text = fs.readFileSync(file).toString();
-                if (text) {
-                    let re = new RegExp(`"(block|template)\\w*"\\s*:\\s*"(\\w*?@)?${templateId}"`, "mg");
-                    let match;
-                    while (match = re.exec(text)) {
-                        result.push({file: f, position: match.index});
-                    }
-                }
-            });
-
-            function showDataFile(info) {
-                vscode.workspace.openTextDocument(`${dir}/${info.file}`).then(doc => 
-                    vscode.window.showTextDocument(doc, vscode.ViewColumn.Two)).then(editor => {
-                        editor.selection = new vscode.Selection(editor.document.positionAt(info.position), editor.document.positionAt(info.position));
-                        editor.revealRange(editor.selection);
-                    });
-            }
-
-            if (result.length === 0) {
-                vscode.window.showInformationMessage('No data file found');
-            }
-            else if (result.length === 1) {
-                showDataFile(result[0]);
-            }
-            else {
-                vscode.window.showQuickPick(result.map(r => <vscode.QuickPickItem>{label: r.file, detail: '' + r.position})).then(r => {
-                    showDataFile({file: r.label, position: Number.parseInt(r.detail)});
                 });
             }
         });

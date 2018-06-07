@@ -2,13 +2,13 @@
     "name": "mist",
     "displayName": "Mist",
     "description": "Language support for Mist",
-    "version": "0.2.21",
+    "version": "0.2.22",
     "publisher": "Sleen",
     "engines": {
         "vscode": "^1.14.0"
     },
     "categories": [
-        "Languages"
+        "Programming Languages"
     ],
     "activationEvents": [
         "onLanguage:mist",
@@ -105,15 +105,6 @@
                 }
             },
             {
-                "command": "mist.showData",
-                "title": "Show Data File",
-                "category": "Mist",
-                "icon": {
-                    "light": "./media/light/show_data.svg",
-                    "dark": "./media/dark/show_data.svg"
-                }
-            },
-            {
                 "command": "mist.showPreviewToSide",
                 "title": "Open Preview to the Side",
                 "category": "Mist",
@@ -144,11 +135,6 @@
                     "when": "editorLangId == mist",
                     "command": "mist.debugAndroid",
                     "group": "navigation@2"
-                },
-                {
-                    "when": "resourceLangId == mist",
-                    "command": "mist.showData",
-                    "group": "navigation@3"
                 },
                 {
                     "when": "editorLangId == mist",
