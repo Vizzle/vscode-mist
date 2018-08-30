@@ -158,7 +158,10 @@ function registerMistServer(context: ExtensionContext) {
 
                 let templateContent;
                 try {
-                    templateContent = encodeURI(JSON.stringify(JSON.parse(vscode.window.activeTextEditor.document.getText())));
+                    var JsoncParser = require("jsonc-parser");
+                    var content = JSON.stringify(JsoncParser.parse(vscode.window.activeTextEditor.document.getText(), "", {disallowComments:false, allowTrailingComma:true}));
+                    console.log("templateContent : " + content);
+                    templateContent = encodeURI(content);
                 } catch (e) {
                     vscode.window.showErrorMessage("模板格式错误：" + e.message);
                     return;
