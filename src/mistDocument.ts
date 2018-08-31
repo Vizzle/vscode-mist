@@ -440,7 +440,7 @@ export function getFunctionParamsCount(exp: string) {
             case '\'':
             case '"':
                 let quote = c;
-                while (--index >= 0) {
+                while (++index < exp.length) {
                     c = exp[index];
                     if (c === quote) {
                         break;
@@ -697,7 +697,7 @@ export class MistDocument {
         let location = json.getLocation(document.getText(), document.offsetAt(position));
         this.parseTemplate();
 
-        let getWordRange = () => document.getWordRangeAtPosition(position, /[-_a-zA-Z0-9]+/);
+        let getWordRange = () => document.getWordRangeAtPosition(position, /[-_$a-zA-Z0-9]+/);
 
         // 在上一行没有以逗号结尾时，也认为在 key 里
         if (!location.isAtPropertyKey) {
@@ -1016,7 +1016,7 @@ export class MistDocument {
         }
         
         let document = this.document;
-        let wordRange = document.getWordRangeAtPosition(position);
+        let wordRange = document.getWordRangeAtPosition(position, /[-_$a-zA-Z0-9]+/);
         if (wordRange == null || wordRange.start === wordRange.end) {
             return;
         }

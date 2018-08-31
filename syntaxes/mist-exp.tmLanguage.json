@@ -138,10 +138,10 @@
 					"name": "variable.other.member.mist-exp"
 				}
 			},
-			"match": "(\\.)([a-zA-Z_][a-zA-Z_0-9]*)\\b(?!\\s*\\()"
+			"match": "(\\.)([a-zA-Z_$][a-zA-Z_$0-9]*)\\b(?!\\s*\\()"
 		},
 		"function_call": {
-			"begin": "(?=[A-Za-z_][A-Za-z0-9_]*+\\s*\\()",
+			"begin": "(?=[A-Za-z_$][A-Za-z0-9_$]*+\\s*\\()",
 			"end": "(?<=\\))(?!\\w)",
 			"name": "meta.function-call.mist-exp",
 			"patterns": [
@@ -162,7 +162,7 @@
 					"include": "#operators"
 				},
 				{
-					"begin": "([A-Za-z_][A-Za-z0-9_]*+)\\s*(\\()",
+					"begin": "([A-Za-z_$][A-Za-z0-9_$]*+)\\s*(\\()",
 					"beginCaptures": {
 						"1": {
 							"name": "entity.name.function.mist-exp"

@@ -33,6 +33,18 @@ function _flatten(_this: any[], recursive: boolean = false) {
 
 export let functions = {
   "global": {
+    "$": [
+      {
+        "params": [
+          {
+            "type": "number",
+            "name": "tag"
+          }
+        ],
+        "return": "View",
+        "comment": "通过 tag 获取 View，同 template controller 上的 `viewWithTag:`"
+      }
+    ],
     "transform": [
       {
         "params": [
@@ -977,6 +989,34 @@ export let functions = {
       }
     ]
   }, 
+  "View": {
+    "animation": [
+      {
+        "comment": "播放动画", 
+        "params": [
+          {
+            "type": "void(^)(View)", 
+            "name": "animationBlock"
+          }
+        ], 
+        "return": "View"
+      },
+      {
+        "comment": "播放动画，完成后回调", 
+        "params": [
+          {
+            "type": "void(^)(View)", 
+            "name": "animationBlock"
+          },
+          {
+            "type": "void(^)(View)", 
+            "name": "completionBlock"
+          }
+        ], 
+        "return": "View"
+      }
+    ]
+  },
   "NSDictionary": {
     "set_value": [
       {

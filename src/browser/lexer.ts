@@ -67,6 +67,7 @@ enum CharCode {
     Space = 0x20,
     Exclamation = 0x21,
     DoubleQuote = 0x22,
+    $ = 0x24,
     Percent = 0x25,
     Ampersand = 0x26,
     SingleQuote = 0x27,
@@ -367,7 +368,7 @@ export class Lexer {
                     this._nextChar();
                     return TokenType.Comma;
                 default:
-                    if (this.c === CharCode._ || isalpha(this.c)) {
+                    if (this.c === CharCode._ || this.c === CharCode.$ || isalpha(this.c)) {
                         let start = this.pointer;
                         do {
                             this._nextChar();
