@@ -37,6 +37,16 @@ export default class MistDiagnosticProvider {
             let start = document.positionAt(offset);
             return new vscode.Range(start, start.translate(0, length));
         }
+
+        function checkString(offset: number, length: number) {
+            let jsonString = new JsonString(document.getText().substr(offset + 1, length - 2));
+            if (jsonString.errors.length > 0) {
+                jsonString.errors.forEach(e => {
+                    errors.push(new vscode.Diagnostic(range(offset + e.offset + 1, e.length), e.description, vscode.DiagnosticSeverity.Error));
+                });
+            }
+        }
+
         json.visit(document.getText(), {
             onError(error: json.ParseErrorCode, offset: number, length: number) {
                 errors.push(new vscode.Diagnostic(range(offset, length), json.getParseErrorMessage(error), vscode.DiagnosticSeverity.Error));
@@ -48,6 +58,8 @@ export default class MistDiagnosticProvider {
                 objectStack.pop();
             },
             onObjectProperty (property: string, offset: number, length: number) {
+                checkString(offset, length);
+                
                 currentProperty = property;
                 let object: string[] = objectStack[objectStack.length - 1];
                 if (object.indexOf(property) >= 0) {
@@ -57,12 +69,7 @@ export default class MistDiagnosticProvider {
             },
             onLiteralValue (value: any, offset: number, length: number) {
                 if (typeof value === 'string') {
-                    let jsonString = new JsonString(document.getText().substr(offset + 1, length - 2));
-                    if (jsonString.errors.length > 0) {
-                        jsonString.errors.forEach(e => {
-                            errors.push(new vscode.Diagnostic(range(offset + e.offset + 1, e.length), 'Invalid escape character in string', vscode.DiagnosticSeverity.Error));
-                        });
-                    }
+                    checkString(offset, length);
 
                     let match = value.match(/\$\{(?:[^}]|[\r\n])*/m);
                     if (match && match[0].length === value.length) {

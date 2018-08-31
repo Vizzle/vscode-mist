@@ -168,7 +168,12 @@ export class JsonString {
         this.escapes = [];
         for (let i = 0; i < origin.length;) {
             let c = origin.charAt(i);
-            if (c === '\\' && i < origin.length - 1) {
+            if (c < ' ') {
+                this.errors.push(new JsonStringError('Invalid characters in string. Control characters must be escaped.', i, 1));
+                parsed += c;
+                i++;
+            }
+            else if (c === '\\' && i < origin.length - 1) {
                 if (i > start) parsed += origin.substring(start, i);
                 c = origin.charAt(i + 1);
                 let sourceIndex = i;
