@@ -1479,7 +1479,8 @@ export class MistDocument {
         }
     }
 
-    // "abc ${expression1} ${a + max(a, b.c|) + d} xxx" -> ") + d"
+    // "abc ${expression1} ${a + max(a, b.c|) + d} xxx" ⟹ ") + d"
+    // "$:a + max(a, b.c|) + d" ⟹ ) + d
     private getTrailingExpressionAtLocation(location: json.Location, position: vscode.Position) {
         let document = this.document;
         if (!location.isAtPropertyKey && location.previousNode.type === 'string') {
@@ -1487,6 +1488,17 @@ export class MistDocument {
             let end = location.previousNode.offset + location.previousNode.length - 1;
             let str = document.getText(new vscode.Range(document.positionAt(start), document.positionAt(end)));
             let pos = document.offsetAt(position) - start;
+
+            if (str.startsWith("$:")) {
+                if (pos >= 2) {
+                    let s = str.substring(pos);
+                    return json.parse(`"${s}"`);
+                }
+                else {
+                    return null;
+                }
+            }
+
             let match;
             MIST_EXP_RE.lastIndex = 0;
             while (match = MIST_EXP_RE.exec(str)) {
@@ -1499,7 +1511,8 @@ export class MistDocument {
         return null;
     }
 
-    // "abc ${expression1} ${a + max(a, b.c|) + d} xxx" -> "a + max(a, b.c"
+    // "abc ${expression1} ${a + max(a, b.c|) + d} xxx" ⟹ "a + max(a, b.c"
+    // "$:a + max(a, b.c|) + d" ⟹ "a + max(a, b.c"
     private getExpressionAtLocation(location: json.Location, position: vscode.Position) {
         let document = this.document;
         if (!location.isAtPropertyKey && location.previousNode && location.previousNode.type === 'string') {
@@ -1507,6 +1520,17 @@ export class MistDocument {
             let end = location.previousNode.offset + location.previousNode.length - 1;
             let str = document.getText(new vscode.Range(document.positionAt(start), document.positionAt(end)));
             let pos = document.offsetAt(position) - start;
+
+            if (str.startsWith("$:")) {
+                if (pos >= 2) {
+                    let s = str.substring(2, pos);
+                    return json.parse(`"${s}"`);
+                }
+                else {
+                    return null;
+                }
+            }
+
             let match;
             MIST_EXP_RE.lastIndex = 0;
             while (match = MIST_EXP_RE.exec(str)) {

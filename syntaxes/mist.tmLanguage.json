@@ -263,6 +263,29 @@
         }
       ]
     },
+    "exp2": {
+      "begin": "(\")(\\$:)",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.string.begin.mist"
+        },
+        "2": {
+          "name": "keyword.control.exp.begin.mist"
+        }
+      },
+      "end": "\"",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.string.end.mist"
+        }
+      },
+      "name": "variable.exp.language.mist",
+      "patterns": [
+        {
+          "include": "source.mist-exp"
+        }
+      ]
+    },
     "objectkey": {
       "begin": "\"",
       "beginCaptures": {
@@ -302,6 +325,9 @@
         },
         {
           "include": "#number"
+        },
+        {
+          "include": "#exp2"
         },
         {
           "include": "#string"
