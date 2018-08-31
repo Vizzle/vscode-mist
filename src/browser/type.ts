@@ -219,8 +219,8 @@ export class Type extends IType {
         "floatValue": new Property(Type.Number, "数字的浮点数值", true, n => n),
         "boolValue": new Property(Type.Boolean, "数字的布尔值", true, n => n !== 0),
     }).registerMethods({
-        "toFixed": new Method(Type.Number, '返回数字的定点数表示形式', [new Parameter('fractionDigits', Type.Number, '保留小数位数')], (n: number, fractionDigits) => n.toFixed(fractionDigits)),
-        "toPrecision": new Method(Type.Number, '返回数字的浮点数表示，指定有效数字', [new Parameter('precision', Type.Number, '有效数字位数')], (n: number, precision) => n.toPrecision(precision)),
+        "toFixed": new Method(Type.String, '返回数字的定点数表示形式', [new Parameter('fractionDigits', Type.Number, '保留小数位数')], (n: number, fractionDigits) => n.toFixed(fractionDigits)),
+        "toPrecision": new Method(Type.String, '返回数字的浮点数表示，指定有效数字', [new Parameter('precision', Type.Number, '有效数字位数')], (n: number, precision) => n.toPrecision(precision)),
     });
     private static _dummy2 = Type.String.registerPropertys({
         "length": new Property(Type.Number, "字符串长度", true, str => str.length),
