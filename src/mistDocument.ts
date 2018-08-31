@@ -1774,6 +1774,12 @@ export class MistDocument {
     }[] {
         let position = this.document.positionAt(stringNode.offset);
         let rawString = this.document.getText(new vscode.Range(position, position.translate(0, stringNode.length)));
+        if (rawString.startsWith("\"$:")) {
+            return [{
+                string: new JsonString(rawString.slice(3, -1)),
+                offset: 3
+            }];
+        }
         const re = /\$\{(.*?)\}/mg;
         re.lastIndex = 0;
         let results = [];

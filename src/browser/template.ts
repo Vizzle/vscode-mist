@@ -239,6 +239,14 @@ class ErrorNode extends ExpressionNode {
 }
 
 function parseExpressionInString(source: string) {
+    if (source.startsWith("$:")) {
+        let { expression: node, errorMessage: error } = parse(source.substring(2));
+        if (error || !node) {
+            return new ErrorNode();
+        }
+        return node;
+    }
+
     const re = /\$\{(.*?)\}/mg;
     re.lastIndex = 0;
     let match: RegExpExecArray;
