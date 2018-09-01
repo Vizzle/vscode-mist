@@ -75,6 +75,9 @@ export abstract class IType {
         if (a instanceof LiteralType && b instanceof LiteralType) {
             return LiteralType.isSame(a, b);
         }
+        if (a instanceof ArrowType && b instanceof ArrowType) {
+            return ArrowType.isSame(a, b);
+        }
         return false;
     }
     public static typeof(obj: any, isConst: boolean = false): IType {
@@ -160,6 +163,11 @@ export abstract class IType {
                     return required.indexOf(k) < 0;
                 }
             });
+        }
+        else if (this instanceof ArrowType && type instanceof ArrowType) {
+            return this.returnType.kindof(type.returnType)
+                && this.params.length === type.params.length
+                && this.params.every((t, i) => t.type.kindof(type.params[i].type));
         }
         return false;
     }
@@ -742,5 +750,42 @@ export class ObjectType extends IType {
 
     public getMethods(name: string): Method[] {
         return ObjectType.methods[name];
+    }
+}
+
+export class ArrowType extends IType {
+    returnType: IType;
+    params: Parameter[];
+
+    public static isSame(a: ArrowType, b: ArrowType) {
+        return IType.isSame(a.returnType, b.returnType) 
+            && a.params.length === b.params.length 
+            && a.params.every((p, i) => IType.isSame(p.type, b.params[i].type));
+    }
+
+    public constructor(returnType: IType, params: Parameter[]) {
+        super();
+        this.returnType = returnType;
+        this.params = params;
+    }
+
+    public getName(): string {
+        return `(${this.params.map(p => `${p.name}: ${p.type.getName()}`).join(', ')}) => ${this.returnType.getName()}`;
+    }
+
+    public getAllProperties(): { [name: string]: Property; } {
+        return {};
+    }
+
+    public getProperty(name: string): Property {
+        return null;
+    }
+
+    public getAllMethods(): { [name: string]: Method[]; } {
+        return {};
+    }
+
+    public getMethods(name: string): Method[] {
+        return [];
     }
 }

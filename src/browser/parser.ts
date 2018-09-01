@@ -1,5 +1,5 @@
 import { Lexer, TokenType, LexerErrorCode, Token } from "./lexer";
-import { Type, IType, UnionType, ObjectType, ArrayType, LiteralType } from "./type";
+import { Type, IType, UnionType, ObjectType, ArrayType, LiteralType, Method, Parameter, ArrowType } from "./type";
 
 export enum ParserErrorCode {
     None,
@@ -892,6 +892,11 @@ class FunctionExpressionNode extends ExpressionNode {
 
     getType(context: ExpressionContext): IType {
         let targetType: IType;
+        if (!this.target) {
+            if (context.get(this.action.identifier)) {
+                return Type.Any;
+            }
+        }
         if (this.target) {
             targetType = this.target.getType(context);
         }
@@ -949,6 +954,33 @@ class FunctionExpressionNode extends ExpressionNode {
             return errors;
         }
 
+        if (!this.target) {
+            let varType = context.get(this.action.identifier);
+            if (varType instanceof IType) {
+                if (varType === Type.Any) {
+                    return errors;
+                }
+                if (this.parameters) {
+                    if (!(varType instanceof ArrowType)) {
+                        errors.push(new ExpressionError(this, `类型 \`${varType.getName()}\` 不能作为方法调用`));
+                        return errors;
+                    }
+                    if (this.parameters.length !== varType.params.length) {
+                        errors.push(new ExpressionError(this, `方法 \`${this.action.identifier}\` 参数数量不匹配`));
+                    }
+                    else {
+                        varType.params.forEach((p, i) => {
+                            let type = this.parameters[i].getType(context);
+                            if (!type.kindof(p.type)) {
+                                errors.push(new ExpressionError(this.parameters[i], `类型 \`${type.getName()}\` 的参数不能赋给类型 \`${p.type.getName()}\` 的参数 \`${p.name}\``));
+                            }
+                        });
+                    }
+                }
+                return errors;
+            }
+        }
+
         if (this.parameters) {
             let method = targetType.getMethod(this.action.identifier, this.parameters.length);
             if (!method) {
@@ -998,8 +1030,7 @@ class LambdaExpressionNode extends ExpressionNode {
     }
 
     getType(context: ExpressionContext): IType {
-        // return Type.getType('id(^)(id)');
-        return Type.Any;
+        return new ArrowType(Type.Any, [new Parameter(this.parameter.identifier, Type.Any)]);
     }
 
     computeValue(context: ExpressionContext) {

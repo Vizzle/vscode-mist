@@ -995,7 +995,7 @@ export let functions = {
         "comment": "播放动画", 
         "params": [
           {
-            "type": "void(^)(View)", 
+            "type": "(view: View) => void", 
             "name": "animationBlock"
           }
         ], 
@@ -1005,11 +1005,11 @@ export let functions = {
         "comment": "播放动画，完成后回调", 
         "params": [
           {
-            "type": "void(^)(View)", 
+            "type": "(view: View) => void", 
             "name": "animationBlock"
           },
           {
-            "type": "void(^)(View)", 
+            "type": "(view: View) => void", 
             "name": "completionBlock"
           }
         ], 
@@ -1174,7 +1174,7 @@ export let functions = {
         "comment": " 是否所有元素都满足条件\n\n `[11, 12, 13, 14].all(n -> n % 2 == 0)`      =>      `false`", 
         "params": [
           {
-            "type": "id(^)(id)", 
+            "type": "(element: any) => any", 
             "name": "block"
           }
         ], 
@@ -1211,7 +1211,7 @@ export let functions = {
         "comment": " 最后一个满足条件的元素，没有满足条件的元素时返回 `nil`\n\n `[11, 12, 13, 14].last(n -> n % 2 == 0)`       =>      `14`", 
         "params": [
           {
-            "type": "id(^)(id)", 
+            "type": "(element: any) => any", 
             "name": "block"
           }
         ], 
@@ -1265,7 +1265,7 @@ export let functions = {
         "comment": " 最后一个满足条件的元素的索引，没有满足条件的元素时返回 `-1`\n\n `[11, 12, 13, 14].lastIndex(n -> n % 2 == 0)`       =>      `3`", 
         "params": [
           {
-            "type": "id(^)(id)", 
+            "type": "(element: any) => any", 
             "name": "block"
           }
         ], 
@@ -1304,7 +1304,7 @@ export let functions = {
         "comment": " 筛选出符合条件的元素\n\n `[11, 12, 13, 14].filter(n -> n % 2 == 0)`      =>      `[12, 14]`", 
         "params": [
           {
-            "type": "id(^)(id)", 
+            "type": "(element: any) => any", 
             "name": "block"
           }
         ], 
@@ -1478,7 +1478,7 @@ export let functions = {
         "comment": " 第一个满足条件的元素的索引，没有满足条件的元素时返回 `-1`\n\n `[11, 12, 13, 14].firstIndex(n -> n % 2 == 0)`       =>      `1`", 
         "params": [
           {
-            "type": "id(^)(id)", 
+            "type": "(element: any) => any", 
             "name": "block"
           }
         ], 
@@ -1491,7 +1491,7 @@ export let functions = {
         "comment": " 是否有至少一个元素满足条件\n\n `[11, 12, 13, 14].any(n -> n % 2 == 0)`      =>      `true`", 
         "params": [
           {
-            "type": "id(^)(id)", 
+            "type": "(element: any) => any", 
             "name": "block"
           }
         ], 
@@ -1504,7 +1504,7 @@ export let functions = {
         "comment": " 对数组每个元素做转换\n\n `[1, 2, 3].select(n -> n * 2)`      =>      `[2, 4, 6]`", 
         "params": [
           {
-            "type": "id(^)(id)", 
+            "type": "(element: any) => any", 
             "name": "block"
           }
         ], 
@@ -1522,7 +1522,7 @@ export let functions = {
         "comment": " 第一个满足条件的元素，没有满足条件的元素时返回 `nil`\n\n `[11, 12, 13, 14].first(n -> n % 2 == 0)`       =>      `12`", 
         "params": [
           {
-            "type": "id(^)(id)", 
+            "type": "(element: any) => any", 
             "name": "block"
           }
         ], 

@@ -1,9 +1,22 @@
 import { ExpressionContext, ExpressionNode, None, LiteralNode, ParseResult, Parser, ExpressionError } from "./parser";
-import { IType, Type, Property, Method, Parameter } from "./type";
+import { IType, Type, Property, Method, Parameter, ArrowType } from "./type";
 import { functions } from "./functions";
 
 function isObject(obj: any) {
     return obj && typeof(obj) === 'object' && obj.constructor === Object;
+}
+
+function getTypeFromString(name: string) {
+    const arrowTypeRE = /^\((.*)\)\s*=>\s*(\w+)$/;
+    let match = arrowTypeRE.exec(name);
+    if (match) {
+        let params = match[1].split(',').map(s => {
+            let components = s.trim().split(':');
+            return new Parameter(components[0].trim(), Type.getType(components[1].trim()));
+        });
+        return new ArrowType(Type.getType(match[2]), params);
+    }
+    return Type.getType(name);
 }
 
 function registerTypes() {
@@ -24,11 +37,11 @@ function registerTypes() {
         "NSDictionary": "object"
     }
     let typeName = name => aliases[name.replace('*', '')] || name;
-    let getType = name => name ? Type.getType(typeName(name)) || Type.registerType(new Type(typeName(name))) : Type.Void;
+    let getType = name => name ? getTypeFromString(typeName(name)) || Type.registerType(new Type(typeName(name))) : Type.Void;
     Object.keys(functions).forEach(name => {
         let funs = functions[name];
         let typeN = typeName(name);
-        let type = Type.getType(typeN);
+        let type = getTypeFromString(typeN);
         if (!type) {
             type = Type.registerType(new Type(typeN));
         }
