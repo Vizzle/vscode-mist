@@ -2,7 +2,7 @@
     "name": "mist",
     "displayName": "Mist",
     "description": "Language support for Mist",
-    "version": "0.2.26",
+    "version": "0.2.27",
     "publisher": "Sleen",
     "engines": {
         "vscode": "^1.14.0"

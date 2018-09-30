@@ -41,7 +41,7 @@ function registerTypes() {
     Object.keys(functions).forEach(name => {
         let funs = functions[name];
         let typeN = typeName(name);
-        let type = getTypeFromString(typeN);
+        let type = getTypeFromString(typeN) as Type;
         if (!type) {
             type = Type.registerType(new Type(typeN));
         }
