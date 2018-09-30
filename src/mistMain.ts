@@ -161,7 +161,7 @@ function registerMistServer(context: ExtensionContext) {
                     var JsoncParser = require("jsonc-parser");
                     var content = JSON.stringify(JsoncParser.parse(vscode.window.activeTextEditor.document.getText(), "", {disallowComments:false, allowTrailingComma:true}));
                     console.log("templateContent : " + content);
-                    templateContent = encodeURI(content);
+                    templateContent = encodeURIComponent(content);
                 } catch (e) {
                     vscode.window.showErrorMessage("模板格式错误：" + e.message);
                     return;
@@ -169,10 +169,14 @@ function registerMistServer(context: ExtensionContext) {
 
                 var content = 'templateName=' + cfg.bizCode + "@" + templateName + "&templateHtml=" + templateContent;// + "// timestamp = " + process.hrtime();
 
-                let headers = { 'Content-Type':'application/x-www-form-urlencoded' };
+                let headers = {
+                    'Content-Type':'application/x-www-form-urlencoded',
+                    // 'Content-Length': content.length
+                };
                 let url = `http://${ip}:9012/update`;
                 request.post({
                     url,
+                    headers,
                     form: content
                 }, (err, res, data) => {
                     console.log(err, res, data)
