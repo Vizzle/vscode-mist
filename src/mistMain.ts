@@ -182,6 +182,8 @@ function registerMistServer(context: ExtensionContext) {
                     console.log(err, res, data)
                     if (err) {
                         vscode.window.showErrorMessage("传输模板到手机失败：" + err.message);
+                    } else {
+                        vscode.window.showInformationMessage("模板已传输到手机");
                     }
                 })
             });
