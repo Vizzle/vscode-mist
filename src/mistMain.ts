@@ -460,20 +460,16 @@ function registerValidateWorkspace(context: ExtensionContext) {
 }
 
 function registerFormatter(context: ExtensionContext) {
-    function _format(textEditor: vscode.TextEditor, selection: boolean) {
-        let edits = format(textEditor.document, selection ? textEditor.selection : null, {
-            tabSize: <number>textEditor.options.tabSize,
-            insertSpaces: <boolean>textEditor.options.insertSpaces
-        });
-        textEditor.edit(edit => edits.forEach(e => edit.replace(e.range, e.newText)));
-    }
-
-    context.subscriptions.push(commands.registerTextEditorCommand('mist.format', (textEditor: TextEditor, edit: TextEditorEdit) => {
-        _format(textEditor, false);
+    context.subscriptions.push(vscode.languages.registerDocumentFormattingEditProvider('mist', {
+        provideDocumentFormattingEdits(doc: vscode.TextDocument, options: vscode.FormattingOptions, token: vscode.CancellationToken) {
+            return format(doc, null, options);
+        }
     }));
 
-    context.subscriptions.push(commands.registerTextEditorCommand('mist.formatSelection', (textEditor: TextEditor, edit: TextEditorEdit) => {
-        _format(textEditor, true);
+    context.subscriptions.push(vscode.languages.registerDocumentRangeFormattingEditProvider('mist', {
+        provideDocumentRangeFormattingEdits(doc: vscode.TextDocument, range: vscode.Range, options: vscode.FormattingOptions, token: vscode.CancellationToken) {
+            return format(doc, range, options);
+        }
     }));
 }
 

@@ -68,16 +68,6 @@
                 "category": "Mist"
             },
             {
-                "command": "mist.format",
-                "title": "Format Document",
-                "category": "Mist"
-            },
-            {
-                "command": "mist.formatSelection",
-                "title": "Format Selection",
-                "category": "Mist"
-            },
-            {
                 "command": "mist.startServer",
                 "title": "Start Mist Debug Server",
                 "category": "Mist",
@@ -141,26 +131,8 @@
                     "command": "mist.showPreviewToSide",
                     "group": "navigation@4"
                 }
-            ],
-            "editor/context": [
-                {
-                    "when": "editorLangId == mist",
-                    "command": "mist.format",
-                    "group": "navigation"
-                },
-                {
-                    "when": "editorLangId == mist && editorHasSelection",
-                    "command": "mist.formatSelection",
-                    "group": "navigation"
-                }
             ]
         },
-        "keybindings": [
-            {
-                "command": "mist.format",
-                "key": "alt+shift+f"
-            }
-        ],
         "views": {
             "explorer": [
                 {
