@@ -31,7 +31,6 @@ export function activate(context: ExtensionContext) {
     registerValidateWorkspace(context);
     registerFormatter(context);
     registerColorDecorations(context);
-    registerAppendComma(context);
 }
 
 function setupStatusBarManager(context: ExtensionContext) {
@@ -471,6 +470,25 @@ function registerFormatter(context: ExtensionContext) {
             return format(doc, range, options);
         }
     }));
+
+    context.subscriptions.push(vscode.languages.registerOnTypeFormattingEditProvider('mist', {
+        provideOnTypeFormattingEdits(doc: vscode.TextDocument, pos: vscode.Position, ch: string, options: vscode.FormattingOptions, token: vscode.CancellationToken) {
+            if (ch === '\n') {
+                const lineRange = doc.lineAt(pos.translate(-1)).range;
+                const p = lineRange.end;
+                const edits = format(doc, lineRange, options);
+                let text = doc.getText(lineRange);
+                // 换行时追加逗号
+                if (text.match(/((:\s*(true|false|null|-?\d+(\.\d+)?([eE][+-]?\d+)?|"[.*]"))|["\]}])\s*$/)) {
+                    edits.push(new vscode.TextEdit(new vscode.Range(p, p), ','));
+                }
+                return edits;
+            }
+            else {
+                return format(doc, doc.lineAt(pos).range, options);
+            }
+        }
+    }, '\n', ':', '"', '{', '['));
 }
 
 function registerColorDecorations(context: ExtensionContext) {
@@ -553,35 +571,4 @@ function registerColorDecorations(context: ExtensionContext) {
     }
 
     updateAllEditors();
-}
-
-function registerAppendComma(context: ExtensionContext) {
-    context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(event => {
-        if (event.document.languageId === 'mist') {
-            let positions = [];
-            event.contentChanges.forEach(e => {
-                if (e.text.startsWith('\n') && e.range.start.line === e.range.end.line) {
-                    if (event.document.getText().substr(event.document.offsetAt(e.range.start)).trim().length === 0) {
-                        return;
-                    }
-                    let p = e.range.start;
-                    let range = new vscode.Range(new vscode.Position(p.line, 0), p);
-                    let text = event.document.getText(range);
-                    if (text.match(/((:\s*(true|false|null|-?\d+(\.\d+)?([eE][+-]?\d+)?|"[.*]"))|["\]}])\s*$/)) {
-                        positions.push(p);
-                    }
-                }
-            });
-            if (positions.length > 0) {
-                let editor = vscode.window.activeTextEditor;
-                if (editor.document === event.document) {
-                    editor.edit(edit => {
-                        for (let p of positions) {
-                            edit.insert(p, ',');
-                        }
-                    }, { undoStopBefore: false, undoStopAfter: true });
-                }
-            }
-        }
-    }));
 }
