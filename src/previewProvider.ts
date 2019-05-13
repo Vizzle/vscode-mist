@@ -303,29 +303,44 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
         this.send('select', {index});
     }
 
-    public revealNode(uri: vscode.Uri, nodeIndex: string) {
-        vscode.workspace.openTextDocument(uri).then(doc => {
-            let mistDoc = MistDocument.getDocumentByUri(uri);
-            if (!mistDoc) return;
-            let rootNode = mistDoc.getRootNode();
-            var node = json.findNodeAtLocation(rootNode, ['layout']);
-            if (!node) return;
-            let indexes = nodeIndex ? nodeIndex.split(',') : [];
-            for (var i of indexes) {
-                if (node.type === 'object') {
-                    node = json.findNodeAtLocation(node, ['children', parseInt(i)]);
-                }
-                else {
-                    break;
+    public async revealNode(uri: vscode.Uri, nodeIndex: string) {
+        const compareDocument = (doc: vscode.TextDocument) => doc.uri.toString() === uri.toString()
+        let editor = vscode.window.visibleTextEditors.find(editor => compareDocument(editor.document))
+        let doc: vscode.TextDocument
+        if (editor) {
+            doc = editor.document
+        }
+        else {
+            doc = vscode.workspace.textDocuments.find(doc => compareDocument(doc))
+            if (!doc) {
+                doc = await vscode.workspace.openTextDocument(uri)
+                if (!doc) {
+                    console.warn(`can not open document '${uri}'`)
+                    return
                 }
             }
-            if (!node) return;
-            vscode.window.showTextDocument(doc).then(editor => {
-                let range = new vscode.Range(doc.positionAt(node.offset), doc.positionAt(node.offset + node.length));
-                editor.selection = new vscode.Selection(range.start, range.end);
-                editor.revealRange(editor.selection);
-            });
-        });
+            editor = await vscode.window.showTextDocument(doc)
+        }
+
+        const mistDoc = MistDocument.getDocumentByUri(uri);
+        if (!mistDoc) return;
+        const rootNode = mistDoc.getRootNode();
+        let node = json.findNodeAtLocation(rootNode, ['layout']);
+        if (!node) return;
+        const indexes = nodeIndex ? nodeIndex.split(',') : [];
+        for (var i of indexes) {
+            if (node.type === 'object') {
+                node = json.findNodeAtLocation(node, ['children', parseInt(i)]);
+            }
+            else {
+                break;
+            }
+        }
+        if (!node) return;
+        
+        let range = new vscode.Range(doc.positionAt(node.offset), doc.positionAt(node.offset + node.length));
+        editor.selection = new vscode.Selection(range.start, range.end);
+        editor.revealRange(editor.selection);
     }
 
     private getResourcePath(file: string) {
