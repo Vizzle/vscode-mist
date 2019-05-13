@@ -670,7 +670,9 @@ var client;
 export default function main() {
     let type = document.body.dataset.type || 'browser';
     let port = parseInt(document.body.dataset.port);
+    console.log(`preview client starting... (type: ${type}, port: ${port})`)
     client = new Client(type as ClientType, port);
 }
 
-document.addEventListener('DOMContentLoaded', main);
+// document.addEventListener('DOMContentLoaded', main);
+main()

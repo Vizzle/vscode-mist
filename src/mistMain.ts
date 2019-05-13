@@ -2,7 +2,7 @@
 
 import { MistDocument } from './mistDocument'
 import * as convertor from './convertor';
-import { MistContentProvider, getMistUri, isMistFile } from './previewProvider';
+import { MistContentProvider, getMistUri, isMistFile, MistPreviewPanel } from './previewProvider';
 import MistNodeTreeProvider from './nodeTreeProvider';
 import MistCompletionProvider from './completionProvider'
 import MistDiagnosticProvider from './diagnosticProvider'
@@ -246,20 +246,21 @@ function registerPreviewProvider(context: ExtensionContext) {
     const contentProviderRegistration = vscode.workspace.registerTextDocumentContentProvider('mist-preview', contentProvider);
     context.subscriptions.push(contentProviderRegistration);
 
-    context.subscriptions.push(commands.registerCommand('mist.showPreviewToSide', uri => {
-        let resource = uri;
-        if (!(resource instanceof vscode.Uri)) {
-            if (vscode.window.activeTextEditor) {
-                // we are relaxed and don't check for markdown files
-                resource = vscode.window.activeTextEditor.document.uri;
-            }
-        }
+    context.subscriptions.push(
+        vscode.commands.registerCommand('mist.showPreviewToSide', () => {
+            MistPreviewPanel.createOrShow(context.extensionPath);
+        })
+    );
 
-        return vscode.commands.executeCommand('vscode.previewHtml',
-            'mist-preview://shared',
-            vscode.ViewColumn.Two,
-            'Mist Preview')
-    }));
+    if (vscode.window.registerWebviewPanelSerializer) {
+        // Make sure we register a serializer in activation event
+        vscode.window.registerWebviewPanelSerializer(MistPreviewPanel.viewType, {
+            async deserializeWebviewPanel(webviewPanel: vscode.WebviewPanel, state: any) {
+                console.log(`Got state: ${state}`);
+                MistPreviewPanel.revive(webviewPanel);
+            }
+        });
+    }
 
     context.subscriptions.push(vscode.window.onDidChangeVisibleTextEditors(editors => {
         contentProvider.update('shared');

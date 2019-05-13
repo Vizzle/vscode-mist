@@ -5,7 +5,7 @@
     "version": "0.2.28",
     "publisher": "Sleen",
     "engines": {
-        "vscode": "^1.14.0"
+        "vscode": "^1.33.0"
     },
     "categories": [
         "Programming Languages"
@@ -154,10 +154,10 @@
         }
     },
     "scripts": {
-        "vscode:prepublish": "tsc -p ./ && tsc -p ./src/browser",
+        "vscode:prepublish": "tsc -p ./ && cd ./src/browser && webpack",
         "watch": "tsc -w -p ./",
-        "watch-browser": "tsc -w -p ./src/browser",
-        "compile": "npm run watch & npm run watch-browser",
+        "watch-browser": "cd ./src/browser && webpack -w",
+        "compile": "npm run watch",
         "postinstall": "node ./node_modules/vscode/bin/install"
     },
     "dependencies": {
@@ -173,7 +173,10 @@
         "@types/request": "^2.47.0",
         "@types/ws": "0.0.36",
         "mocha": "^2.3.3",
+        "ts-loader": "^6.0.0",
         "typescript": "^2.0.3",
-        "vscode": "^1.0.0"
+        "vscode": "^1.0.0",
+        "webpack": "^4.31.0",
+        "webpack-cli": "^3.3.2"
     }
 }

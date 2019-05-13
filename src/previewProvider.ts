@@ -4,16 +4,12 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as json from 'jsonc-parser'
-import * as color from './utils/color'
 import * as fs from 'fs'
 import * as http from 'http'
 import * as ws from 'ws'
-import { parseJson } from './utils/json'
-import { MistDocument, MistData } from './mistDocument';
+import { MistDocument } from './mistDocument';
 import { ImageHelper } from './imageHelper';
-import { extensions } from 'vscode';
 import Device from './browser/previewDevice';
-import { bindData } from './browser/template';
 import { StatusBarManager } from './statusBarManager';
 
 export function isMistFile(document: vscode.TextDocument) {
@@ -35,8 +31,116 @@ type PreviewClient = {
     config: PreviewConfig;
 }
 
+export class MistPreviewPanel {
+    /**
+	 * Track the currently panel. Only allow a single panel to exist at a time.
+	 */
+    public static currentPanel: MistPreviewPanel | undefined;
+
+    public static readonly viewType = 'mistPreview';
+
+    private readonly _panel: vscode.WebviewPanel;
+    private _disposables: vscode.Disposable[] = [];
+
+    public static createOrShow(extensionPath: string) {
+        // If we already have a panel, show it.
+        if (MistPreviewPanel.currentPanel) {
+            MistPreviewPanel.currentPanel._panel.reveal();
+            return;
+        }
+
+        // Otherwise, create a new panel.
+        const panel = vscode.window.createWebviewPanel(
+            MistPreviewPanel.viewType,
+            'Mist Preview',
+            vscode.ViewColumn.Two,
+            {
+                // Enable javascript in the webview
+                enableScripts: true,
+
+                // And restrict the webview to only loading content from our extension's `media` directory.
+                localResourceRoots: [vscode.Uri.file(extensionPath)]
+            }
+        );
+
+        MistPreviewPanel.currentPanel = new MistPreviewPanel(panel);
+    }
+
+    public static revive(panel: vscode.WebviewPanel) {
+        MistPreviewPanel.currentPanel = new MistPreviewPanel(panel);
+    }
+
+    private constructor(panel: vscode.WebviewPanel) {
+        this._panel = panel;
+
+        // Set the webview's initial html content
+        this._update();
+
+        // Listen for when the panel is disposed
+        // This happens when the user closes the panel or when the panel is closed programatically
+        this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
+
+        // Update the content based on view changes
+        // this._panel.onDidChangeViewState(
+        //     e => {
+        //         if (this._panel.visible) {
+        //             this._update();
+        //         }
+        //     },
+        //     null,
+        //     this._disposables
+        // );
+
+        // Handle messages from the webview
+        this._panel.webview.onDidReceiveMessage(
+            message => {
+                switch (message.command) {
+                    case 'alert':
+                        vscode.window.showErrorMessage(message.text);
+                        return;
+                }
+            },
+            null,
+            this._disposables
+        );
+    }
+
+    public doRefactor() {
+        // Send a message to the webview webview.
+        // You can send any JSON serializable data.
+        this._panel.webview.postMessage({ command: 'refactor' });
+    }
+
+    public dispose() {
+        MistPreviewPanel.currentPanel = undefined;
+
+        // Clean up our resources
+        this._panel.dispose();
+
+        while (this._disposables.length) {
+            const x = this._disposables.pop();
+            if (x) {
+                x.dispose();
+            }
+        }
+    }
+
+    private async _update() {
+        this._panel.webview.html = await MistContentProvider.sharedInstance.provideTextDocumentContent()
+    }
+
+}
+
+function getNonce() {
+    let text = '';
+    const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    for (let i = 0; i < 32; i++) {
+        text += possible.charAt(Math.floor(Math.random() * possible.length));
+    }
+    return text;
+}
+
 export class MistContentProvider implements vscode.TextDocumentContentProvider {
-    private _config = new Map<string, PreviewConfig>();
     private _server: ws.Server;
     private _port: number;
     private _listening: Promise<number>;
@@ -55,16 +159,12 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
 
     constructor(private context: vscode.ExtensionContext) {
         let httpServer = http.createServer((request, response) => {
-            let uri = vscode.Uri.parse(request.url);
-            if (uri.path === '/') {
-                var content = this.pageHtml(vscode.Uri.parse('shared'));
-                content = content.replace(/<base [^>]*>/m, '')
-                                 .replace(/<a id="open-in-browser".*<\/a>/, '')
-                                 .replace('data-type="vscode"', 'data-type="browser-socket"');
+            if (request.url === '/') {
+                const content = this.pageHtml(true);
                 response.end(content);
             }
             else {
-                let file = uri.path;
+                let file = request.url;
                 if (file.startsWith('/getImage/')) {
                     file = file.substr(10);
                 }
@@ -76,6 +176,14 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
                 }
                 fs.readFile(file, (err, data) => {
                     if (!err) {
+                        let contentType = 'text/plain'
+                        if (file.endsWith('.js')) {
+                            contentType = 'text/javascript'
+                        }
+                        else if (file.endsWith('.css')) {
+                            contentType = 'text/css'
+                        }
+                        response.setHeader('Content-Type', contentType)
                         response.end(data);
                     }
                     else {
@@ -124,15 +232,9 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
         });
     }
 
-    public async provideTextDocumentContent(uri: vscode.Uri): Promise<string> {
-        this._port = await this._listening;
-        const sourceUri = vscode.Uri.parse(decodeURI(uri.query));
-        if (uri) {
-            let mistDoc = MistDocument.getDocumentByUri(sourceUri);
-            let nodeHtml = this.pageHtml(vscode.Uri.parse('shared'));
-            return nodeHtml;
-        }
-        return null;
+    public async provideTextDocumentContent() {
+        this._port = await this._listening
+        return this.pageHtml()
     }
 
     public send(type: string, params: any) {
@@ -230,15 +332,19 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
         return this.context.asAbsolutePath(file);
     }
 
-    private pageHtml(uri: vscode.Uri) {
-        return `
+    public pageHtml(browser = false) {
+        const nonce = getNonce();
+        const scriptUrl = (file: string) => vscode.Uri.file(path.join(this.context.extensionPath, file)).with({ scheme: 'vscode-resource'})
+        return `<!DOCTYPE html>
+<html>
     <head>
-        <base href="${this.getResourcePath('preview.html')}">
+        ${browser ? '' : `<base href="${scriptUrl('preview.html')}">
+        <meta http-equiv="Content-Security-Policy" content="default-src vscode-resource:; img-src vscode-resource: https: http: data:; style-src vscode-resource: 'unsafe-inline'; script-src 'unsafe-eval' 'nonce-${nonce}'; connect-src ws:;">`}
         <title>Mist Preview</title>
         <meta charset="UTF-8">
         <link rel="stylesheet" href="lib/bootstrap.min.css">
         <link rel="stylesheet" href="css/preview.css">
-        <script type="text/javascript" src="http://at.alicdn.com/t/font_532796_cdkfbxvwvky2pgb9.js"></script>
+        <script type="text/javascript" nonce="${nonce}" src="http://at.alicdn.com/t/font_532796_cdkfbxvwvky2pgb9.js"></script>
         <style type="text/css">
             .icon {
             width: 1em; height: 1em;
@@ -247,41 +353,18 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
             overflow: hidden;
             }
         </style>
-        <script type="text/javascript" src="lib/jquery.min.js"></script>
-        <script type="text/javascript" src="lib/bootstrap.min.js"></script>
-        <script type="text/javascript" src="lib/require.js"></script>
-        <script type="text/javascript" src="lib/shortcut.js"></script>
-        <script>
-            require.config({
-                paths: {
-                    'previewClient': 'out/browser/previewClient',
-                    'previewDevice': 'out/browser/previewDevice',
-                    'render': 'out/browser/render',
-                    'template': 'out/browser/template',
-                    'lexer': 'out/browser/lexer',
-                    'parser': 'out/browser/parser',
-                    'type': 'out/browser/type',
-                    'functions': 'out/browser/functions',
-                    'image': 'out/browser/image',
-                    '../../lib/FlexLayout': 'lib/FlexLayout',
-                }
-            });
-            require(['previewClient'], function(main) {
-                main.default();
-            }, function (err) {
-                var footer = document.getElementById('footer');
-                footer.classList.remove('hidden');
-                footer.textContent = '脚本加载失败：' + JSON.stringify(err);
-            });
-        </script>
+        <script type="text/javascript" nonce="${nonce}" src="lib/jquery.min.js"></script>
+        <script type="text/javascript" nonce="${nonce}" src="lib/bootstrap.min.js"></script>
+        <script type="text/javascript" nonce="${nonce}" src="lib/require.js"></script>
+        <script type="text/javascript" nonce="${nonce}" src="lib/shortcut.js"></script>
     </head>
     
-    <body data-port="${this._port}" data-path="${uri.toString()}" data-type="vscode">
+    <body data-port="${this._port}" data-type="${browser ? 'browser-socket' : 'vscode'}">
     <div style="width:100%; height:100%; display:flex; flex-direction:column">
     <div id="navi-bar">
         <a id="inspect-element" class="navi-icon" title="检查元素"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-select"></use></svg></i></a>
         <a id="show-frames" class="navi-icon" title="显示边框"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-frame"></use></svg></i></a>
-        <a id="open-in-browser" class="navi-icon" title="在浏览器打开" href="http://localhost:${this._port}"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-chrome"></use></svg></i></a>
+        ${browser ? '' : `<a id="open-in-browser" class="navi-icon" title="在浏览器打开" href="http://localhost:${this._port}"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-chrome"></use></svg></i></a>`}
         <div class="navi-line"></div>
     </div>
     
@@ -319,8 +402,9 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
     <div id="mist-selects" class="overlay"></div>
     <div class="overlay"><div id="mist-hover" class="anim"></div></div>
 
+    <script type="text/javascript" nonce="${nonce}" src="out/browser/bundle.js"></script>
     </body>
-        `
+</html>`
     }
 
     private getDocument() {
