@@ -79,6 +79,7 @@ export class NodeSchema implements ISchema {
 [查看文档](https://vizzle.github.io/MIST/components/scroll.html)`,
         "paging": "分页元素，使用 children 定义子元素，每个子元素就是一页\n\n[查看文档](https://vizzle.github.io/MIST/components/paging.html)",
         "line": "线条元素，主要用于展示虚线，其粗细、长度由布局属性控制\n\n[查看文档](https://vizzle.github.io/MIST/components/line.html)",
+        "linear-gradient": "线性渐变。如果作为背景可以配合 `fixed` 属性使用",
         "indicator": "加载指示器，俗称菊花\n\n[查看文档](https://vizzle.github.io/MIST/components/indicator.html)",
         "text-field": "单行文本输入框",
         "text-view": "多行文本输入框",
@@ -370,6 +371,16 @@ function ColorSchema(description?: string): Schema {
         format: "color",
         description
     };
+}
+
+function PointSchema(description?: string): Schema {
+    return {
+        type: "array",
+        items: {
+            type: "number"
+        },
+        description
+    }
 }
 
 const units = ['px', 'cm', 'mm', 'q', 'in', 'pc', 'pt'];
@@ -962,6 +973,30 @@ const stylesMap: { [type: string]: PropertyMap} = {
             min: 0,
             description: "虚线的空白长度，不设置时为实线\n\n[查看文档](https://vizzle.github.io/MIST/components/line.html#space-length)"
         },
+    },
+    "linear-gradient": {
+        "direction": EnumSchema([
+            "to-right",
+            "to-left",
+            "to-top",
+            "to-bottom",
+            "to-top-left",
+            "to-bottom-left",
+            "to-top-right",
+            "to-bottom-right",
+        ], "渐变方向，默认为 `to-right`"),
+        "start-point": PointSchema("渐变开始位置，需要与 `end-point` 一起使用。取值范围为 0~1，如：`[0, 0]`"),
+        "end-point": PointSchema("渐变结束位置，需要与 `start-point` 一起使用。取值范围为 0~1，如：`[1, 0]`"),
+        "colors": {
+            type: "array",
+            items: ColorSchema(),
+            description: "渐变颜色，至少指定两个颜色"
+        },
+        "factors": {
+            type: "array",
+            items: SimpleSchema("number"),
+            description: "每个颜色的位置，数量需要与 `colors` 相同，取值范围为 0~1。\n\n不设置时渐变位置均分，如 `colors` 设置三个颜色时，`factors` 默认为 `[0, 0.5, 1]`"
+        }
     },
     "text-field": {
         ...textViewCommon,
