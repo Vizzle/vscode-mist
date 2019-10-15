@@ -4,8 +4,10 @@ import * as vscode from 'vscode'
 import * as http from 'http';
 import * as request from 'request';
 
-import { isMistFile } from './previewProvider';
 import { commands, ExtensionContext } from 'vscode';
+import { compile } from 'mistc'
+
+import { isMistFile } from './previewProvider';
 
 export let stopServerFunc: () => void
 
@@ -37,12 +39,23 @@ function registerServer(context: ExtensionContext) {
     }
 
     let serverPort = 10001;
-    server = http.createServer((req, res) => {
+    server = http.createServer(async (req, res) => {
       output.appendLine(`> ${req.method}\t${req.url}`);
 
       const file = path.join(workingDir, req.url)
       try {
-        const content = fs.readFileSync(file, 'utf-8')
+        if (!fs.existsSync(file)) {
+          throw new Error('file not exists')
+        }
+
+        let content: string
+        if (path.extname(file) === '.mist') {
+          content = await compile(file)
+        }
+        else {
+          content = fs.readFileSync(file, 'utf-8')
+        }
+
         res.writeHead(200, { 'Content-Type': 'text/plain;charset=utf-8' });
         res.end(content)
       }
