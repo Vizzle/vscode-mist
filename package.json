@@ -114,12 +114,12 @@
         "menus": {
             "editor/title": [
                 {
-                    "when": "editorLangId == mist && !config.mist.isDebugging",
+                    "when": "editorLangId == mist && !mist:isDebugging",
                     "command": "mist.startServer",
                     "group": "navigation@1"
                 },
                 {
-                    "when": "editorLangId == mist && config.mist.isDebugging",
+                    "when": "editorLangId == mist && mist:isDebugging",
                     "command": "mist.stopServer",
                     "group": "navigation@1"
                 },
@@ -168,6 +168,7 @@
         "ws": "^1.1.1"
     },
     "devDependencies": {
+        "@types/http-server": "^0.10.0",
         "@types/mocha": "^2.2.32",
         "@types/node": "^6.0.40",
         "@types/request": "^2.47.0",
