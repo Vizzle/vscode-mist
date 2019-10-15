@@ -11,6 +11,7 @@ import { MistDocument } from './mistDocument';
 import { ImageHelper } from './imageHelper';
 import Device from './browser/previewDevice';
 import { StatusBarManager } from './statusBarManager';
+import { compile } from 'mistc';
 
 export function isMistFile(document: vscode.TextDocument) {
     return document.languageId === 'mist'
@@ -248,10 +249,56 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
         }
     }
 
-    render() {
+    errorTemplate(error: Error | string) {
+        return `\
+{
+  "layout": {
+    "style": {
+      "direction": "vertical",
+      "align-items": "center",
+      "spacing": 10,
+      "padding": 30,
+      "padding": 30
+    },
+    "children": [
+      {
+        "type": "text",
+        "style": {
+          "text": "模板编译错误",
+          "font-size": 16,
+          "font-style": "bold",
+          "color": "red"
+        }
+      },
+      {
+        "type": "text",
+        "style": {
+          "text": "${error instanceof Error ? error.message : error}",
+          "lines": 0,
+          "alignment": "center",
+          "font-size": 13,
+          "color": "#333"
+        }
+      }
+    ]
+  }
+}`
+    }
+
+    async render() {
         let mistDoc = this.getDocument();
         if (!mistDoc) return;
-        let template = mistDoc.getTemplate();
+
+        let template: any
+        if (fs.existsSync(mistDoc.document.uri.fsPath)) {
+            // TODO 改造 compile 函数，传入模板内容和文件夹，以支持修改马上更新，而无需等到保存文件
+            const result = await compile(mistDoc.document.uri.fsPath, { minify: true }).catch(this.errorTemplate)
+            template = JSON.parse(result)
+        }
+        else {
+            template = mistDoc.getTemplate();
+        }
+
         let images = ImageHelper.getImageFiles(mistDoc.document);
         let data = mistDoc.getData();
         let dataName = data ? data.description() : null;
