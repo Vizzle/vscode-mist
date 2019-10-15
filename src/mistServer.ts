@@ -130,13 +130,20 @@ function registerPushService(context: ExtensionContext) {
   context.subscriptions.push(commands.registerCommand('mist.debugAndroid', args => {
     // push current file to Android
     require('child_process').exec('adb shell ip route', function (error, stdout, stderr) {
-      var ptr = stdout.indexOf("scope link  src ");
+      let ptr = stdout.indexOf("scope link  src ");
       if (ptr <= 0) {
-        console.log("failed read ip from adb!");
-        vscode.window.showErrorMessage("从adb获取手机IP失败，请使用USB连接手机。");
-        return;
+        ptr = stdout.indexOf("scope link src ")
+        if (ptr <= 0) {
+          console.log("failed read ip from adb!");
+          vscode.window.showErrorMessage("从adb获取手机IP失败，请使用USB连接手机。");
+          return;
+        }
+
+        ptr = ptr + "scope link src ".length;
+      } else {
+        ptr = ptr + "scope link  src ".length;
       }
-      var ptr = ptr + "scope link  src ".length;
+
       var ip = stdout.substr(ptr).trim();
       console.log("device [" + ip + "]");
       var fileUri = vscode.window.activeTextEditor.document.uri;
@@ -161,13 +168,12 @@ function registerPushService(context: ExtensionContext) {
         console.log("bizCode:" + cfg.bizCode);
         let templateContent;
         try {
-          var JsoncParser = require("jsonc-parser");
-          var content = JSON.stringify(JsoncParser.parse(vscode.window.activeTextEditor.document.getText(), "", { disallowComments: false, allowTrailingComma: true }));
+          const content = await compile(file)
           console.log("templateContent : " + content);
           templateContent = encodeURIComponent(content);
         }
         catch (e) {
-          vscode.window.showErrorMessage("模板格式错误：" + e.message);
+          vscode.window.showErrorMessage("模板编译错误：" + e.message);
           return;
         }
         var content = 'templateName=' + cfg.bizCode + "@" + templateName + "&templateHtml=" + templateContent; // + "// timestamp = " + process.hrtime();
