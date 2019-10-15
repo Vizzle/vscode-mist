@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode'
-import * as httpServer from 'http-server';
+import * as http from 'http';
 import * as request from 'request';
 
 import { isMistFile } from './previewProvider';
@@ -23,8 +23,8 @@ export function registerMistServer(context: ExtensionContext) {
 }
 
 function registerServer(context: ExtensionContext) {
-  let server;
-  let output;
+  let server: http.Server;
+  let output: vscode.OutputChannel;
   setCommandContext(CommandContext.IsDebugging, false);
   context.subscriptions.push(commands.registerCommand('mist.startServer', uri => {
     if (server) {
@@ -35,18 +35,27 @@ function registerServer(context: ExtensionContext) {
       vscode.window.showErrorMessage("未打开文件夹");
       return;
     }
-    let options = {
-      root: workingDir,
-      logFn: (req, res, err) => {
-        output.appendLine(`> GET\t${req.url}`);
-      }
-    };
+
     let serverPort = 10001;
-    server = httpServer.createServer(options);
-    server.server.once("error", err => {
+    server = http.createServer((req, res) => {
+      output.appendLine(`> ${req.method}\t${req.url}`);
+
+      const file = path.join(workingDir, req.url)
+      try {
+        const content = fs.readFileSync(file, 'utf-8')
+        res.writeHead(200, { 'Content-Type': 'text/plain;charset=utf-8' });
+        res.end(content)
+      }
+      catch (e) {
+        res.writeHead(404);
+        res.end()
+      }
+    })
+
+    server.once("error", err => {
       server = null;
-      let errMsg;
-      if (err.code === 'EADDRINUSE') {
+      let errMsg: string;
+      if ((err as any).code === 'EADDRINUSE') {
         errMsg = "Port 10001 already in use. Use <lsof -i tcp:10001> then <kill $PID> to free.";
       }
       else {
@@ -54,6 +63,7 @@ function registerServer(context: ExtensionContext) {
       }
       vscode.window.showErrorMessage(errMsg);
     });
+
     server.listen(serverPort, "0.0.0.0", function () {
       setCommandContext(CommandContext.IsDebugging, true);
       output = vscode.window.createOutputChannel("Mist Debug Server");
@@ -61,6 +71,7 @@ function registerServer(context: ExtensionContext) {
       output.appendLine(`> Start mist debug server at 127.0.0.1:${serverPort}`);
     });
   }));
+
   context.subscriptions.push(commands.registerCommand('mist.stopServer', uri => {
     stopServer();
   }));
@@ -77,12 +88,13 @@ function registerServer(context: ExtensionContext) {
       method: 'GET',
       path: '/refresh'
     };
-    var req = require('http').request(options, null);
+    const req = http.request(options, null);
     req.on('error', (e) => {
       console.log(`SIMULATOR NOT RESPONSE: ${e.message}\n`);
     });
     req.end();
   }));
+
   function stopServer() {
     if (server) {
       server.close();
