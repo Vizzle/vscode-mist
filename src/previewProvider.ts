@@ -291,8 +291,7 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
 
         let template: any
         if (fs.existsSync(mistDoc.document.uri.fsPath)) {
-            // TODO 改造 compile 函数，传入模板内容和文件夹，以支持修改马上更新，而无需等到保存文件
-            const result = await compile(mistDoc.document.uri.fsPath, { minify: true }).catch(this.errorTemplate)
+            const result = await compile(mistDoc.document.uri.fsPath, { minify: true }, mistDoc.document.getText()).catch(this.errorTemplate)
             template = JSON.parse(result)
         }
         else {
