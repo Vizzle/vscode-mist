@@ -1,4 +1,4 @@
-import { Schema, ValidationResult, SchemaFormat, validateJsonNode, ISchema, parseSchema } from "./schema";
+import { Schema, ValidationResult, SchemaFormat, validateJsonNode, ISchema, parseSchema, SchemaObject } from "./schema";
 import * as json from 'jsonc-parser';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -59,7 +59,7 @@ SchemaFormat.registerFormat('event', {
 });
 
 export class NodeSchema implements ISchema {
-    private static nodeSchemaCache: { [type: string]: Schema } = {};
+    private static nodeSchemaCache: { [type: string]: SchemaObject } = {};
     private static config: MistCustomConfig;
     private static configs: { [dir: string]: MistCustomConfig } = {};
     private static currentDir: string;
@@ -88,6 +88,7 @@ export class NodeSchema implements ISchema {
         "picker": "选择组件",
         "web-view": "网页组件",
         "map": "地图组件",
+        "slot": "组件插槽",
     };
     public static async setCurrentDir(dir: string) {
         if (this.currentDir !== dir) {
@@ -264,10 +265,51 @@ export class NodeSchema implements ISchema {
         let config = NodeSchema.getConfig();
         return { ...this.nodeTypes, ...config.types };
     }
-    public getSchema(node: json.Node) {
+    public getSchema(node: json.Node): Schema {
         if (node && node.type === 'object') {
             let typeNode = json.findNodeAtLocation(node, ['type']);
+            let isImport = !!json.findNodeAtLocation(node, ['import']);
+            let isComponentChildren = node.parent && node.parent.parent && node.parent.parent.parent && json.findNodeAtLocation(node.parent.parent.parent, ['import'])
+            let slotProperties: SchemaObject['properties'] = isComponentChildren ? {
+                "slot": {
+                    type: "string",
+                    description: "要插入的组件插槽。不设置 `slot` 则插入到默认插槽",
+                    errorMessage: "`slot` 只能在 `import` 的 `children` 中使用"
+                }
+            } : {}
+            if (isImport) {
+                return {
+                    type: "object",
+                    properties: {
+                        ...importSchemaProperties,
+                        ...slotProperties,
+                    },
+                    description: "引用组件"
+                }
+            }
+
             let type = typeNode ? json.getNodeValue(typeNode) : json.findNodeAtLocation(node, ['children']) ? 'stack' : '';
+
+            if (type === 'slot' && !isComponentChildren) {
+                return {
+                    type: "object",
+                    properties: {
+                        "type": {
+                            oneOf: [
+                                EnumSchema(NodeSchema.getTypes()),
+                                SimpleSchema('string')
+                            ],
+                            description: "元素类型\n\n[查看文档](https://vizzle.github.io/MIST/basics/Property.html#type)"
+                        },
+                        "name": {
+                            type: "string",
+                            description: "插槽名称。不写 `name` 则为默认插槽"
+                        },
+                        "children": { ...childrenSchema, description: "插槽的默认值。未传入该插槽时，使用此默认值" },
+                    }
+                }
+            }
+
             let schema = NodeSchema.nodeSchemaCache[type];
             let isCustomType = !(type in NodeSchema.getTypes());
             let config = NodeSchema.getConfig();
@@ -302,6 +344,7 @@ export class NodeSchema implements ISchema {
                             description: "元素类型\n\n[查看文档](https://vizzle.github.io/MIST/basics/Property.html#type)"
                         },
                         ...(typeNode ? {} : { "children": childrenSchema }),
+                        "import": importSchemaProperties['import'],
                     },
                     description: "布局元素"
                 };
@@ -317,6 +360,12 @@ ${schema.description}`;
                 });
                 NodeSchema.nodeSchemaCache[type] = s;
                 schema = s;
+            }
+            if (isComponentChildren) {
+                schema = {
+                    ...schema,
+                    properties: { ...schema.properties, ...slotProperties },
+                }
             }
             return schema;
         }
@@ -404,7 +453,7 @@ function EventSchema(description?: string): Schema {
     };
 }
 
-const childrenSchema: Schema = {
+const childrenSchema: SchemaObject = {
     type: "array",
     items: {
         type: "object",
@@ -417,6 +466,20 @@ const childrenSchema: Schema = {
 ]`,
     description: "容器的子元素"
 };
+
+const importSchemaProperties: SchemaObject['properties'] = {
+    "import": {
+        type: "string",
+        description: "引用组件。通过组件路径引用，可省略 `.mist` 后缀"
+    },
+    "params": {
+        type: "object",
+        patternProperties: {
+            "^[a-zA-Z_][a-zA-Z0-9_]*$": true
+        }
+    },
+    "children": childrenSchema
+}
 
 const propertiesMap: { [type: string]: PropertyMap} = {
     common: {
@@ -1153,6 +1216,30 @@ export const templateSchema: Schema = parseSchema({
         "layout": {
             "$ref": "#/definitions/node",
             "description": "模版的布局描述，类型为元素\n\n[查看文档](https://vizzle.github.io/MIST/basics/Property.html#layout)"
+        },
+        "params": {
+            "description": "组件的入参列表。key 为参数名称，value 为参数的描述信息",
+            "type": "object",
+            "patternProperties": {
+                "^[a-zA-Z_][a-zA-Z0-9_]*$": {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": ["string", "number", "boolean", "array", "object"],
+                            "description": "参数类型"
+                        },
+                        "description": {
+                            "type": "string",
+                            "description": "参数描述"
+                        },
+                        "default": {
+                            "description": "参数的默认值，使用组件时没有传入该参数时，会使用该默认值"
+                        }
+                    },
+                    "description": "组件入参"
+                }
+            }
         },
         "controller": {
             "type": "string",

@@ -80,5 +80,11 @@ export default class Snippets {
   "height": \${3:15}
 }`,
 
+"import":
+`"import": "\${1:component path}"$2`,
+
+"slot":
+`"type": "slot"$1`,
+
     };
 }
