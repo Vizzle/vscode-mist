@@ -109,6 +109,11 @@
                 "command": "mist.validateWorkspace",
                 "title": "Validate All Mist Files",
                 "category": "Mist"
+            },
+            {
+                "command": "mist.compiledPreview",
+                "title": "预览 Mist 组件化编译结果",
+                "category": "Mist"
             }
         ],
         "menus": {
@@ -132,6 +137,12 @@
                     "when": "editorLangId == mist",
                     "command": "mist.showPreviewToSide",
                     "group": "navigation@4"
+                }
+            ],
+            "editor/context": [
+                {
+                    "when": "editorLangId == mist && resourceScheme != mist-compile",
+                    "command": "mist.compiledPreview"
                 }
             ]
         },

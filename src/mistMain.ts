@@ -16,6 +16,7 @@ import { commands, ExtensionContext, TextEditor, TextEditorEdit } from 'vscode';
 import { MistSignatureHelpProvider } from './signatureHelpProvider';
 import { StatusBarManager } from './statusBarManager';
 import { registerMistServer, stopServerFunc } from './mistServer';
+import { registerCompiledPreview } from './compiledPreview';
 
 export function activate(context: ExtensionContext) {
     setupMistDocument(context);
@@ -30,6 +31,7 @@ export function activate(context: ExtensionContext) {
     registerValidateWorkspace(context);
     registerFormatter(context);
     registerColorDecorations(context);
+    registerCompiledPreview(context);
 }
 
 function setupStatusBarManager(context: ExtensionContext) {
