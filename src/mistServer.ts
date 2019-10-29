@@ -26,6 +26,7 @@ export function registerMistServer(context: ExtensionContext) {
 
 function registerServer(context: ExtensionContext) {
   let server: http.Server;
+  let clientAddress: string
   let output: vscode.OutputChannel;
   setCommandContext(CommandContext.IsDebugging, false);
   context.subscriptions.push(commands.registerCommand('mist.startServer', uri => {
@@ -40,6 +41,7 @@ function registerServer(context: ExtensionContext) {
 
     let serverPort = 10001;
     server = http.createServer(async (req, res) => {
+      clientAddress = req.connection.remoteAddress
       output.appendLine(`> ${req.method}\t${req.url}`);
 
       const file = path.join(workingDir, req.url)
@@ -96,7 +98,7 @@ function registerServer(context: ExtensionContext) {
     }
     let clientPort = 10002;
     let options = {
-      hostname: '0.0.0.0',
+      hostname: clientAddress || '0.0.0.0',
       port: clientPort,
       method: 'GET',
       path: '/refresh'
