@@ -1234,6 +1234,7 @@ export const templateSchema: Schema = parseSchema({
                             "description": "参数描述"
                         },
                         "default": {
+                            "additionalProperties": true,
                             "description": "参数的默认值，使用组件时没有传入该参数时，会使用该默认值"
                         }
                     },
