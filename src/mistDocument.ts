@@ -253,6 +253,9 @@ export class MistData {
                     if ((dataNode = valueForKey('data')) && (key = templateKeys.find(k => !!valueForKey(k)))) {
                         let data = new MistData();
                         let templateId: string = valueForKey(key).value;
+                        if (typeof templateId !== 'string') {
+                            return
+                        }
                         templateId = templateId.replace(/^\w+@/, '');
                         data.template = templateId;
                         data.file = file;
