@@ -17,6 +17,7 @@ import { MistSignatureHelpProvider } from './signatureHelpProvider';
 import { StatusBarManager } from './statusBarManager';
 import { registerMistServer, stopServerFunc } from './mistServer';
 import { registerCompiledPreview } from './compiledPreview';
+import { registerMistTemplate } from './compileUpload';
 
 export function activate(context: ExtensionContext) {
     setupMistDocument(context);
@@ -32,6 +33,7 @@ export function activate(context: ExtensionContext) {
     registerFormatter(context);
     registerColorDecorations(context);
     registerCompiledPreview(context);
+    registerMistTemplate(context);
 }
 
 function setupStatusBarManager(context: ExtensionContext) {

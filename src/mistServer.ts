@@ -52,9 +52,20 @@ function registerServer(context: ExtensionContext) {
 
         let content: string
         if (path.extname(file) === '.mist') {
-          content = await compile(file)
-        }
-        else {
+          content = await compile(file, { platform: 'ios', debug: true })
+        } else if (path.extname(file) === '.png') {
+          fs.readFile(file, 'binary', function (err, file) {
+            if (err) {
+              console.log(err);
+              return;
+            } else {
+              res.writeHead(200, { 'Content-Type': 'image/png' });
+              res.write(file, 'binary');
+              res.end();
+            }
+          });
+          return 
+        } else {
           content = fs.readFileSync(file, 'utf-8')
         }
 
@@ -170,7 +181,7 @@ function registerPushService(context: ExtensionContext) {
         console.log("bizCode:" + cfg.bizCode);
         let templateContent;
         try {
-          const content = await compile(file)
+          const content = await compile(file, { platform: 'android' })
           console.log("templateContent : " + content);
           templateContent = encodeURIComponent(content);
         }
