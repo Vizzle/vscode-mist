@@ -8,7 +8,7 @@ export function registerMistTemplate(context: ExtensionContext) {
 
 function registerMistUpload(context: ExtensionContext) {
     let workingDir = workspace.rootPath;
-    const file = path.join(workingDir, 'Scripts/.template_config.json')
+    const file = path.join(workingDir, 'config.json')
     if (!fs.existsSync(file)) {
         commands.executeCommand('setContext', 'mist:hasConfig', false);
         return;
@@ -45,7 +45,7 @@ function registerMistUpload(context: ExtensionContext) {
 
 function execTemplate(tpls) {
     let workingDir = workspace.rootPath;
-    const file = path.join(workingDir, 'Scripts/.template_config.json')
+    const file = path.join(workingDir, 'config.json')
     if (!fs.existsSync(file)) {
         return;
     }
@@ -80,7 +80,7 @@ function execTemplate(tpls) {
             // 显示在第二个编辑器
             viewColumn: ViewColumn.Two
         }
-        window.showTextDocument(Uri.file('Scripts/.template_config.json'), options)
+        window.showTextDocument(Uri.file('config.json'), options)
         return;
     }
     

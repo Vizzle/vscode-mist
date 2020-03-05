@@ -152,6 +152,7 @@
       ],
       "explorer/context": [
         {
+          "when": "mist:hasConfig",
           "command": "mist.compileUpload",
           "group": "z_commands"
         }
@@ -169,6 +170,10 @@
       "title": "Mist",
       "properties": {
         "mist.isDebugging": {
+          "type": "boolean",
+          "default": false
+        },
+        "mist.hasConfig": {
           "type": "boolean",
           "default": false
         }
