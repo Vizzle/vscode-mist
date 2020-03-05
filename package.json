@@ -1,204 +1,203 @@
 {
-    "name": "mist",
-    "displayName": "Mist",
-    "description": "Language support for Mist",
-    "version": "0.3.7",
-    "publisher": "Sleen",
-    "engines": {
-        "vscode": "^1.33.0"
-    },
-    "categories": [
-        "Programming Languages"
+  "name": "mist",
+  "displayName": "Mist",
+  "description": "Language support for Mist",
+  "version": "0.3.7",
+  "publisher": "Sleen",
+  "engines": {
+    "vscode": "^1.33.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:mist",
+    "onCommand:extension.convertAll"
+  ],
+  "repository": {
+    "url": "https://github.com/Vizzle/vscode-mist"
+  },
+  "main": "./out/src/mistMain",
+  "icon": "media/mist.png",
+  "contributes": {
+    "jsonValidation": [
+      {
+        "fileMatch": "mist-extension.json",
+        "url": "./schema/mist_config_schema.json"
+      }
     ],
-    "activationEvents": [
-        "onLanguage:mist",
-        "onCommand:extension.convertAll"
-    ],
-    "repository": {
-        "url": "https://github.com/Vizzle/vscode-mist"
+    "configurationDefaults": {
+      "[mist]": {
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true,
+        "editor.formatOnPaste": true,
+        "editor.formatOnType": true
+      }
     },
-    "main": "./out/src/mistMain",
-    "icon": "media/mist.png",
-    "contributes": {
-        "jsonValidation": [
-            {
-                "fileMatch": "mist-extension.json",
-                "url": "./schema/mist_config_schema.json"
-            }
+    "languages": [
+      {
+        "id": "mist",
+        "aliases": [
+          "MIST",
+          "mist"
         ],
-        "configurationDefaults": {
-            "[mist]": {
-                "editor.tabSize": 2,
-                "editor.insertSpaces": true,
-                "editor.formatOnPaste": true,
-                "editor.formatOnType": true
-            }
-        },
-        "languages": [
-            {
-                "id": "mist",
-                "aliases": [
-                    "MIST",
-                    "mist"
-                ],
-                "extensions": [
-                    ".mist"
-                ],
-                "configuration": "./language-configuration.json"
-            }
+        "extensions": [
+          ".mist"
         ],
-        "grammars": [
-            {
-                "language": "mist",
-                "scopeName": "source.mist",
-                "path": "./syntaxes/mist.tmLanguage.json"
-            },
-            {
-                "scopeName": "source.mist-exp",
-                "path": "./syntaxes/mist-exp.tmLanguage.json"
-            }
-        ],
-        "commands": [
-            {
-                "command": "mist.convertToNew",
-                "title": "Convert Template To New Format",
-                "category": "Mist"
-            },
-            {
-                "command": "mist.convertAll",
-                "title": "Convert All Templates To New Format",
-                "category": "Mist"
-            },
-            {
-                "command": "mist.startServer",
-                "title": "Start Mist Debug Server",
-                "category": "Mist",
-                "icon": {
-                    "light": "./media/light/start.svg",
-                    "dark": "./media/dark/start.svg"
-                }
-            },
-            {
-                "command": "mist.stopServer",
-                "title": "Stop Mist Debug Server",
-                "category": "Mist",
-                "icon": {
-                    "light": "./media/light/stop.svg",
-                    "dark": "./media/dark/stop.svg"
-                }
-            },
-            {
-                "command": "mist.debugAndroid",
-                "title": "Send To Android Phone",
-                "category": "Mist",
-                "icon": {
-                    "light": "./media/light/android.svg",
-                    "dark": "./media/dark/android.svg"
-                }
-            },
-            {
-                "command": "mist.showPreviewToSide",
-                "title": "Open Preview to the Side",
-                "category": "Mist",
-                "icon": {
-                    "light": "./media/light/preview.svg",
-                    "dark": "./media/dark/preview.svg"
-                }
-            },
-            {
-                "command": "mist.validateWorkspace",
-                "title": "Validate All Mist Files",
-                "category": "Mist"
-            },
-            {
-                "command": "mist.compileUpload",
-                "title": "一键生成资源包",
-                "category": "Mist"
-            },
-            {
-                "command": "mist.compiledPreview",
-                "title": "预览 Mist 组件化编译结果",
-                "category": "Mist"
-            }
-        ],
-        "menus": {
-            "editor/title": [
-                {
-                    "when": "editorLangId == mist && !mist:isDebugging",
-                    "command": "mist.startServer",
-                    "group": "navigation@1"
-                },
-                {
-                    "when": "editorLangId == mist && mist:isDebugging",
-                    "command": "mist.stopServer",
-                    "group": "navigation@1"
-                },
-                {
-                    "when": "editorLangId == mist",
-                    "command": "mist.debugAndroid",
-                    "group": "navigation@2"
-                },
-                {
-                    "when": "editorLangId == mist",
-                    "command": "mist.showPreviewToSide",
-                    "group": "navigation@4"
-                }
-            ],
-            "editor/context": [
-                {
-                    "when": "editorLangId == mist && resourceScheme != mist-compile",
-                    "command": "mist.compiledPreview"
-                }
-            ],
-            "explorer/context": [
-                {
-                    "command": "mist.compileUpload",
-                    "group": "z_commands"
-                }
-            ]
-        },
-        "views": {
-            "explorer": [
-                {
-                    "id": "mistNodeTree",
-                    "name": "Mist Outline"
-                }
-            ]
-        },
-        "configuration": {
-            "title": "Mist",
-            "properties": {
-                "mist.isDebugging": {
-                    "type": "boolean",
-                    "default": false
-                }
-            }
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "mist",
+        "scopeName": "source.mist",
+        "path": "./syntaxes/mist.tmLanguage.json"
+      },
+      {
+        "scopeName": "source.mist-exp",
+        "path": "./syntaxes/mist-exp.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "mist.convertToNew",
+        "title": "Convert Template To New Format",
+        "category": "Mist"
+      },
+      {
+        "command": "mist.convertAll",
+        "title": "Convert All Templates To New Format",
+        "category": "Mist"
+      },
+      {
+        "command": "mist.startServer",
+        "title": "Start Mist Debug Server",
+        "category": "Mist",
+        "icon": {
+          "light": "./media/light/start.svg",
+          "dark": "./media/dark/start.svg"
         }
+      },
+      {
+        "command": "mist.stopServer",
+        "title": "Stop Mist Debug Server",
+        "category": "Mist",
+        "icon": {
+          "light": "./media/light/stop.svg",
+          "dark": "./media/dark/stop.svg"
+        }
+      },
+      {
+        "command": "mist.debugAndroid",
+        "title": "Send To Android Phone",
+        "category": "Mist",
+        "icon": {
+          "light": "./media/light/android.svg",
+          "dark": "./media/dark/android.svg"
+        }
+      },
+      {
+        "command": "mist.showPreviewToSide",
+        "title": "Open Preview to the Side",
+        "category": "Mist",
+        "icon": {
+          "light": "./media/light/preview.svg",
+          "dark": "./media/dark/preview.svg"
+        }
+      },
+      {
+        "command": "mist.validateWorkspace",
+        "title": "Validate All Mist Files",
+        "category": "Mist"
+      },
+      {
+        "command": "mist.compileUpload",
+        "title": "一键生成资源包",
+        "category": "Mist"
+      },
+      {
+        "command": "mist.compiledPreview",
+        "title": "预览 Mist 组件化编译结果",
+        "category": "Mist"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "when": "editorLangId == mist && !mist:isDebugging",
+          "command": "mist.startServer",
+          "group": "navigation@1"
+        },
+        {
+          "when": "editorLangId == mist && mist:isDebugging",
+          "command": "mist.stopServer",
+          "group": "navigation@1"
+        },
+        {
+          "when": "editorLangId == mist",
+          "command": "mist.debugAndroid",
+          "group": "navigation@2"
+        },
+        {
+          "when": "editorLangId == mist",
+          "command": "mist.showPreviewToSide",
+          "group": "navigation@4"
+        }
+      ],
+      "editor/context": [
+        {
+          "when": "editorLangId == mist && resourceScheme != mist-compile",
+          "command": "mist.compiledPreview"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "mist.compileUpload",
+          "group": "z_commands"
+        }
+      ]
     },
-    "scripts": {
-        "vscode:prepublish": "tsc -p ./ && cd ./src/browser && webpack",
-        "watch": "tsc -w -p ./",
-        "watch-browser": "cd ./src/browser && webpack -w",
-        "compile": "npm run watch",
-        "postinstall": "node ./node_modules/vscode/bin/install"
+    "views": {
+      "explorer": [
+        {
+          "id": "mistNodeTree",
+          "name": "Mist Outline"
+        }
+      ]
     },
-    "dependencies": {
-        "jsonc-parser": "^0.4.0",
-        "mistc": "^1.0.5",
-        "request": "^2.87.0",
-        "request-light": "^0.2.2",
-        "ws": "^1.1.1"
-    },
-    "devDependencies": {
-        "@types/mocha": "^2.2.32",
-        "@types/node": "^6.0.40",
-        "@types/request": "^2.47.0",
-        "@types/ws": "0.0.36",
-        "mocha": "^2.3.3",
-        "ts-loader": "^6.0.0",
-        "typescript": "^2.0.3",
-        "vscode": "^1.0.0",
-        "webpack": "^4.31.0",
-        "webpack-cli": "^3.3.2"
+    "configuration": {
+      "title": "Mist",
+      "properties": {
+        "mist.isDebugging": {
+          "type": "boolean",
+          "default": false
+        }
+      }
     }
+  },
+  "scripts": {
+    "vscode:prepublish": "tsc -p ./ && cd ./src/browser && webpack",
+    "watch": "tsc -w -p ./",
+    "watch-browser": "cd ./src/browser && webpack -w",
+    "compile": "npm run watch",
+    "postinstall": "node ./node_modules/vscode/bin/install"
+  },
+  "dependencies": {
+    "jsonc-parser": "^0.4.0",
+    "mistc": "^1.0.5",
+    "request": "^2.88.2",
+    "request-light": "^0.2.2",
+    "ws": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/mocha": "^2.2.32",
+    "@types/node": "^6.0.40",
+    "@types/ws": "0.0.36",
+    "mocha": "^2.3.3",
+    "ts-loader": "^6.0.0",
+    "typescript": "^2.0.3",
+    "vscode": "^1.0.0",
+    "webpack": "^4.31.0",
+    "webpack-cli": "^3.3.2"
+  }
 }
