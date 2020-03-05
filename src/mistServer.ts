@@ -149,98 +149,125 @@ function readFiles(path: string) {
   })
 }
 
+async function openEditor(path: string) {
+  const exists = fs.existsSync(path)
+  let doc = await vscode.workspace.openTextDocument(vscode.Uri.parse(`${exists ? 'file://' : 'untitled:'}${path}`))
+  vscode.window.showTextDocument(doc)
+}
+
+async function insertInEditor(path: string, name: string) {
+  const exists = fs.existsSync(path)
+  let doc = await vscode.workspace.openTextDocument(vscode.Uri.parse(`${exists ? 'file://' : 'untitled:'}${path}`))
+  let editor = await vscode.window.showTextDocument(doc)
+  let value = exists ? `"${name}": "$0",` : `{"${name}": "$0"}`
+  editor.insertSnippet(new vscode.SnippetString(value), new vscode.Position(0, 1))
+}
+
 function registerPushService(context: ExtensionContext) {
   context.subscriptions.push(
     commands.registerCommand('mist.debugAndroid', (args) => {
       // push current file to Android
-      require('child_process').exec('adb shell ip route', function(error, stdout, stderr) {
+      require('child_process').exec('adb shell ip route', async function(error, stdout, stderr) {
+        let deviceIp
         let ptr = stdout.indexOf('scope link  src ')
-        if (ptr <= 0) {
-          ptr = stdout.indexOf('scope link src ')
-          if (ptr <= 0) {
-            console.log('failed read ip from adb!')
-            vscode.window.showErrorMessage('从adb获取手机IP失败，请使用USB连接手机。')
-            return
-          }
-
-          ptr = ptr + 'scope link src '.length
-        } else {
+        if (ptr > 0) {
           ptr = ptr + 'scope link  src '.length
+          deviceIp = stdout.substr(ptr).trim()
         }
 
-        var ip = stdout.substr(ptr).trim()
-        console.log('device [' + ip + ']')
-        var fileUri = vscode.window.activeTextEditor.document.uri
-        var file = fileUri.toString().substring(7)
-        var filePath = path.parse(file)
-        var templateName = filePath.name
-        var templateConfigPath = path.parse(filePath.dir).dir + '/.template_config.json'
-        fs.exists(templateConfigPath, async function(exists) {
-          if (!exists) {
-            vscode.window.showErrorMessage('配置文件不存在。请填写业务前缀并保存（如：KOUBEI）。')
-            let doc = await vscode.workspace.openTextDocument(vscode.Uri.parse(`untitled:${templateConfigPath}`))
-            let editor = await vscode.window.showTextDocument(doc)
-            editor.insertSnippet(new vscode.SnippetString(`{"bizCode": "$0"}`))
-            return
-          }
-          console.log('mist file: ' + file)
-          console.log('template_config file: ' + templateConfigPath)
-          var cfg_content = fs.readFileSync(templateConfigPath, 'UTF-8')
-          var cfg = JSON.parse(cfg_content)
-          console.log('bizCode:' + cfg.bizCode)
-          let templateContent
-          try {
-            templateContent = await compile(file, { minify: true, platform: 'android', debug: true })
-          } catch (e) {
-            vscode.window.showErrorMessage('模板编译错误：' + e.message)
-            return
-          }
+        let fileUri = vscode.window.activeTextEditor.document.uri
+        let mistFile = fileUri.toString().substring(7)
+        let mistPath = path.parse(mistFile)
+        let configFile = mistPath.dir + '/config.json'
 
-          const imagesDir = path.parse(file).dir + '/Images'
-          let images = await readFiles(imagesDir)
+        if (!fs.existsSync(configFile)) {
+          vscode.window.showErrorMessage('请配置业务前缀bizCode并保存。')
+          insertInEditor(configFile, 'bizCode')
+          return
+        }
 
-          const formData = {}
-          formData['templateName'] = cfg.bizCode + '@' + templateName
-          formData['templateHtml'] = templateContent
-          if (images && images.length > 0) {
-            for (let image of images) {
-              let imagePath = imagesDir + '/' + image
-              console.log('Upload file: ' + imagePath)
-              formData[image] = {
-                value: fs.createReadStream(imagePath),
-                options: {
-                  filename: image
-                }
+        let config
+        try {
+          config = JSON.parse(fs.readFileSync(configFile, 'utf-8'))
+        } catch (e) {
+          openEditor(configFile)
+          vscode.window.showErrorMessage('请确保config.json文件内容格式为JSON。')
+          return
+        }
+
+        let bizCode = config.bizCode
+        if (!bizCode) {
+          vscode.window.showErrorMessage('请配置业务前缀bizCode并保存。')
+          insertInEditor(configFile, 'bizCode')
+          return
+        }
+
+        if (!deviceIp) {
+          deviceIp = config.deviceIp
+        }
+        if (!deviceIp) {
+          vscode.window.showErrorMessage('请配置设备IP地址或者连接ADB。')
+          insertInEditor(configFile, 'deviceIp')
+          return
+        }
+
+        console.log('mist file: ' + mistFile)
+        console.log('deviceIp: ' + deviceIp)
+        console.log('bizCode:' + bizCode)
+
+        let templateContent
+        try {
+          templateContent = await compile(mistFile, { minify: true, platform: 'android', debug: true })
+        } catch (e) {
+          vscode.window.showErrorMessage('模板编译错误：' + e.message)
+          return
+        }
+
+        const imagesDir = mistPath.dir + '/Images'
+        let images = await readFiles(imagesDir)
+
+        const formData = {}
+        formData['templateName'] = config.bizCode + '@' + mistPath.name
+        formData['templateHtml'] = templateContent
+        if (images && images.length > 0) {
+          for (let image of images) {
+            let imagePath = imagesDir + '/' + image
+            console.log('Upload file: ' + imagePath)
+            formData[image] = {
+              value: fs.createReadStream(imagePath),
+              options: {
+                filename: image
               }
             }
           }
+        }
 
-          request.post(
-            {
-              url: `http://${ip}:9012/update`,
-              headers: {
-                'Content-Type': 'multipart/form-data'
-              },
-              formData: formData
+        const devicePort = config.devicePort
+        request.post(
+          {
+            url: `http://${deviceIp}:${devicePort ? parseInt(devicePort) : 9012}/update`,
+            headers: {
+              'Content-Type': 'multipart/form-data'
             },
-            (err, res, data) => {
-              console.log('Error: ' + err)
-              console.log('Data: ' + data)
-              if (err) {
-                vscode.window.showErrorMessage('请求手机失败：' + err)
-              } else if (data) {
-                data = JSON.parse(data)
-                if (data.success == true) {
-                  vscode.window.showInformationMessage('模板已传输到手机.')
-                } else if (data.message) {
-                  vscode.window.showErrorMessage('传输模板到手机失败：' + data.message)
-                }
-              } else {
-                vscode.window.showErrorMessage('传输模板到手机失败: 未知错误!')
+            formData: formData
+          },
+          (err, res, data) => {
+            console.log('Error: ' + err)
+            console.log('Data: ' + data)
+            if (err) {
+              vscode.window.showErrorMessage('请求手机失败：' + err)
+            } else if (data) {
+              data = JSON.parse(data)
+              if (data.success == true) {
+                vscode.window.showInformationMessage('模板已传输到手机.')
+              } else if (data.message) {
+                vscode.window.showErrorMessage('传输模板到手机失败：' + data.message)
               }
+            } else {
+              vscode.window.showErrorMessage('传输模板到手机失败: 未知错误!')
             }
-          )
-        })
+          }
+        )
       })
     })
   )
