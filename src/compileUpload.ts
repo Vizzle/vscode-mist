@@ -54,17 +54,7 @@ function execTemplate(tpls) {
         return;
     }
     let jsonResult = JSON.parse(content);
-    let {templates: tplsArr, platform, needPreset = false, needCompress = false, clientVersion = "10.1.85", iosPath = "", androidPath = ""} = jsonResult;
-    if (!platform || (platform !== 'android' && platform !== 'ios' && platform !== 'all')) {
-        window.showErrorMessage("platform配置出错");
-        return;
-    }
-    if (iosPath.length == 0) {
-        iosPath = "none"
-    }
-    if (androidPath.length == 0) {
-        androidPath = "none"
-    }
+    let {templates: tplsArr} = jsonResult;
     let templates;
     if (tpls) {
         templates = tpls;
@@ -86,7 +76,7 @@ function execTemplate(tpls) {
     
     let mTml = window.createTerminal("");
     mTml.show(false);
-    mTml.sendText(`./Scripts/ziptemplate.sh ${templates} ${platform} ${needPreset} ${needCompress} ${clientVersion} ${iosPath} ${androidPath}`);
+    mTml.sendText(`./Scripts/ziptemplate.sh ${templates}`);
     // const git = simplegit(workspace.rootPath);
     // git.status().then((status) => {
     //     console.log(status);
