@@ -54,7 +54,14 @@ SchemaFormat.registerFormat('color', {
 
 SchemaFormat.registerFormat('event', {
     validateJsonNode(node: json.Node, offset: number, matchingSchemas: Schema[]): ValidationResult[] {
-        return validateJsonNode(node, NodeSchema.getEventSchema(), offset, matchingSchemas);
+        let eventSchema = NodeSchema.getEventSchema()
+        eventSchema = {
+            oneOf: [
+                eventSchema, 
+                { type: 'array', items: eventSchema }
+            ]
+        }
+        return validateJsonNode(node, eventSchema, offset, matchingSchemas);
     }
 });
 
