@@ -210,10 +210,11 @@ export class NodeSchema implements ISchema {
     }
     public static getEventSchema(): Schema {
         let config = this.getConfig();
-        return {
+        const actionScheme = {
             type: "object",
             additionalProperties: true,
             properties: {
+                type: false,
                 "openUrl:": SimpleSchema("string", "打开指定的 URL"),
                 "updateState:": SimpleSchema("object", "更新状态。值应该为一个字典，将状态中对应的值更新。注意不是替换整个状态，只是更改对应的 key"),
                 "alert:": {
@@ -267,6 +268,58 @@ export class NodeSchema implements ISchema {
                 ...config.actions || {},
             }
         };
+        
+        const typeSchema: Schema = {
+            type: 'object',
+            required: ['type'],
+            additionalProperties: false,
+            properties: {
+                type: {
+                    description: 'Action 类型',
+                    oneOf: [
+                        EnumSchema({
+                            invoke: `\
+将 params 参数作为一个 action 执行。**利用这个可以实现给一个 action 添加 if 条件判断。**
+
+注意参数会被一次计算，所以内部不能有需要延迟计算的参数，例如 success 回调等。`,
+                            execute: '一个空的 Action，用于执行 params 的表达式。'
+                        }),
+                        SimpleSchema('string')
+                    ]
+                },
+                params: {
+                    type: 'object',
+                    additionalProperties: true,
+                    description: 'Action 参数',
+                },
+                success: {
+                    type: 'object',
+                    format: 'event',
+                    description: 'Action 执行成功回调事件'
+                },
+                error: {
+                    type: 'object',
+                    format: 'event',
+                    description: 'Action 执行失败回调事件'
+                },
+                finish: {
+                    type: 'object',
+                    format: 'event',
+                    description: 'Action 执行完成回调事件（无论成功还是失败都会触发）'
+                },
+                if: {
+                    type: 'boolean',
+                    description: 'Action 启用条件'
+                },
+                result: {
+                    type: 'string',
+                    pattern: VARIABLE_REGEX,
+                    description: '回调中执行结果的变量名，默认为 `_result_`',
+                }
+            }
+        }
+
+        return { oneOf: [typeSchema, actionScheme] }
     }
     public static getTypes(): { [name: string]: string } {
         let config = NodeSchema.getConfig();
@@ -384,10 +437,12 @@ ${schema.description}`;
 }
 SchemaFormat.registerFormat('node', new NodeSchema());
 
+const VARIABLE_REGEX = "^[a-zA-Z_$][a-zA-Z0-9_$]*$"
+
 const VariablesTableSchema: Schema = {
     type: "object",
     patternProperties: {
-        "^[a-zA-Z_][a-zA-Z0-9_]*$": {
+        [VARIABLE_REGEX]: {
             additionalProperties: true
         }
     }
@@ -482,7 +537,7 @@ const importSchemaProperties: SchemaObject['properties'] = {
     "params": {
         type: "object",
         patternProperties: {
-            "^[a-zA-Z_][a-zA-Z0-9_]*$": true
+            [VARIABLE_REGEX]: true
         }
     },
     "children": childrenSchema
@@ -1228,7 +1283,7 @@ export const templateSchema: Schema = parseSchema({
             "description": "组件的入参列表。key 为参数名称，value 为参数的描述信息",
             "type": "object",
             "patternProperties": {
-                "^[a-zA-Z_][a-zA-Z0-9_]*$": {
+                [VARIABLE_REGEX]: {
                     "type": "object",
                     "properties": {
                         "type": {
@@ -1264,7 +1319,7 @@ export const templateSchema: Schema = parseSchema({
         "styles": {
             "type": "object",
             "patternProperties": {
-                "^[a-zA-Z_][-a-zA-Z0-9_]*$": {
+                [VARIABLE_REGEX]: {
                     additionalProperties: true
                 }
             },

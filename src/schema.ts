@@ -258,6 +258,11 @@ function _validateJsonNode(node: json.Node, schema: Schema, offset: number, matc
                     errors.push(new ValidationResult('不符合 schema', node));
                 }
             }
+            const noErrorSchemas = errorsList.filter(l => l[1].length === 0).reduce((p, c) => [...p, ...c[2]], []);
+            if (noErrorSchemas.length === 1) {
+                matchingSchemas.splice(0, matchingSchemas.length, noErrorSchemas[0]);
+                break;
+            }
             let schemas = errorsList.filter(l => l[0] === undefined || l[0] === valueType).reduce((p, c) => [...p, ...c[2]], []);
             if (schemas.length > 0) {
                 matchingSchemas.splice(0, matchingSchemas.length, ...schemas);
@@ -280,7 +285,7 @@ function _validateJsonNode(node: json.Node, schema: Schema, offset: number, matc
             let properties = schema.properties || {};
             node.children.forEach(p => {
                 let [keyNode, valueNode] = p.children;
-                let k = p.children[0].value;
+                let k = keyNode.value;
                 if (k in properties) {
                     let s = properties[k];
                     if (s && typeof(s) === 'object' && s.deprecatedMessage) {
