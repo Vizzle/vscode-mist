@@ -3,7 +3,8 @@ import * as flex from '../../lib/FlexLayout';
 declare const $: any;
 
 var config = {
-    scale: 1
+    scale: 1,
+    screenWidth: 375,
 };
 
 function length(obj): flex.Length {
@@ -30,6 +31,7 @@ function length(obj): flex.Length {
         else {
             switch (suffix) {
                 case 'px': value /= config.scale; break;
+                case 'rpx': value *= config.screenWidth / 750; break;
                 case 'cm': value *= 96 / 2.54;  break;
                 case 'mm': value *= 96 / 2.54 / 10;  break;
                 case 'q': value *= 96 / 2.54 / 40;  break;
@@ -772,6 +774,7 @@ function layout(layout, width: number, height: number) {
 export function render(_layout, clientWidth: number, scale: number, images: string[], cancellationToken: { isCancelled(): boolean }) {
     if (!_layout) return Promise.reject('empty layout');
     config.scale = scale;
+    config.screenWidth = clientWidth;
     return Promise.all(loadImages(images)).then(function() {
         layout(_layout, clientWidth, NaN);
         if (cancellationToken.isCancelled()) return;

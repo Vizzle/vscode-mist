@@ -494,7 +494,7 @@ function PointSchema(description?: string): Schema {
     }
 }
 
-const units = ['px', 'cm', 'mm', 'q', 'in', 'pc', 'pt'];
+const units = ['px', 'rpx', 'cm', 'mm', 'q', 'in', 'pc', 'pt'];
 function LengthSchema(percentage: boolean, enums: string[], description?: string): Schema {
     return {
         oneOf: [
