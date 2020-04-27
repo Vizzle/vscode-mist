@@ -215,9 +215,9 @@ export class NodeSchema implements ISchema {
             additionalProperties: true,
             properties: {
                 type: false,
-                "openUrl:": SimpleSchema("string", "打开指定的 URL"),
-                "updateState:": SimpleSchema("object", "更新状态。值应该为一个字典，将状态中对应的值更新。注意不是替换整个状态，只是更改对应的 key"),
-                "alert:": {
+                "openUrl": SimpleSchema("string", "打开指定的 URL"),
+                "updateState": SimpleSchema("object", "更新状态。值应该为一个字典，将状态中对应的值更新。注意不是替换整个状态，只是更改对应的 key"),
+                "alert": {
                     oneOf: [
                         SimpleSchema("string", "Alert 内容"),
                         {
@@ -233,7 +233,7 @@ export class NodeSchema implements ISchema {
                     snippet: '"$0"',
                     description: "显示 Alert，主要用于调试"
                 },
-                "runAction:": {
+                "runAction": {
                     oneOf: [
                         {
                             type: "string"
@@ -249,7 +249,7 @@ export class NodeSchema implements ISchema {
                     ],
                     description: "触发自定义 Action"
                 },
-                "postNotification:": {
+                "postNotification": {
                     oneOf: [
                         {
                             type: "string"
