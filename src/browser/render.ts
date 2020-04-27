@@ -214,7 +214,7 @@ function setTextStyle(el: HTMLElement, style) {
     el.textContent = text;
     if ("html-text" in style) el.innerHTML = fixHtml(style["html-text"]);
 
-    el.style.fontSize = (style['font-size'] || 14) * config.scale + 'px';
+    el.style.fontSize = convertLength(style['font-size'] || 14);
     if ("color" in style) el.style.color = convertColor(style.color);
     if ("font-name" in style) el.style.fontFamily = style["font-name"];
     if ("alignment" in style) el.style.textAlign = style["alignment"];
@@ -394,7 +394,7 @@ function setButtonStyle(el: HTMLElement, style) {
         text.textContent = unwrap(style["title"]) || "";
         text.style.textAlign = "center";
         if ("title-color" in style) text.style.color = convertColor(unwrap(style["title-color"]));
-        text.style.fontSize = (style['font-size'] || 14) * config.scale + 'px';
+        text.style.fontSize = convertLength(style['font-size'] || 14);
         if ("font-name" in style) text.style.fontFamily = style["font-name"];
         el.appendChild(text);
     }
