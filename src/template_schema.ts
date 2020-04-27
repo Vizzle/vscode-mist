@@ -662,7 +662,7 @@ const viewProperties = {
 const textCommon: PropertyMap = {
     "text": SimpleSchema("string", "显示的文字"),
     "color": ColorSchema("文字颜色。默认为黑色"),
-    "font-size": { type: "number", min: 0, description: "字体大小。" },
+    "font-size": LengthSchema(true, [], "字体大小。"),
     "font-name": SimpleSchema("string", "字体名。默认为系统字体"),
     "font-style": EnumSchema(["ultra-light", "thin", "light", "normal", "medium", "bold", "heavy", "black", "italic", "bold-italic"], "字体样式"),
     "alignment": EnumSchema({
@@ -898,7 +898,7 @@ const stylesMap: { [type: string]: PropertyMap} = {
         "text": SimpleSchema("string", "显示的文字\n\n[查看文档](https://vizzle.github.io/MIST/components/text.html#text)"),
         "html-text": SimpleSchema("string", "使用 HTML 表示的富文本，指定这个属性后，\`text\` 属性将被忽略\n\n[查看文档](https://vizzle.github.io/MIST/components/text.html#html-text)"),
         "color": ColorSchema("文字颜色。默认为黑色\n\n[查看文档](https://vizzle.github.io/MIST/components/text.html#color)"),
-        "font-size": LengthSchema(true, [], "字体大小。\n\n[查看文档](https://vizzle.github.io/MIST/components/text.html#font-size)"),
+        "font-size": LengthSchema(false, [], "字体大小。\n\n[查看文档](https://vizzle.github.io/MIST/components/text.html#font-size)"),
         "font-name": SimpleSchema("string", "字体名。默认为系统字体\n\n[查看文档](https://vizzle.github.io/MIST/components/text.html#font-name)"),
         "font-style": EnumSchema(["ultra-light", "thin", "light", "normal", "medium", "bold", "heavy", "black", "italic", "bold-italic"], "字体样式\n\n[查看文档](https://vizzle.github.io/MIST/components/text.html#font-style)"),
         "alignment": EnumSchema({
@@ -992,7 +992,7 @@ const stylesMap: { [type: string]: PropertyMap} = {
             ],
             snippet: '"$0"'
         },
-        "font-size": { type: "number", min: 0, description: "字体大小。\n\n[查看文档](https://vizzle.github.io/MIST/components/button.html#font-size)" },
+        "font-size": LengthSchema(false, [], "字体大小。\n\n[查看文档](https://vizzle.github.io/MIST/components/button.html#font-size)"),
         "font-name": SimpleSchema("string", "字体名。默认为系统字体\n\n[查看文档](https://vizzle.github.io/MIST/components/button.html#font-name)"),
         "font-style": EnumSchema(["ultra-light", "thin", "light", "normal", "medium", "bold", "heavy", "black", "italic", "bold-italic"], "字体样式\n\n[查看文档](https://vizzle.github.io/MIST/components/button.html#font-style)"),
         "enlarge-size": {
