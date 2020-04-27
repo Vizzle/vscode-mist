@@ -240,6 +240,8 @@ export class MistData {
             let jsonTree = parseJson(text);
             var results = [];
             let travelTree = (obj: json.Node) => {
+                if (!obj) return
+
                 if (obj.type === 'array') {
                     obj.children.forEach(travelTree);
                 }
