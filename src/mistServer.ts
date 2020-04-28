@@ -241,6 +241,15 @@ function registerPushService(context: ExtensionContext) {
             }
           }
         }
+        let mockFile = mistPath.dir + '/mockData.json'
+        if (fs.existsSync(mockFile)) {
+          formData['mockData.json'] = {
+            value: fs.createReadStream(mockFile),
+            options: {
+              filename: 'mockData.json'
+            }
+          }
+        }
 
         const devicePort = config.devicePort
         request.post(
