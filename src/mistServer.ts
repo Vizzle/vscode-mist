@@ -53,7 +53,7 @@ function registerServer(context: ExtensionContext) {
           if (path.extname(file) === '.mist') {
             content = await compile(file, { platform: 'ios', debug: true })
           } else if (path.extname(file) === '.png') {
-            fs.readFile(file, 'binary', function(err, file) {
+            fs.readFile(file, 'binary', function (err, file) {
               if (err) {
                 console.log(err)
                 return
@@ -87,7 +87,7 @@ function registerServer(context: ExtensionContext) {
         vscode.window.showErrorMessage(errMsg)
       })
 
-      server.listen(serverPort, '0.0.0.0', function() {
+      server.listen(serverPort, '0.0.0.0', function () {
         setCommandContext(CommandContext.IsDebugging, true)
         output = vscode.window.createOutputChannel('Mist Debug Server')
         output.show()
@@ -167,11 +167,11 @@ function registerPushService(context: ExtensionContext) {
   context.subscriptions.push(
     commands.registerCommand('mist.debugAndroid', (args) => {
       // push current file to Android
-      require('child_process').exec('adb shell ip route', async function(error, stdout, stderr) {
+      require('child_process').exec('adb shell ip route', async function (error, stdout, stderr) {
         let deviceIp
-        let ptr = stdout.indexOf('scope link  src ')
+        let ptr = stdout.indexOf('scope link src ')
         if (ptr > 0) {
-          ptr = ptr + 'scope link  src '.length
+          ptr = ptr + 'scope link src '.length
           deviceIp = stdout.substr(ptr).trim()
         }
 

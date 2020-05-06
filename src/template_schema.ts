@@ -252,6 +252,7 @@ export class NodeSchema implements ISchema {
                             properties: {
                                 "name": SimpleSchema("string", "Notification 名称"),
                                 "userInfo": SimpleSchema("object", "Notification 的 userInfo"),
+                                "params": SimpleSchema("object", "Notification 的 params")
                             }
                         }
                     ],
