@@ -1,0 +1,48 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema",
+    "definitions": {
+        "data": {
+            "anyOf": [
+                {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "not": {
+                        "required": [
+                            "mockData"
+                        ]
+                    }
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "mockData": {
+                            "type": "object",
+                            "additionalProperties": true,
+                            "description": "Mock 数据内容"
+                        },
+                        "template": {
+                            "type": "string",
+                            "description": "数据对应的模板名称，不包含 .mist 后缀。默认为 mock 数据文件名，即 xx.mock.json 默认对应 xx.mist 模板"
+                        },
+                        "name": {
+                            "type": "string",
+                            "description": "数据名称。同一个模板如果有多份 mock 数据，可以给不同的情况命名方便区分"
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            ]
+        }
+    },
+    "oneOf": [
+        {
+            "$ref": "#/definitions/data"
+        },
+        {
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/data"
+            }
+        }
+    ]
+}

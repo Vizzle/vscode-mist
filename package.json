@@ -24,6 +24,10 @@
       {
         "fileMatch": "mist-extension.json",
         "url": "./schema/mist_config_schema.json"
+      },
+      {
+        "fileMatch": "*.mock.json",
+        "url": "./schema/mist_mock_schema.json"
       }
     ],
     "configurationDefaults": {

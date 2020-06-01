@@ -221,18 +221,27 @@ export class JsonString {
     }
 }
 
+const MOCK_EXT = '.mock.json'
+
 export class MistData {
     static dataMap: { [dir: string]: { [file: string]: MistData[] } } = {};
     
     template: string;
     file: string;
-    data: {};
+    data: any;
     node: json.Node;
     start: number;
     end: number;
     index: number;
+    name: string
 
     static openFile(file: string) {
+        if (file.endsWith(MOCK_EXT)) {
+            this.openMockFile(file)
+            return
+        }
+
+        // 解析业务数据，递归查找包含模板 key (template/templateId/blockId)和数据 key (data)的节点
         let dir = path.dirname(file);
         if (!(dir in this.dataMap)) {
             this.dataMap[dir] = {};
@@ -280,6 +289,79 @@ export class MistData {
         }
     }
 
+    /**
+     * 解析标准 mock 数据，格式如下
+     * 
+     * interface DataObj {
+     *   mockData: any
+     *   template?: string // 如果不指定，使用文件名
+     *   name?: string
+     * }
+     * 
+     * type Data = DataObj | any
+     * type DataFile = Data | Data[]
+     */
+    static openMockFile(file: string) {
+        let dir = path.dirname(file);
+        if (!(dir in this.dataMap)) {
+            this.dataMap[dir] = {};
+        }
+        let text = fs.readFileSync(file).toString();
+        if (text) {
+            const fileName = path.basename(file, MOCK_EXT)
+            let jsonTree = parseJson(text);
+            var results = [];
+            let parseMockData = (obj: json.Node) => {
+                if (!obj || obj.type !== 'object') return
+
+                let valueForKey = k => {
+                    let node = obj.children.find(c => c.children[0].value === k);
+                    return node ? node.children[1] : null;
+                }
+
+                let data = new MistData();
+                data.file = file;
+                data.start = obj.offset;
+                data.end = obj.offset + obj.length;
+
+                const dataNode = valueForKey('mockData')
+                if (dataNode) {
+                    const nameNode = valueForKey('name')
+                    if (nameNode) {
+                        data.name = nameNode.value
+                    }
+
+                    const templateNode = valueForKey('template');
+                    let templateId: string = templateNode ? templateNode.value : fileName;
+                    if (typeof templateId !== 'string') {
+                        return
+                    }
+                    templateId = templateId.replace(/^\w+@/, '');
+
+                    data.template = templateId;
+                    data.data = getNodeValue(dataNode);
+                    data.node = dataNode;
+                }
+                else {
+                    data.template = fileName;
+                    data.data = getNodeValue(obj)
+                    data.node = obj
+                }
+                results.push(data);
+            }
+            
+            if (jsonTree.type === 'array') {
+                jsonTree.children.forEach(node => parseMockData(node))
+            }
+            else {
+                parseMockData(jsonTree)
+            }
+
+            this.dataMap[dir][file] = results;
+            Object.keys(MistDocument.documents).forEach(k => MistDocument.documents[k].clearDatas());
+        }
+    }
+
     static openDir(dir: string) {
         if (!(dir in this.dataMap)) {
             this.dataMap[dir] = {};
@@ -310,7 +392,10 @@ export class MistData {
     }
 
     public description() {
-        return `${path.basename(this.file)} ${this.index > 0 ? `#${this.index + 1}` : ''}`.trim();
+        if (this.name) {
+            return this.name
+        }
+        return `${path.basename(this.file)} ${this.index !== undefined ? `#${this.index + 1}` : ''}`.trim();
     }
 }
 
