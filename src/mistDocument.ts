@@ -91,12 +91,14 @@ function findLastIndex<T>(list: T[], predicate: (element: T) => boolean): number
 let BUILTIN_VARS = [
     new Variable("_width_", Type.Number, "屏幕宽度"),
     new Variable("_height_", Type.Number, "屏幕高度"),
-    new Variable("_mistitem_", Type.Any, "模版对应的 item 对象"),
+    new Variable("_data_", Type.Any, "当前的完整数据对象。一般情况建议直接访问数据，仅当需要根据动态的 key 访问数据时才使用 _data_，例如 _data_['item_' + index]"),
+    new Variable("_mistitem_", Type.Any, "当前模板对应的 item 对象"),
+    new Variable("_controller_", Type.Any, "当前模板对应的 controller 对象"),
     new Variable("system", Type.registerType(new Type('system')).registerPropertys({
         "name": new Property(Type.String, "系统名称"),
         "version": new Property(Type.String, "系统版本"),
         "deviceName": new Property(Type.String, "设备名称")
-    }), "系统信息"),
+    }), "系统信息（暂仅支持 iOS）"),
     new Variable("screen", Type.registerType(new Type('screen')).registerPropertys({
         "width": new Property(Type.Number, "屏幕宽度"),
         "height": new Property(Type.Number, "屏幕高度"),
@@ -106,11 +108,11 @@ let BUILTIN_VARS = [
         "isSmall": new Property(Type.Boolean, "是否是小屏（iPhone 4/4s/5/5s/SE）"),
         "isX": new Property(Type.Boolean, "是否是 iPhone X"),
         "safeArea": new Property(Type.getType('UIEdgeInsets'), "安全区域"),
-    }), "屏幕属性"),
+    }), "屏幕属性（暂仅支持 iOS）"),
     new Variable("app", Type.registerType(new Type('screen')).registerPropertys({
         "isAlipay": new Property(Type.Boolean, "是否是支付宝客户端"),
         "isKoubei": new Property(Type.Boolean, "是否是口碑客户端"),
-    }), "应用属性"),
+    }), "应用属性（暂仅支持 iOS）"),
 ];
 
 export class JsonStringError {
