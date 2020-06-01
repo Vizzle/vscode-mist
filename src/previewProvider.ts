@@ -106,10 +106,8 @@ export class MistPreviewPanel {
         );
     }
 
-    public doRefactor() {
-        // Send a message to the webview webview.
-        // You can send any JSON serializable data.
-        this._panel.webview.postMessage({ command: 'refactor' });
+    public updateTitle(fileName: string) {
+        this._panel.title = `Mist Preview (${fileName})`
     }
 
     public dispose() {
@@ -289,6 +287,8 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
         let mistDoc = this.getDocument();
         if (!mistDoc) return;
 
+        MistPreviewPanel.currentPanel.updateTitle(path.basename(mistDoc.document.fileName))
+
         let template: any
         if (fs.existsSync(mistDoc.document.uri.fsPath)) {
             const result = await compile(mistDoc.document.uri.fsPath, { minify: true }, mistDoc.document.getText()).catch(this.errorTemplate)
@@ -320,10 +320,10 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
             clearTimeout(this._updateTimer);
             this._updateTimer = null;
         }
-        this._updateTimer = setTimeout((thiz) => {
-            thiz._updateTimer = null;
-            thiz.render(decodeURI(uri));
-        }, 100, this);
+        this._updateTimer = setTimeout(() => {
+            this._updateTimer = null;
+            this.render();
+        }, 100);
     }
     
     public selectionDidChange(textEditor: vscode.TextEditor) {
