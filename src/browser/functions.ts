@@ -972,6 +972,7 @@ export let functions = {
     ], 
     "eval": [
       {
+        "comment": "执行表达式并返回结果。目前尚无 json 解析的工具函数，可以先使用这个",
         "params": [
           {
             "type": "string", 
@@ -987,7 +988,64 @@ export let functions = {
           return null;
         }
       }
-    ]
+    ],
+    "isNull": [
+      {
+        "comment": " 判断对象是否为 null/nil\n\n `isNull(0)`      =>      `false`\n`isNull(false)`      =>      `false`\n`isNull(null)`      =>      `true`", 
+        "params": [
+          {
+            "type": "any",
+            "name": "obj"
+          }
+        ],
+        "return": "bool",
+        "js": obj => {
+          return obj === null
+        }
+      }
+    ],
+    "urlEncode": [
+      {
+        "params": [
+          {
+            "type": "string",
+            "name": "str"
+          }
+        ],
+        "return": "any",
+        "js": encodeURIComponent,
+      }
+    ],
+    "urlDecode": [
+      {
+        "params": [
+          {
+            "type": "string",
+            "name": "str"
+          }
+        ],
+        "return": "any",
+        "js": decodeURIComponent,
+      }
+    ],
+    "htmlEncode": [
+      {
+        "params": [
+          {
+            "type": "string",
+            "name": "str"
+          }
+        ],
+        "return": "any",
+        "js": (str: string) => {
+          return str.replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\n/g, '<br/>')
+            .replace(/"/g, '&quot;')
+        },
+      }
+    ],
   }, 
   "View": {
     "animation": [
@@ -1529,7 +1587,28 @@ export let functions = {
         "return": "id",
         "js": (_this: any[], cb: (obj: any) => boolean) => _this.find(cb)
       }
-    ]
+    ],
+    "sum": [
+      {
+        "comment": " 数组求和\n\n `[1, 2, 3].sum()`      =>      `6`",
+        "return": "number",
+        "js": (_this: any[]) => _this.reduce((a, b) => a + b, 0)
+      }
+    ],
+    "max": [
+      {
+        "comment": " 数组内最大值\n\n `[1, 2, 3].max()`      =>      `3`",
+        "return": "number",
+        "js": (_this: any[]) => _this.reduce((a, b) => Math.max(a, b), _this[0])
+      }
+    ],
+    "min": [
+      {
+        "comment": " 数组内最小值\n\n `[1, 2, 3].min()`      =>      `1`",
+        "return": "number",
+        "js": (_this: any[]) => _this.reduce((a, b) => Math.min(a, b), _this[0])
+      }
+    ],
   }, 
   "UIImage": {
     "width": [
