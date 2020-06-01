@@ -16,13 +16,13 @@ export class StatusBarManager {
             let doc = MistDocument.getDocumentByUri(editor.document.uri);
             let datas = doc.getDatas();
             let items = datas.map(d => {
-                let item = <vscode.QuickPickItem>{label: path.basename(d.file), detail: d.file, description: d.index > 0 ? `#${d.index + 1}` : null};
+                let item: any = <vscode.QuickPickItem>{label: path.basename(d.file), detail: d.file, description: d.name || (d.index !== undefined ? `#${d.index + 1}` : null)};
+                item.data = d
                 return item;
             });
             vscode.window.showQuickPick(items).then(r => {
                 if (!r) return;
-                let name = r.label + (r.description ? ' ' + r.description : '');
-                doc.setData(name);
+                doc.setData(r.data);
                 this.updateDataItemForDocument(doc);
                 MistContentProvider.sharedInstance.send('selectData', {name});
             });
