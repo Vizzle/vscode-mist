@@ -42,6 +42,8 @@ function nameOfType(type: ExpType) {
 let MIST_EXP_RE = /\$\{.*?\}/mg;
 // let MIST_EXP_PREFIX_RE = /([_a-zA-Z0-9.]+)\.([_a-zA-Z][_a-zA-Z0-9]*)?$/;
 
+const _DATA_DESC = `模板关联的完整数据。一般情况建议直接访问数据，仅当需要根据动态的 key 访问数据时才使用 _data_，例如 _data_['item_' + index]`
+
 class Variable {
     name: string;
     type: IType;
@@ -91,7 +93,6 @@ function findLastIndex<T>(list: T[], predicate: (element: T) => boolean): number
 let BUILTIN_VARS = [
     new Variable("_width_", Type.Number, "屏幕宽度"),
     new Variable("_height_", Type.Number, "屏幕高度"),
-    new Variable("_data_", Type.Any, "当前的完整数据对象。一般情况建议直接访问数据，仅当需要根据动态的 key 访问数据时才使用 _data_，例如 _data_['item_' + index]"),
     new Variable("_mistitem_", Type.Any, "当前模板对应的 item 对象"),
     new Variable("_controller_", Type.Any, "当前模板对应的 controller 对象"),
     new Variable("system", Type.registerType(new Type('system')).registerPropertys({
@@ -1455,7 +1456,7 @@ export class MistDocument {
         let data = this.getData() ? this.getData().data : {};
 
         pushDict(data);
-        pushVariable(new Variable('_data_', this.getDataType(data), '模版关联的数据', true));
+        pushVariable(new Variable('_data_', this.getDataType(data), _DATA_DESC, true));
 
         validateProperty(json.findNodeAtLocation(this.rootNode, ['data']), templateSchema);
         if (this.template.data instanceof Object) {
@@ -1463,7 +1464,7 @@ export class MistDocument {
         }
         pushDict(data);
 
-        pushVariable(new Variable('_data_', this.getDataType(data), '模版关联的数据', true));
+        pushVariable(new Variable('_data_', this.getDataType(data), _DATA_DESC, true));
 
         pushDict({
             '_item_': Type.Null,
@@ -1778,14 +1779,14 @@ export class MistDocument {
             });
         }
         
-        pushVariable(new Variable('_data_', dataDict, '模版关联的数据', true));
+        pushVariable(new Variable('_data_', dataDict, _DATA_DESC, true));
 
         if (this.template.data instanceof Object) {
             dataDict = {...dataDict, ...this.template.data};
         }
         pushVarsDict(json.findNodeAtLocation(this.rootNode, ['data']));
 
-        pushVariable(new Variable('_data_', dataDict, '模版关联的数据', true));
+        pushVariable(new Variable('_data_', dataDict, _DATA_DESC, true));
 
         if (location.path[0] !== 'data' && location.path[0] !== 'state') {
             pushVariable(new Variable('state', this.template.state || null, '模版状态', true));
