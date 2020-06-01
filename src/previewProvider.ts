@@ -433,8 +433,8 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
     <div class="screen hidden">
     <div class="screen-header">
     
-    <div class="screen-status">
-        <div style="display:flex; height:20px; color:white; align-items:center; justify-content:center; padding-left:5px">
+    <div class="screen-status" style="height:20px; display:flex;">
+        <div style="display:flex; color:white; align-items:center; justify-content:center; padding-left:5px">
             <div class="dot"></div>
             <div class="dot"></div>
             <div class="dot"></div>

@@ -6,13 +6,27 @@ import { ImageInfo } from "./image";
 declare const shortcut: any;
 
 const devices: Device[] = [
-    new Device('iPhone 4', 'iOS', '10.0.0', 320, 480, 2),
-    new Device('iPhone 5', 'iOS', '10.0.0', 320, 568, 2),
-    new Device('iPhone 6', 'iOS', '10.0.0', 375, 667, 2),
-    new Device('iPhone 6 Plus', 'iOS', '10.0.0', 414, 736, 3),
-    new Device('iPad', 'iOS', '10.0.0', 768, 1024, 1),
-    new Device('iPad Air', 'iOS', '10.0.0', 768, 1024, 2),
-    new Device('iPad Pro 12.9-inch', 'iOS', '10.0.0', 1024, 1366, 2),
+    // new Device('iPhone 4', 'iOS', 320, 480, 2, 20, 44),
+    new Device('iPhone 5', 'iOS', 320, 568, 2, 20, 44),
+    new Device('iPhone 8', 'iOS', 375, 667, 2, 20, 44),
+    new Device('iPhone 8 Plus', 'iOS', 414, 736, 3, 20, 44),
+    new Device('iPhone X', 'iOS', 375, 812, 3, 44, 44, 39),
+    new Device('iPhone XS Max', 'iOS', 414, 896, 3, 44, 44, 39),
+    new Device('iPad', 'iOS', 768, 1024, 1, 20, 44),
+    new Device('iPad Air', 'iOS', 768, 1024, 2, 20, 44),
+    new Device('iPad Pro 10.5-inch', 'iOS', 834, 1112, 2, 20, 44),
+    new Device('iPad Pro 12.9-inch', 'iOS', 1024, 1366, 2, 20, 44),
+
+    new Device('Samsung Galaxy S7', 'Android', 360, 640, 4, 24, 48),
+    new Device('Samsung Galaxy S9', 'Android', 360, 740, 4, 24, 48),
+    new Device('Google Pixel', 'Android', 412, 732, 2.62, 24, 48),
+    new Device('Google Pixel 3', 'Android', 412, 824, 2.62, 24, 48),
+    new Device('Google Pixel 3 XL', 'Android', 412, 847, 3.495, 24, 48),
+    new Device('One Plus 3', 'Android', 480, 853, 2.25, 24, 48),
+    new Device('Nexus 7', 'Android', 600, 960, 2, 24, 48),
+    new Device('Nexus 9', 'Android', 768, 1024, 2, 24, 48),
+    new Device('Samsung Galaxy Tab 10', 'Android', 800, 1280, 1, 24, 48),
+    new Device('Chromebook Pixel', 'Android', 850, 1280, 1, 24, 48),
 ];
 
 const scales = [
@@ -152,10 +166,10 @@ class Client {
         this.framesOverlay.classList.add('overlay');
         this.nodeStyleWhileShowingFrames = document.createElement('style');
         this.nodeStyleWhileShowingFrames.appendChild(document.createTextNode('.mist-node { pointer-events: none; }'));
+        this.device = devices[1];
         this.prepareButtons();
         this.prepareNaviBar();
         this.prepareSocket();
-        this.device = devices[0];
         this.render();
     }
 
@@ -277,6 +291,7 @@ class Client {
                 }
             }
         }));
+        this.devicesDropdown.select(devices.indexOf(this.device))
         naviBar.appendChild(this.devicesDropdown.element);
 
         this.scalesDropdown = new Dropdown('缩放', scales.map(s => {
@@ -452,14 +467,14 @@ class Client {
             _mistitem_: {},
             system: {
                 name: this.device.system,
-                version: this.device.version,
+                // version: this.device.version,
                 deviceName: this.device.model
             },
             screen: {
                 width: this.device.width,
                 height: this.device.height,
                 scale: this.device.scale,
-                statusBarHeight: isX ? 44 : 20,
+                statusBarHeight: this.device.statusBarHeight,
                 isPlus: this.device.width > 400,
                 isSmall: this.device.width < 350,
                 isX: isX,
@@ -661,6 +676,12 @@ class Client {
         screen.classList.remove('hidden');
         screen.style.minWidth = this.device.width + 'px';
         screen.style.height = this.device.height + 'px';
+
+        let status = <HTMLElement>document.getElementsByClassName('screen-status').item(0);
+        status.style.height = this.device.statusBarHeight + 'px';
+
+        let navi = <HTMLElement>document.getElementsByClassName('screen-navi').item(0);
+        navi.style.height = this.device.titleBarHeight + 'px';
     }
 
 }
