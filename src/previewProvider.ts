@@ -287,7 +287,9 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
         let mistDoc = this.getDocument();
         if (!mistDoc) return;
 
-        MistPreviewPanel.currentPanel.updateTitle(path.basename(mistDoc.document.fileName))
+        if (MistPreviewPanel.currentPanel) {
+            MistPreviewPanel.currentPanel.updateTitle(path.basename(mistDoc.document.fileName))
+        }
 
         let template: any
         if (fs.existsSync(mistDoc.document.uri.fsPath)) {
