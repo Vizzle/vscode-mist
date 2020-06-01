@@ -832,9 +832,9 @@ class BinaryExpressionNode extends ExpressionNode {
 }
 
 class FunctionExpressionNode extends ExpressionNode {
-    target: ExpressionNode;
+    target?: ExpressionNode;
     action: IdentifierNode;
-    parameters: ExpressionNode[];
+    parameters?: ExpressionNode[];
 
     constructor(target: ExpressionNode, action: IdentifierNode, parameters: ExpressionNode[]) {
         super();
@@ -845,8 +845,8 @@ class FunctionExpressionNode extends ExpressionNode {
 
     visitNode(visitor: NodeVisitor) {
         super.visitNode(visitor)
-        this.target.visitNode(visitor)
-        this.parameters.forEach(n => n.visitNode(visitor))
+        this.target && this.target.visitNode(visitor)
+        this.parameters && this.parameters.forEach(n => n.visitNode(visitor))
     }
     
     compute(context: ExpressionContext) {
