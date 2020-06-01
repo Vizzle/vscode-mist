@@ -54,7 +54,10 @@ export class MistPreviewPanel {
         const panel = vscode.window.createWebviewPanel(
             MistPreviewPanel.viewType,
             'Mist Preview',
-            vscode.ViewColumn.Two,
+            {
+                viewColumn: vscode.ViewColumn.Two,
+                preserveFocus: true,
+            },
             {
                 // Enable javascript in the webview
                 enableScripts: true,
