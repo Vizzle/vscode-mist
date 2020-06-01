@@ -196,6 +196,8 @@ export class ExpressionError {
     }
 }
 
+type NodeVisitor = (node: ExpressionNode) => void
+
 export abstract class ExpressionNode {
     offset: number;
     length: number;
@@ -210,6 +212,10 @@ export abstract class ExpressionNode {
         this.offset = token.offset;
         this.length = token.length;
         return this;
+    }
+
+    visitNode(visitor: NodeVisitor) {
+        visitor(this)
     }
 
     abstract compute(context: ExpressionContext): any;
@@ -247,7 +253,7 @@ export class LiteralNode extends ExpressionNode {
     }
 }
 
-class IdentifierNode extends ExpressionNode {
+export class IdentifierNode extends ExpressionNode {
     identifier: string;
     
     constructor(identifier: string) {
@@ -295,6 +301,11 @@ class ArrayExpressionNode extends ExpressionNode {
         this.list = list;
     }
 
+    visitNode(visitor: NodeVisitor) {
+        super.visitNode(visitor)
+        this.list.forEach(n => n.visitNode(visitor))
+    }
+
     compute(context: ExpressionContext) {
         let list = this.list.map(v => v.compute(context));
         return list.every(i => i !== None) ? list : None;
@@ -321,6 +332,14 @@ class ObjectExpressionNode extends ExpressionNode {
     constructor(list: [ExpressionNode, ExpressionNode][]) {
         super();
         this.list = list;
+    }
+
+    visitNode(visitor: NodeVisitor) {
+        super.visitNode(visitor)
+        this.list.forEach(n => {
+            n[0].visitNode(visitor)
+            n[1].visitNode(visitor)
+        })
     }
 
     compute(context: ExpressionContext) {
@@ -378,6 +397,13 @@ class ConditionalExpressionNode extends ExpressionNode {
         this.truePart = truePart;
         this.falsePart = falsePart;
     }
+
+    visitNode(visitor: NodeVisitor) {
+        super.visitNode(visitor)
+        this.condition.visitNode(visitor)
+        this.truePart && this.truePart.visitNode(visitor)
+        this.falsePart.visitNode(visitor)
+    }
     
     compute(context: ExpressionContext) {
         let r = this.condition.compute(context);
@@ -419,6 +445,11 @@ class UnaryExpressionNode extends ExpressionNode {
         super();
         this.operator = operator;
         this.oprand = oprand;
+    }
+
+    visitNode(visitor: NodeVisitor) {
+        super.visitNode(visitor)
+        this.oprand.visitNode(visitor)
     }
 
     compute(context: ExpressionContext) {
@@ -503,6 +534,12 @@ class BinaryExpressionNode extends ExpressionNode {
         this.operator = operator;
         this.oprand1 = oprand1;
         this.oprand2 = oprand2;
+    }
+
+    visitNode(visitor: NodeVisitor) {
+        super.visitNode(visitor)
+        this.oprand1.visitNode(visitor)
+        this.oprand2.visitNode(visitor)
     }
 
     compute(context: ExpressionContext) {
@@ -805,6 +842,12 @@ class FunctionExpressionNode extends ExpressionNode {
         this.action = action;
         this.parameters = parameters;
     }
+
+    visitNode(visitor: NodeVisitor) {
+        super.visitNode(visitor)
+        this.target.visitNode(visitor)
+        this.parameters.forEach(n => n.visitNode(visitor))
+    }
     
     compute(context: ExpressionContext) {
         let target = this.target ? this.target.compute(context) : Type.Global;
@@ -1023,6 +1066,12 @@ class LambdaExpressionNode extends ExpressionNode {
         super();
         this.parameter = parameter;
         this.expression = expression;
+    }
+
+    visitNode(visitor: NodeVisitor) {
+        super.visitNode(visitor)
+        // this.parameter.visitNode(visitor)
+        this.expression.visitNode(visitor)
     }
     
     compute(context: ExpressionContext) {

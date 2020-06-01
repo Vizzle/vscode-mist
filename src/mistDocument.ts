@@ -7,7 +7,7 @@ import { parseJson, getPropertyNode, getNodeValue } from './utils/json'
 import { ImageHelper } from "./imageHelper";
 import { Lexer, LexerErrorCode } from "./browser/lexer";
 import { Type, IType, Method, Parameter, Property, ArrayType, UnionType, ObjectType, IntersectionType } from "./browser/type";
-import { ExpressionContext, Parser, None, ExpressionNode, LiteralNode, ParseResult, ExpressionErrorLevel } from "./browser/parser";
+import { ExpressionContext, None, ExpressionNode, IdentifierNode, ExpressionErrorLevel } from "./browser/parser";
 import Snippets from "./snippets";
 import { parse, parseExpressionInObject } from "./browser/template";
 import { Schema, validateJsonNode, SchemaObject, parseSchema } from "./schema";
@@ -1326,10 +1326,12 @@ export class MistDocument {
         };
         let pushDict = dict => Object.keys(dict).forEach(key => push(key, dict[key]));
         let pushVarsDict = (node: json.Node, isConst: boolean = false) => {
+            const scopeVars = node.children.map(c => c.children[0].value)
             let pushed = [];
             node.children.forEach(c => {
                 if (c.children.length === 2) {
-                    let key = c.children[0].value;
+                    const key = c.children[0].value;
+                    validate(c.children[1], scopeVars.filter(v => v !== key));
                     pushVariable(new Variable(key, getNodeValue(c.children[1])).setNode(c), isConst);
                     pushed.push(key);
                 }
@@ -1346,17 +1348,17 @@ export class MistDocument {
             return range(node.offset, node.length);
         }
 
-        let validate = (node: json.Node) => {
+        let validate = (node: json.Node, scopeVars: string[] = undefined) => {
             if (!node) return;
             if (node.type === 'object') {
                 node.children.forEach(child => {
                     if (child.children.length >= 2) {
-                        validate(child.children[1]);
+                        validate(child.children[1], scopeVars);
                     }
                 });
             }
             else if (node.type === 'array') {
-                node.children.forEach(validate);
+                node.children.forEach(c => validate(c, scopeVars));
             }
             else if (node.type === 'string') {
                 let expressions = this.findExpressionsInString(node);
@@ -1381,6 +1383,22 @@ export class MistDocument {
                                     e.level === ExpressionErrorLevel.Warning ? vscode.DiagnosticSeverity.Warning :
                                     vscode.DiagnosticSeverity.Error);
                             }));
+                        }
+
+                        if (scopeVars && scopeVars.length > 0) {
+                            const ids: IdentifierNode[] = []
+                            expNode.visitNode(node => {
+                                if (node instanceof IdentifierNode) {
+                                    ids.push(node)
+                                }
+                            })
+                            for (const id of ids) {
+                                if (scopeVars.indexOf(id.identifier) >= 0) {
+                                    let start = exp.string.sourceIndex(id.offset);
+                                    let end = exp.string.sourceIndex(id.offset + id.length);
+                                    diagnostics.push(new vscode.Diagnostic(range(start + exp.offset + node.offset, end - start), `不能引用同一字典中定义的变量 \`${id.identifier}\`，由于 JSON 字典是无序处理的，会导致未定义行为。\n\n可以将 vars 定义为数组，如："vars": [{"a": 1}, {"b": "\${a}"}]`, vscode.DiagnosticSeverity.Error));
+                                }
+                            }
                         }
                     }
                 });
@@ -1525,12 +1543,11 @@ export class MistDocument {
                             diagnostics.push(new vscode.Diagnostic(nodeRange(c), '必须为 `object` 类型', vscode.DiagnosticSeverity.Error));
                             return;
                         }
-                        validate(c);
+
                         pushed.push(...pushVarsDict(c, true));
                     });
                 }
                 else if (varsNode.type === 'object') {
-                    validate(varsNode);
                     pushed.push(...pushVarsDict(varsNode, true));
                 }
                 else {
@@ -1749,8 +1766,6 @@ export class MistDocument {
             }
             typeContext.push(v.name, v.type);
         };
-        let push = (key, value) => pushVariable(new Variable(key, value));
-        let pushDict = dict => Object.keys(dict).forEach(key => push(key, dict[key]));
         let pushVarsDict = (node: json.Node, isConst: boolean = false) => {
             if (!node) return [];
             let pushed = [];
@@ -1793,7 +1808,6 @@ export class MistDocument {
         
         let path = [...location.path];
         let node = this.nodeAtPath(path);
-        let inVars = path.length > 0 && path[0] === 'vars';
         let inRepeat = path.length > 0 && path[0] === 'repeat';
         let nodeStack = [];
         while (node) {

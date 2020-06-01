@@ -173,6 +173,11 @@ export class StringConcatExpressionNode extends ExpressionNode {
         this.expressions = expressions;
     }
 
+    visitNode(visitor: (node: ExpressionNode) => void) {
+        super.visitNode(visitor)
+        this.expressions.forEach(n => n.visitNode(visitor))
+    }
+
     compute(context: ExpressionContext): any {
         let computed = this.expressions.map(e => e.compute(context));
         if (computed.some(v => v === None)) return None;
