@@ -145,6 +145,7 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
     private _listening: Promise<number>;
     private _clients: PreviewClient[] = [];
     private _updateTimer = null;
+    private _mistDoc?: MistDocument
     private static _sharedInstance: MistContentProvider;
 
     public static context: vscode.ExtensionContext;
@@ -283,9 +284,19 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
 }`
     }
 
-    async render() {
+    /**
+     * 更新预览为当前选中文件，如果当前选中的不是 mist 模板，则直接返回
+     * 
+     * @param forceUpdate 为 true 时，即使未选中 mist 文件，也会重新渲染之前渲染的文件。目前用于修改数据文件后即时刷新
+     */
+    async render(forceUpdate = false) {
         let mistDoc = this.getDocument();
+        if (!mistDoc && forceUpdate) {
+            mistDoc = this._mistDoc
+        }
         if (!mistDoc) return;
+
+        this._mistDoc = mistDoc
 
         if (MistPreviewPanel.currentPanel) {
             MistPreviewPanel.currentPanel.updateTitle(path.basename(mistDoc.document.fileName))
@@ -317,7 +328,7 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
         })
     }
 
-    public update(uri: string) {
+    public update() {
         if (this._updateTimer) {
             clearTimeout(this._updateTimer);
             this._updateTimer = null;

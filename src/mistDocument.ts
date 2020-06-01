@@ -714,6 +714,7 @@ export class MistDocument {
         }
         else if (document.fileName.endsWith('.json')) {
             MistData.openFile(document.fileName);
+            vscode.commands.executeCommand('mist.updatePreview')
         }
     }
 

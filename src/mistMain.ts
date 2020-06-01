@@ -81,6 +81,12 @@ function registerPreviewProvider(context: ExtensionContext) {
         })
     );
 
+    context.subscriptions.push(
+        vscode.commands.registerCommand('mist.updatePreview', () => {
+            contentProvider.render(true)
+        })
+    );
+
     if (vscode.window.registerWebviewPanelSerializer) {
         // Make sure we register a serializer in activation event
         vscode.window.registerWebviewPanelSerializer(MistPreviewPanel.viewType, {
@@ -92,18 +98,18 @@ function registerPreviewProvider(context: ExtensionContext) {
     }
 
     context.subscriptions.push(vscode.window.onDidChangeVisibleTextEditors(editors => {
-        contentProvider.update('shared');
+        contentProvider.update()
     }));
 
     context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(document => {
         if (isMistFile(document)) {
-            contentProvider.update(document.uri.toString());
+            contentProvider.update()
         }
     }));
 
     context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(event => {
         if (isMistFile(event.document)) {
-            contentProvider.update(event.document.uri.toString());
+            contentProvider.update();
         }
     }));
 
