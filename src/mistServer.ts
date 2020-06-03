@@ -195,9 +195,10 @@ function registerPushService(context: ExtensionContext) {
           return
         }
 
+        let nobiz = config.nobiz;
         let bizCode = config.bizCode
-        if (!bizCode) {
-          vscode.window.showErrorMessage('请配置业务前缀bizCode并保存。')
+        if (!nobiz && !bizCode) {
+          vscode.window.showErrorMessage('请配置业务前缀bizCode并保存。没有业务前缀请配置属性 "nobiz":true.')
           insertInEditor(configFile, 'bizCode')
           return
         }
@@ -227,7 +228,7 @@ function registerPushService(context: ExtensionContext) {
         let images = await readFiles(imagesDir)
 
         const formData = {}
-        formData['templateName'] = config.bizCode + '@' + mistPath.name
+        formData['templateName'] = nobiz ? mistPath.name : (config.bizCode + '@' + mistPath.name)
         formData['templateHtml'] = templateContent
         if (images && images.length > 0) {
           for (let image of images) {
