@@ -98,6 +98,22 @@ export abstract class IType {
         }
         return new ObjectType(Object.keys(obj).reduce((ret, k) => {ret[k] = this.typeof(obj[k], isConst); return ret}, {}));
     }
+    private static isArrayType(type: IType) {
+        return type === Type.Array || type instanceof ArrayType
+    }
+    private static getArrayElementType(type: IType) {
+        if (type === Type.Array) {
+            return Type.Any
+        }
+        else if (type instanceof ArrayType) {
+            return type.getElementsType()
+        }
+        throw new Error('can not get element type with non-array type')
+    }
+    private static isTuple(type: IType): type is ArrayType {
+        return type instanceof ArrayType && type.isTuple()
+    }
+
     public abstract getName(): string;
     public abstract getAllProperties(): { [name: string]: Property };
     public abstract getProperty(name: string): Property;
@@ -138,9 +154,9 @@ export abstract class IType {
             if (this.getValue() === null) return true;
             return this.getType().kindof(type, unionCheck);
         }
-        else if (this instanceof ArrayType && type instanceof ArrayType) {
-            if (type.isTuple()) {
-                if (this.isTuple() && this.getElementsType().kindof(type.getElementsType(), unionCheck)) {
+        else if (IType.isArrayType(this) && IType.isArrayType(type)) {
+            if (IType.isTuple(type)) {
+                if (IType.isTuple(this) && this.getElementsType().kindof(type.getElementsType(), unionCheck)) {
                     let thisTupleTypes = this.getTupleTypes();
                     let tupleTypes = type.getTupleTypes();
                     return thisTupleTypes.length >= tupleTypes.length && tupleTypes.every((t, i) => thisTupleTypes[i].kindof(t));
@@ -148,7 +164,7 @@ export abstract class IType {
                 return false;
             }
             else {
-                return this.getElementsType().kindof(type.getElementsType(), unionCheck);
+                return IType.getArrayElementType(this).kindof(IType.getArrayElementType(type), unionCheck);
             }
         }
         else if (this instanceof ObjectType && type instanceof ObjectType) {
