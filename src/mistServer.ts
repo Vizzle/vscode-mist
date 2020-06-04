@@ -176,7 +176,7 @@ function registerPushService(context: ExtensionContext) {
         }
 
         let fileUri = vscode.window.activeTextEditor.document.uri
-        let mistFile = fileUri.toString().substring(7)
+        let mistFile = decodeURI(fileUri.toString().substring(7))
         let mistPath = path.parse(mistFile)
         let configFile = mistPath.dir + '/config.json'
 
