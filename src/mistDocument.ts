@@ -1466,7 +1466,7 @@ export class MistDocument {
             }
         }
         
-        let noExpProps = ['controller', 'identifier', 'async-display', 'cell-height-animation', 'reuse-identifier'];
+        let noExpProps = ['identifier', 'async-display', 'cell-height-animation', 'reuse-identifier'];
         
         BUILTIN_VARS.forEach(v => pushVariable(v)); 
 
