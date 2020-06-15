@@ -80,7 +80,7 @@
           "name": "punctuation.definition.string.end.mist"
         }
       },
-      "end": "'|\\\\n|(?=})|(?=\")",
+      "end": "'|\\\\n|(?=\")",
       "beginCaptures": {
         "0": {
           "name": "punctuation.definition.string.begin.mist"
@@ -142,7 +142,7 @@
 		},
 		"function_call": {
 			"begin": "(?=[A-Za-z_$][A-Za-z0-9_$]*+\\s*\\()",
-			"end": "(?<=\\))(?!\\w)|\\n|(?=})",
+			"end": "(?<=\\))(?!\\w)|\\n",
 			"name": "meta.function-call.mist-exp",
 			"patterns": [
 				{
@@ -171,7 +171,7 @@
 							"name": "punctuation.section.arguments.begin.bracket.round.mist-exp"
 						}
 					},
-					"end": "\\)|\\n|(?=})",
+					"end": "\\)|\\n",
 					"endCaptures": {
 						"0": {
 							"name": "punctuation.section.arguments.end.bracket.round.mist-exp"
@@ -190,7 +190,7 @@
 							"name": "punctuation.section.parens.begin.bracket.round.mist-exp"
 						}
 					},
-					"end": "\\)|\\n|(?=})",
+					"end": "\\)|\\n",
 					"endCaptures": {
 						"0": {
 							"name": "punctuation.section.parens.end.bracket.round.mist-exp"
@@ -209,7 +209,7 @@
 		},
     "exp": {
       "name": "entity.exp.mist-exp",
-      "end": "(?=})|(?=\")|(?=\\n)",
+      "end": "(?=\")|(?=\\n)",
       "patterns": [
         {
           "include": "#comments"
@@ -246,7 +246,7 @@
       ]
     }
   },
-  "scopeName": "source.mist-exp", 
+  "scopeName": "source.mist-exp2", 
   "patterns": [
     {
       "include": "#exp"

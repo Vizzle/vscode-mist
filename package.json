@@ -60,6 +60,10 @@
       {
         "scopeName": "source.mist-exp",
         "path": "./syntaxes/mist-exp.tmLanguage.json"
+      },
+      {
+        "scopeName": "source.mist-exp2",
+        "path": "./syntaxes/mist-exp2.tmLanguage.json"
       }
     ],
     "commands": [

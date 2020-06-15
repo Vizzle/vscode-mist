@@ -273,7 +273,7 @@
           "name": "keyword.control.exp.begin.mist"
         }
       },
-      "end": "\"",
+      "end": "\"|\\n",
       "endCaptures": {
         "0": {
           "name": "punctuation.definition.string.end.mist"
@@ -282,7 +282,7 @@
       "name": "variable.exp.language.mist",
       "patterns": [
         {
-          "include": "source.mist-exp"
+          "include": "source.mist-exp2"
         }
       ]
     },
