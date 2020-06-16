@@ -35,6 +35,7 @@ const colorSchema: Schema = {
         {
             type: 'string',
             enum: colors,
+            enumOnly: true,
             // errorMessage: `只支持以下颜色常量：${colors.map(c => `\`${c}\``).join(', ')}`
         },
         {
@@ -275,19 +276,13 @@ export class NodeSchema implements ISchema {
             required: ['type'],
             additionalProperties: false,
             properties: {
-                type: {
-                    description: 'Action 类型',
-                    oneOf: [
-                        EnumSchema({
-                            invoke: `\
+                type: EnumSchema({
+                    invoke: `\
 将 params 参数作为一个 action 执行。**利用这个可以实现给一个 action 添加 if 条件判断。**
 
 注意参数会被一次计算，所以内部不能有需要延迟计算的参数，例如 success 回调等。`,
-                            execute: '一个空的 Action，用于执行 params 的表达式。'
-                        }),
-                        SimpleSchema('string')
-                    ]
-                },
+                    execute: '一个空的 Action，用于执行 params 的表达式。'
+                }, 'Action 类型', false),
                 params: {
                     type: 'object',
                     additionalProperties: true,
@@ -355,13 +350,7 @@ export class NodeSchema implements ISchema {
                 return {
                     type: "object",
                     properties: {
-                        "type": {
-                            oneOf: [
-                                EnumSchema(NodeSchema.getTypes()),
-                                SimpleSchema('string')
-                            ],
-                            description: "元素类型\n\n[查看文档](https://vizzle.github.io/MIST/basics/Property.html#type)"
-                        },
+                        "type": EnumSchema(NodeSchema.getTypes(), "元素类型\n\n[查看文档](https://vizzle.github.io/MIST/basics/Property.html#type)", false),
                         "name": {
                             type: "string",
                             description: "插槽名称。不写 `name` 则为默认插槽"
@@ -397,13 +386,7 @@ export class NodeSchema implements ISchema {
                         },
                         ...config.properties['common'] || {},
                         ...config.properties[type] || {},
-                        "type": {
-                            oneOf: [
-                                EnumSchema(NodeSchema.getTypes()),
-                                SimpleSchema('string')
-                            ],
-                            description: "元素类型\n\n[查看文档](https://vizzle.github.io/MIST/basics/Property.html#type)"
-                        },
+                        "type": EnumSchema(NodeSchema.getTypes(), "元素类型\n\n[查看文档](https://vizzle.github.io/MIST/basics/Property.html#type)", false),
                         ...(typeNode ? {} : { "children": childrenSchema }),
                         "import": importSchemaProperties['import'],
                     },
@@ -453,7 +436,7 @@ function SimpleSchema(type: string, description?: string): Schema {
     return { type, description, additionalProperties: true };
 }
 
-function EnumSchema(enums: string[] | { [name: string]: string }, description?: string): Schema {
+function EnumSchema(enums: string[] | { [name: string]: string }, description?: string, enumOnly = true): Schema {
     let schema: Schema = {
         type: "string",
         description
@@ -466,6 +449,7 @@ function EnumSchema(enums: string[] | { [name: string]: string }, description?: 
         schema.enum = keys;
         schema.enumDescriptions = keys.map(k => enums[k]);
     }
+    schema.enumOnly = enumOnly
     return schema;
 }
 
@@ -501,7 +485,7 @@ function LengthSchema(percentage: boolean, enums: string[], description?: string
         oneOf: [
             { type: "number" },
             { type: "string", pattern: `^-?\\d+(\\.\\d+)?(${units.join('|')}${percentage ? '|%' : ''})?$` },
-            ...(enums && enums.length > 0 ? [{ type: "string", enum: enums }] : [])
+            ...(enums && enums.length > 0 ? [{ type: "string", enum: enums, enumOnly: true }] : [])
         ],
         description,
         errorMessage: `只能为${enums && enums.length > 0 ? ` ${enums.map(e => `\`${e}\``).join(', ')} 或` : ''}数字（可以带单位${percentage ? '或百分比' : ''}，支持的单位有 ${units.map(u => `\`${u}\``).join(', ')}）`
@@ -1290,6 +1274,7 @@ export const templateSchema: Schema = parseSchema({
                         "type": {
                             "type": "string",
                             "enum": ["string", "number", "boolean", "array", "object"],
+                            "enumOnly": true,
                             "description": "参数类型"
                         },
                         "description": {

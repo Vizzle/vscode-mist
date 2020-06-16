@@ -27,6 +27,7 @@ export type SchemaObject = {
     max?: number;
     enum?: any[];
     enumDescriptions?: string[];
+    enumOnly?: boolean;
     pattern?: string;
     oneOf?: Schema[];
     snippet?: string;
@@ -341,7 +342,7 @@ function _validateJsonNode(node: json.Node, schema: Schema, offset: number, matc
                 errors.push(new ValidationResult(`值必须满足正则表达式 \`${schema.pattern}\``, node));
             }
         }
-        if (schema.enum) {
+        if (schema.enum && schema.enumOnly) {
             let values = schema.enum instanceof Array ? schema.enum : Object.keys(schema.enum);
             if (values.indexOf(node.value) < 0) {
                 errors.push(new ValidationResult(`值必须为枚举 ${values.map(v => JSON.stringify(v)).join(', ')}`, node));
