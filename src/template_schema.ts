@@ -349,7 +349,7 @@ export class NodeSchema implements ISchema {
                 }
             }
 
-            let type = typeNode ? json.getNodeValue(typeNode) : json.findNodeAtLocation(node, ['children']) ? 'stack' : '';
+            let type = typeNode ? json.getNodeValue(typeNode) : json.findNodeAtLocation(node, ['children']) ? 'stack' : 'node';
 
             if (type === 'slot' && !isComponentChildren) {
                 return {
