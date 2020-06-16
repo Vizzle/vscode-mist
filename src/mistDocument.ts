@@ -1439,7 +1439,13 @@ export class MistDocument {
             let key = keyNode.value;
             let s = schema.properties[key];
             if (!valueNode) return;
-            if (!s) {
+            validate(valueNode);
+            resolveExpressionsInNode(valueNode);
+            if (s) {
+                let errors = validateJsonNode(valueNode, s);
+                diagnostics.push(...errors.map(e => new vscode.Diagnostic(range(e.node.offset, e.node.length), e.error, vscode.DiagnosticSeverity.Warning)));
+            }
+            else {
                 if (!schema.additionalProperties) {
                     let desc = `不存在属性 \`${key}\``;
                     let style = schema.properties.style;
@@ -1449,12 +1455,7 @@ export class MistDocument {
                     }
                     diagnostics.push(new vscode.Diagnostic(range(keyNode.offset, keyNode.length), desc, vscode.DiagnosticSeverity.Warning));
                 }
-                return;
             }
-            validate(valueNode);
-            resolveExpressionsInNode(valueNode);
-            let errors = validateJsonNode(valueNode, s);
-            diagnostics.push(...errors.map(e => new vscode.Diagnostic(range(e.node.offset, e.node.length), e.error, vscode.DiagnosticSeverity.Warning)));
         }
 
         let assertNoExp = (node: json.Node) => {
