@@ -195,10 +195,10 @@ function registerPushService(context: ExtensionContext) {
           return
         }
 
-        let nobiz = config.nobiz;
-        let bizCode = config.bizCode
-        if (!nobiz && !bizCode) {
-          vscode.window.showErrorMessage('请配置业务前缀bizCode并保存。没有业务前缀请配置属性 "nobiz":true.')
+        const noBizCode = config.noBizCode
+        const bizCode = config.bizCode
+        if (!noBizCode && !bizCode) {
+          vscode.window.showErrorMessage('请配置业务前缀bizCode并保存，无业务前缀请配置noBizCode: true。')
           insertInEditor(configFile, 'bizCode')
           return
         }
@@ -228,7 +228,7 @@ function registerPushService(context: ExtensionContext) {
         let images = await readFiles(imagesDir)
 
         const formData = {}
-        formData['templateName'] = nobiz ? mistPath.name : (config.bizCode + '@' + mistPath.name)
+        formData['templateName'] = noBizCode ? mistPath.base : config.bizCode + '@' + mistPath.name
         formData['templateHtml'] = templateContent
         if (images && images.length > 0) {
           for (let image of images) {
@@ -253,32 +253,42 @@ function registerPushService(context: ExtensionContext) {
         }
 
         const devicePort = config.devicePort
-        request.post(
-          {
-            url: `http://${deviceIp}:${devicePort ? parseInt(devicePort) : 9012}/update`,
-            headers: {
-              'Content-Type': 'multipart/form-data'
-            },
-            formData: formData
-          },
-          (err, res, data) => {
-            console.log('Error: ' + err)
-            console.log('Data: ' + data)
-            if (err) {
-              vscode.window.showErrorMessage('请求手机失败：' + err)
-            } else if (data) {
-              data = JSON.parse(data)
-              if (data.success == true) {
-                vscode.window.showInformationMessage('模板已传输到手机.')
-              } else if (data.message) {
-                vscode.window.showErrorMessage('传输模板到手机失败：' + data.message)
+        const deviceUrl = `http://${deviceIp}:${devicePort ? parseInt(devicePort) : 9012}/update`
+        postForm(deviceUrl, formData, (err, res, data) => {
+          console.log('bizCode Error: ' + err)
+          console.log('bizCode Data: ' + data)
+          if (err) {
+            vscode.window.showErrorMessage('请求手机失败：' + err)
+          } else if (data) {
+            data = JSON.parse(data)
+            if (data.success == true) {
+              vscode.window.showInformationMessage('模板已传输到手机.')
+              if (!noBizCode) {
+                formData['templateName'] = mistPath.base
+                postForm(deviceUrl, formData, (err, res, data) => {
+                  console.log('noBizCode Error: ' + err)
+                  console.log('noBizCode Data: ' + data)
+                })
               }
-            } else {
-              vscode.window.showErrorMessage('传输模板到手机失败: 未知错误!')
+            } else if (data.message) {
+              vscode.window.showErrorMessage('传输模板到手机失败：' + data.message)
             }
+          } else {
+            vscode.window.showErrorMessage('传输模板到手机失败: 未知错误!')
           }
-        )
+        })
       })
     })
+  )
+}
+
+function postForm(deviceUrl, formData, callback) {
+  request.post(
+    {
+      url: deviceUrl,
+      headers: { 'Content-Type': 'multipart/form-data' },
+      formData: formData
+    },
+    callback
   )
 }
