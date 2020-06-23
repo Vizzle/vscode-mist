@@ -284,9 +284,9 @@ export class NodeSchema implements ISchema {
                     execute: '一个空的 Action，用于执行 params 的表达式。'
                 }, 'Action 类型', false),
                 params: {
-                    type: 'object',
                     additionalProperties: true,
                     description: 'Action 参数',
+                    snippet: "{\n  $0\n}"
                 },
                 success: {
                     type: 'object',
