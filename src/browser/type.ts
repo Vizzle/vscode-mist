@@ -691,14 +691,6 @@ export class ArrayType extends IType {
 }
 
 export class ObjectType extends IType {
-    private static properties = {
-        
-    }
-
-    private static methods = {
-        
-    }
-
     private map: { [key: string]: IType };
     private required: string[];
     private indexType: { name: string, type: IType };
@@ -743,7 +735,9 @@ export class ObjectType extends IType {
     }
 
     public getAllProperties(): { [name: string]: Property; } {
-        return Object.keys(this.map).reduce((p, c) => { p[c] = new Property(this.map[c]); return p; }, {});
+        const commonProperties = Type.getType('object').getAllProperties();
+        const thisProperties = Object.keys(this.map).reduce((p, c) => { p[c] = new Property(this.map[c]); return p; }, {});
+        return { ...commonProperties, ...thisProperties }
     }
 
     public getRequiredProperties() {
@@ -754,6 +748,12 @@ export class ObjectType extends IType {
         if (name in this.map) {
             return new Property(this.map[name]);
         }
+
+        const prop = Type.getType('object').getProperty(name)
+        if (prop) {
+            return prop
+        }
+
         if (this.indexType) {
             return new Property(this.indexType.type);
         }
@@ -761,11 +761,11 @@ export class ObjectType extends IType {
     }
 
     public getAllMethods(): { [name: string]: Method[]; } {
-        return ObjectType.methods;
+        return Type.getType('object').getAllMethods();
     }
 
     public getMethods(name: string): Method[] {
-        return ObjectType.methods[name];
+        return Type.getType('object').getMethods(name);
     }
 }
 
