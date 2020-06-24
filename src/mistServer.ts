@@ -242,10 +242,15 @@ function registerPushService(context: ExtensionContext) {
             }
           }
         }
-        let mockFile = mistPath.dir + '/mockData.json'
-        if (fs.existsSync(mockFile)) {
+
+        let dataPath = config.dataPath
+        if (dataPath) {
+          dataPath = path.join(mistPath.dir, dataPath)
+        }
+        dataPath = dataPath ? dataPath : mistPath.dir + '/mockData.json'
+        if (fs.existsSync(dataPath)) {
           formData['mockData.json'] = {
-            value: fs.createReadStream(mockFile),
+            value: fs.createReadStream(dataPath),
             options: {
               filename: 'mockData.json'
             }
@@ -265,10 +270,7 @@ function registerPushService(context: ExtensionContext) {
               vscode.window.showInformationMessage('模板已传输到手机.')
               if (!noBizCode) {
                 formData['templateName'] = mistPath.base
-                postForm(deviceUrl, formData, (err, res, data) => {
-                  console.log('noBizCode Error: ' + err)
-                  console.log('noBizCode Data: ' + data)
-                })
+                postForm(deviceUrl, formData, () => {})
               }
             } else if (data.message) {
               vscode.window.showErrorMessage('传输模板到手机失败：' + data.message)
