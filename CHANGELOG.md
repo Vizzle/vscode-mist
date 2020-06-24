@@ -1,5 +1,16 @@
 # 更新日志
 
+## 0.3.20 - 2020-06-24
+
+### Fixed
+
+- 修复 action 的 params 不为 object 时会报错的问题
+- 修复某些情况 set_value 函数报错
+
+### Improved
+
+- Android 调试支持指定 mockData 的位置
+
 ## 0.3.19 - 2020-06-18
 
 ### Fixed
