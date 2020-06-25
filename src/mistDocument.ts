@@ -1832,7 +1832,7 @@ export class MistDocument {
                 if (varsNode) {
                     if (varsNode.type === 'array') {
                         var count = varsNode.children.length;
-                        if (path.length >= 2 && path[0] === 'vars' && typeof(path[1]) === 'number') {
+                        if (nodeStack.length === 0 && path.length >= 2 && path[0] === 'vars' && typeof(path[1]) === 'number') {
                             count = path[1] as number;
                         }
                         for (var i = 0; i < count; i++) {
