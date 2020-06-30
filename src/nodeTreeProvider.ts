@@ -156,8 +156,7 @@ export default class MistNodeTreeProvider implements vscode.TreeDataProvider<jso
         let style = this.getProp(node, 'style');
         switch (type) {
             case 'stack':
-                desc = [this.getStringValue(style, 'direction'),
-                        this.getStringValue(style, 'background-color')].filter(n => !!n).join(' - ');
+                desc = [this.getStringValue(style, 'background-color')].filter(n => !!n).join(' - ');
                 break;
 
             case 'text':
@@ -299,6 +298,13 @@ export default class MistNodeTreeProvider implements vscode.TreeDataProvider<jso
     private getIcon(node: json.Node): any {
         let type = this.getType(node);
         let fileName = type || 'unknown';
+        if (type === 'stack') {
+            const direction = this.getProp(node, 'style') && this.getProp(this.getProp(node, 'style'), 'direction')
+            const directionValue = direction && direction.value
+            const isVertical = directionValue === 'vertical' || directionValue === 'vertical-reverse'
+            fileName = isVertical ? 'stack_v' : 'stack_h'
+        }
+
         return {
             light: this.context.asAbsolutePath(path.join('media', 'light', `${fileName}.svg`)),
             dark: this.context.asAbsolutePath(path.join('media', 'dark', `${fileName}.svg`))
