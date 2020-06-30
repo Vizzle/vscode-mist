@@ -975,6 +975,10 @@ class FunctionExpressionNode extends ExpressionNode {
         }
     }
 
+    simpleTypeName(type: IType) {
+        return type.kindof(Type.Array) ? 'array' : type.getName()
+    }
+
     check(context: ExpressionContext) {
         let errors: ExpressionError[] = [];
         if (this.parameters) {
@@ -1031,7 +1035,7 @@ class FunctionExpressionNode extends ExpressionNode {
                 if (this.parameters.length > 0 || !prop) {
                     let methods = targetType.getMethods(this.action.identifier);
                     if ((!methods || methods.length === 0) && !prop) {
-                        errors.push(new ExpressionError(this.action, `${targetType === Type.Global ? '' : `类型 \`${targetType.getName()}\` 上`}不存在方法 \`${this.action.identifier}\``));
+                        errors.push(new ExpressionError(this.action, `${targetType === Type.Global ? '' : `类型 \`${this.simpleTypeName(targetType)}\` 上`}不存在方法 \`${this.action.identifier}\``));
                     }
                     else {
                         errors.push(new ExpressionError(this, `方法 \`${this.action.identifier}\` 参数数量不匹配`));
@@ -1050,7 +1054,7 @@ class FunctionExpressionNode extends ExpressionNode {
         else {
             let p = targetType.getProperty(this.action.identifier);
             if (!p && !targetType.getMethod(this.action.identifier, 0)) {
-                errors.push(new ExpressionError(this.action, `${targetType === Type.Global ? '' : `类型 \`${targetType.getName()}\` 上`}不存在属性 \`${this.action.identifier}\``, ExpressionErrorLevel.Warning));
+                errors.push(new ExpressionError(this.action, `${targetType === Type.Global ? '' : `类型 \`${this.simpleTypeName(targetType)}\` 上`}不存在属性 \`${this.action.identifier}\``, ExpressionErrorLevel.Warning));
             }
         }
 
