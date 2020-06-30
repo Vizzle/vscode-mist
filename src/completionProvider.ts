@@ -35,6 +35,8 @@ export default class MistCompletionProvider implements vscode.CompletionItemProv
     }
 
     documentDidChange(textEditor: vscode.TextEditor, event: vscode.TextDocumentChangeEvent) {
+        if (event.contentChanges.length === 0) return
+
         let change = event.contentChanges[0];
 
         if (change.text === '{') {

@@ -608,7 +608,47 @@ function measureElement(el: HTMLElement, constrainedSize: flex.Size) {
     return new flex.Size(Math.ceil(rect.width), Math.ceil(rect.height));
 }
 
+function getElementBaseline(el: HTMLElement, constrainedSize: flex.Size) {
+    const id = '__measure_container';
+    let container = document.getElementById(id);
+    if (!container) {
+        container = document.createElement('div');
+        container.id = id;
+        container.style.position = "absolute";
+        container.style.width = "10000px";
+        container.style.height = "10000px";
+        container.style.left = "10000px";
+        container.style.top = "10000px";
+        document.body.appendChild(container);
+    }
+    el.style.width = "auto";
+    el.style.height = "auto";
+    el.style.maxWidth = constrainedSize.width + "px";
+    el.style.maxHeight = constrainedSize.height + "px";
+    
+    el.style.display = 'inline-block';
+    if (el.hasChildNodes()) {
+        for (let i = 0; i < el.childNodes.length; i++) {
+            const child = el.childNodes.item(i)
+            if (child instanceof HTMLElement) {
+                child.style.display = 'inline'
+            }
+        }
+    }
+
+    container.appendChild(el);
+    const img = document.createElement('img')
+    img.style.height = '0';
+    img.style.display = 'inline';
+    container.appendChild(img)
+    const baseline = el.getBoundingClientRect().bottom - img.getBoundingClientRect().bottom
+    el.remove();
+    img.remove();
+    return baseline;
+}
+
 type MeasureFunc = (layout, constrainedSize: flex.Size) => flex.Size;
+type BaselineFunc = (layout, constrainedSize: flex.Size) => number;
 
 var measureFuncs: { [type: string]: MeasureFunc } = {
     text: function (layout, constrainedSize) {
@@ -630,6 +670,12 @@ var measureFuncs: { [type: string]: MeasureFunc } = {
         return measureElement(elementFromLayout(layout), constrainedSize);
     },
 };
+
+var baselineFuncs: Record<string, BaselineFunc> = {
+    text: function (layout, constrainedSize) {
+        return getElementBaseline(elementFromLayout(layout), constrainedSize);
+    }
+}
 
 function didLayout(layout) {
     var node: flex.Node = layout.node;
@@ -658,6 +704,9 @@ function nodeFromLayout(l) {
     if ('type' in l) {
         var measure = measureFuncs[l.type];
         if (measure) node.setMeasure(function(constrainedSize) { return measure(l, constrainedSize); });
+
+        var baseline = baselineFuncs[l.type];
+        if (baseline) node.setBaseline(function(constrainedSize) { return baseline(l, constrainedSize); });
     }
     var style = l.style;
     function bind(func, layoutProp, nodeProp = null) {
