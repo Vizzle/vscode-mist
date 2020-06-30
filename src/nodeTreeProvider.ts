@@ -106,7 +106,8 @@ export default class MistNodeTreeProvider implements vscode.TreeDataProvider<jso
         if (node.type === 'object') {
             let childrenNode = this.getProp(node, 'children');
             let typeNode = this.getProp(node, 'type');
-            return typeNode ? typeNode.value : childrenNode ? 'stack' : 'node';
+            let _import = this.getProp(node, 'import');
+            return typeNode ? typeNode.value : _import ? 'import' : childrenNode ? 'stack' : 'node';
         }
         else if (node.type === 'string' && (<string>node.value).match(/^\${.+}$/)) {
             return "exp";
@@ -193,6 +194,10 @@ export default class MistNodeTreeProvider implements vscode.TreeDataProvider<jso
         
             case 'line':
                 desc = this.getStringValue(style, 'color');
+                break;
+            
+            case 'import':
+                desc = this.getStringValue(node, 'import');
                 break;
         
             default:
