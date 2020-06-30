@@ -193,8 +193,9 @@ function registerConvertor(context: ExtensionContext) {
 
 function registerNodeTreeProvider(context: ExtensionContext) {
     const nodeTreeProvider = new MistNodeTreeProvider(context);
-    const symbolsProviderRegistration = vscode.languages.registerDocumentSymbolProvider({ language: 'mist' }, nodeTreeProvider);
-    vscode.window.registerTreeDataProvider('mistNodeTree', nodeTreeProvider);
+
+    vscode.languages.registerDocumentSymbolProvider({ language: 'mist' }, nodeTreeProvider);
+    const treeView = vscode.window.createTreeView('mistNodeTree', { showCollapseAll: true, treeDataProvider: nodeTreeProvider });
 
     vscode.commands.registerCommand('mist.openNodeSelection', range => {
         nodeTreeProvider.select(range);
@@ -212,6 +213,17 @@ function registerNodeTreeProvider(context: ExtensionContext) {
         }
     }));
 
+    context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => {
+        const mistDoc = MistDocument.getDocumentByUri(e.textEditor.document.uri)
+        if (!mistDoc) return
+
+        const node = mistDoc.nodeAtOffset(mistDoc.getRootMistNode(), e.textEditor.document.offsetAt(e.selections[0].start))
+        if (node) {
+            treeView.reveal(node.node, {
+                expand: 1,
+            })
+        }
+    }))
 }
 
 function registerCompletionProvider(context: ExtensionContext) {

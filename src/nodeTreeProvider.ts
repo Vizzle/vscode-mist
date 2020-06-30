@@ -5,6 +5,7 @@ import * as vscode from 'vscode';
 import * as json from 'jsonc-parser';
 import {parseJson} from './utils/json'
 import * as path from 'path';
+import { MistDocument } from './mistDocument';
 
 export default class MistNodeTreeProvider implements vscode.TreeDataProvider<json.Node>, vscode.DocumentSymbolProvider {
     readonly onDidChangeTreeData: vscode.Event<json.Node | null>;
@@ -34,6 +35,10 @@ export default class MistNodeTreeProvider implements vscode.TreeDataProvider<jso
         } else {
             return Promise.resolve(this.tree ? [this.tree] : []);
         }
+    }
+
+    getParent(node: json.Node) {
+        return node.parent.parent
     }
 
     getTreeItem(node: json.Node): vscode.TreeItem {
@@ -126,8 +131,9 @@ export default class MistNodeTreeProvider implements vscode.TreeDataProvider<jso
         this.tree = null;
         this.editor = vscode.window.activeTextEditor || vscode.window.visibleTextEditors[0];
         if (this.editor && this.editor.document && this.editor.document.languageId === 'mist') {
-            let tpl = parseJson(this.editor.document.getText());
-            this.tree = this.getProp(tpl, 'layout');
+            const mistDoc = MistDocument.getDocumentByUri(this.editor.document.uri)
+            if (!mistDoc) return
+            this.tree = mistDoc.getRootMistNode().node
         }
     }
 

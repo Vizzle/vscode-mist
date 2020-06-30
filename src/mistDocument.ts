@@ -738,6 +738,11 @@ export class MistDocument {
         return this.rootNode;
     }
 
+    public getRootMistNode(): MistNode {
+        this.parseTemplate();
+        return this.nodeTree;
+    }
+
     public getTemplate() {
         this.parseTemplate();
         return this.template;
@@ -1659,8 +1664,8 @@ export class MistDocument {
         return null;
     }
 
-    private nodeAtOffset(node: MistNode, offset: number) {
-        if (offset > node.node.offset && offset < node.node.offset + node.node.length) {
+    public nodeAtOffset(node: MistNode, offset: number): MistNode {
+        if (offset >= node.node.offset && offset <= node.node.offset + node.node.length) {
             if (node.children) {
                 for (let child of node.children) {
                     let node = this.nodeAtOffset(child, offset);
