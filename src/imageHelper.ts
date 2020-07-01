@@ -47,9 +47,6 @@ function getGroups(content: string) {
         if (path && path.startsWith('"')) {
             path = path.substr(1, path.length - 2);
         }
-        else if (!path) {
-            path = name;
-        }
         let children = [];
         if (childrenStr) {
             let re = /^\s*([0-9a-fA-F]{24})/mg;
@@ -58,11 +55,7 @@ function getGroups(content: string) {
                 children.push(match[1]);
             }
         }
-        let group = {
-            id: id,
-            path: path,
-            children: children
-        };
+        let group = { id, path, children };
         groups.push(group);
     }
     return groups;
@@ -84,8 +77,10 @@ function getImageFiles(dir: string): ImageInfo[] {
         let path = "";
         while (true) {
             group = groups.find(g => g.children.indexOf(id) >= 0);
-            if (group && group.path) {
-                path = group.path + '/' + path;
+            if (group) {
+                if (group.path) {
+                    path = group.path + '/' + path;
+                }
                 id = group.id;
             }
             else {
