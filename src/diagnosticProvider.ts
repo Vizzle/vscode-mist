@@ -2,14 +2,13 @@
 
 import * as vscode from 'vscode';
 import * as json from 'jsonc-parser'
-import * as cp from 'child_process'
-import * as net from 'net'
 import { MistDocument, JsonString } from './mistDocument';
 import { NodeSchema } from './template_schema';
 
 export default class MistDiagnosticProvider {
     private diagnosticCollection: vscode.DiagnosticCollection;
     private _waiting = false;
+    private ignoreMap: Map<number, boolean> = new Map()
 
     constructor(private context: vscode.ExtensionContext) {
         this.diagnosticCollection = vscode.languages.createDiagnosticCollection('mist');
@@ -30,8 +29,6 @@ export default class MistDiagnosticProvider {
 
         let errors: vscode.Diagnostic[] = [];
         let objectStack = [];
-        let exps = [];
-        let mistexpPath = this.context.asAbsolutePath('./bin/mistexp');
         let currentProperty: string;
         let range = (offset, length) => {
             let start = document.positionAt(offset);
@@ -80,13 +77,28 @@ export default class MistDiagnosticProvider {
         });
 
         let expAnalyseErrors = mistDoc ? mistDoc.validate() : [];
-        
-        Promise.all([errors, expAnalyseErrors]).then(values => {
-            let diagnostics = values.reduce((p, c, i, a) => {
-                return p.concat(c);
-            }, []);
-            this.diagnosticCollection.set(document.uri, diagnostics);
-        });
+
+        expAnalyseErrors = expAnalyseErrors.filter(e => !this.hasIgnore(document, e.range.start))
+
+        const diagnostics = [...errors, ...expAnalyseErrors]
+        this.diagnosticCollection.set(document.uri, diagnostics);
+    }
+
+    hasIgnore(document: vscode.TextDocument, position: vscode.Position) {
+        if (position.line === 0) return false
+
+        const text = document.lineAt(position.line - 1).text
+        const scanner = json.createScanner(text, false)
+        let type: json.SyntaxKind
+        do {
+            type = scanner.scan()
+            if (type === json.SyntaxKind.LineCommentTrivia) {
+                const comment = scanner.getTokenValue().trim()
+                return comment.match(/^\/\/\s*@ignore\b/)
+            }
+        } while (type !== json.SyntaxKind.EOF)
+
+        return false
     }
 
     onChange(document: vscode.TextDocument) {

@@ -29,7 +29,7 @@ export default class MistCompletionProvider implements vscode.CompletionItemProv
         }
     }
 
-    private static triggerRE = /[a-zA-Z_.]/;
+    private static triggerRE = /[a-zA-Z_.@]/;
     isTriggerCharacter(c: string) {
         return c.length === 1 && MistCompletionProvider.triggerRE.test(c);
     }

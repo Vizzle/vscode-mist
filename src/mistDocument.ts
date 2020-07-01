@@ -797,6 +797,13 @@ export class MistDocument {
 
         let getWordRange = () => document.getWordRangeAtPosition(position, /[-_$a-zA-Z0-9]+/);
 
+        if (this.shouldProvideCommentCompletion(position)) {
+            const ignoreItem = new CompletionItem('@ignore', vscode.CompletionItemKind.Snippet)
+            ignoreItem.detail = '取消文件下一行的语义检查错误提示。'
+            ignoreItem.range = document.getWordRangeAtPosition(position, /[-@_$a-zA-Z0-9]+/);
+            return [ignoreItem]
+        }
+
         // 在上一行没有以逗号结尾时，也认为在 key 里
         if (!location.isAtPropertyKey) {
             let wordRange = getWordRange();
@@ -1054,6 +1061,29 @@ export class MistDocument {
         }
 
         return items;
+    }
+    
+    private shouldProvideCommentCompletion(position: vscode.Position) {
+        const line = this.document.lineAt(position.line)
+        const offset = this.document.offsetAt(position) - this.document.offsetAt(line.range.start)
+        const scanner = json.createScanner(line.text, false)
+        let type: json.SyntaxKind
+        do {
+            type = scanner.scan()
+            const start = scanner.getTokenOffset()
+            const end = start + scanner.getTokenLength()
+            if (start > offset) {
+                break
+            }
+            else if (offset <= end) {
+                if (type === json.SyntaxKind.LineCommentTrivia) {
+                    const text = this.document.getText(new vscode.Range(position.translate(0, -4), position))
+                    return text.match(/\/\/ ?@?$/)
+                }
+                return false
+            }
+        } while (type !== json.SyntaxKind.EOF)
+        return false
     }
 
     public provideHover(position: vscode.Position, token: vscode.CancellationToken): vscode.ProviderResult<vscode.Hover> {
