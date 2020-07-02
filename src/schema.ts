@@ -177,7 +177,7 @@ function getSchemaType(s: Schema): IType {
     if (s.oneOf) {
         return UnionType.type(s.oneOf.map(getSchemaType));
     }
-    if (s.enum) {
+    if (s.enum && s.enumOnly) {
         return UnionType.type(s.enum.map(e => new LiteralType(e)));
     }
     if (!s.type) {
