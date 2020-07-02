@@ -163,9 +163,12 @@ export default class MistNodeTreeProvider implements vscode.TreeDataProvider<jso
         let style = this.getProp(node, 'style');
         switch (type) {
             case 'stack':
-                desc = [this.getStringValue(style, 'background-color')].filter(n => !!n).join(' - ');
+            {
+                const wrap = this.getStringValue(style, 'wrap')
+                desc = [wrap === 'wrap' || wrap === 'wrap-reverse' ? `[${wrap}]` : '',
+                    this.getStringValue(style, 'background-color')].filter(n => !!n).join(' - ');
                 break;
-
+            }
             case 'text':
             {
                 let text = this.getStringValue(style, 'html-text')
