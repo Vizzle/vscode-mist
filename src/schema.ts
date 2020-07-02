@@ -36,6 +36,10 @@ export type SchemaObject = {
 
 export type Schema = SchemaObject | boolean;
 
+export interface TypedNode extends json.Node {
+    valueType?: IType
+}
+
 export interface ISchema {
     validateJsonNode(node: json.Node, offset: number, matchingSchemas: Schema[]): ValidationResult[];
 }
@@ -59,7 +63,7 @@ export function parseSchema(schema: Schema, reference?: any): Schema {
     return _resolveRefs(schema, reference);
 }
 
-export function validateJsonNode(node: json.Node, schema: Schema, offset: number = -1, matchingSchemas: Schema[] = []): ValidationResult[] {
+export function validateJsonNode(node: TypedNode, schema: Schema, offset: number = -1, matchingSchemas: Schema[] = []): ValidationResult[] {
     return _validateJsonNode(node, schema, offset, matchingSchemas);
 }
 
@@ -195,7 +199,7 @@ function getSchemaType(s: Schema): IType {
     }
 }
 
-function _validateJsonNode(node: json.Node, schema: Schema, offset: number, matchingSchemas: Schema[]): ValidationResult[] {
+function _validateJsonNode(node: TypedNode, schema: Schema, offset: number, matchingSchemas: Schema[]): ValidationResult[] {
     let errors: ValidationResult[] = [];
 
     do {
@@ -228,19 +232,15 @@ function _validateJsonNode(node: json.Node, schema: Schema, offset: number, matc
 
         if (!node) break;
         
-        if (node.value instanceof IType) {
-            if (node.value instanceof LiteralType) {
-                node.value = node.value.getValue();
+        const type: IType = (node as any).valueType
+        if (type) {
+            let schemaType = getSchemaType(schema);
+            if (!type.kindof(schemaType)) {
+                errors.push(new ValidationResult(`不能将类型 \`${type.getName()}\` 分配给类型 \`${schemaType.getName()}\``, node));
             }
-            else {
-                let schemaType = getSchemaType(schema);
-                if (!node.value.kindof(schemaType)) {
-                    errors.push(new ValidationResult(`不能将类型 \`${node.value.getName()}\` 分配给类型 \`${schemaType.getName()}\``, node));
-                }
-                break;
-            }
+            break;
         }
-        let valueType = node.type === 'string' ? getValueType(node.value) : node.type;
+        let valueType = node.type === 'string' ? getValueType(type || node.value) : node.type;
         // let valueType = node.type;
         if (schema.deprecatedMessage) {
             errors.push(new ValidationResult(schema.deprecatedMessage, node));
@@ -276,7 +276,7 @@ function _validateJsonNode(node: json.Node, schema: Schema, offset: number, matc
                 break;
             }
         }
-        if (node.value instanceof IType) break;
+        if (type) break;
         if (valueType === 'array' && schema.items) {
             node.children.forEach(c => {
                 errors.push(..._validateJsonNode(c, schema.items, offset, matchingSchemas));

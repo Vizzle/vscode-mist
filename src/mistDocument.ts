@@ -5,12 +5,12 @@ import * as path from 'path'
 import * as fs from 'fs'
 import { parseJson, getPropertyNode, getNodeValue } from './utils/json'
 import { ImageHelper } from "./imageHelper";
-import { Lexer, LexerErrorCode } from "./browser/lexer";
-import { Type, IType, Method, Parameter, Property, ArrayType, UnionType, ObjectType, IntersectionType } from "./browser/type";
+import { LexerErrorCode } from "./browser/lexer";
+import { Type, IType, Method, Property, ArrayType, UnionType, ObjectType, IntersectionType } from "./browser/type";
 import { ExpressionContext, None, ExpressionNode, IdentifierNode, ExpressionErrorLevel } from "./browser/parser";
 import Snippets from "./snippets";
 import { parse, parseExpressionInObject } from "./browser/template";
-import { Schema, validateJsonNode, SchemaObject, parseSchema } from "./schema";
+import { Schema, validateJsonNode, TypedNode } from "./schema";
 import { templateSchema, NodeSchema } from "./template_schema";
 
 enum ExpType {
@@ -1440,23 +1440,23 @@ export class MistDocument {
             }
         }
 
-        let resolveExpressionsInNode = (node: json.Node) => {
-            if (node.value instanceof IType) return;
+        let resolveValueTypesInNode = (node: TypedNode) => {
+            if (node.valueType) return;
             if (node.type === 'string') {
                 let parsed = parseExpressionInObject(node.value);
                 if (parsed === null) {
-                    node.value = Type.Any;
+                    node.valueType = Type.Any;
                 }
                 else {
-                    node.value = this.computeExpressionTypeInObject(parsed, typeContext, true);
+                    node.valueType = this.computeExpressionTypeInObject(parsed, typeContext, true);
                 }
             }
             else if (node.type === 'array') {
-                node.children.forEach(c => resolveExpressionsInNode(c));
+                node.children.forEach(c => resolveValueTypesInNode(c));
             }
             else if (node.type === 'object') {
                 node.children.forEach(c => {
-                    if (c.children.length === 2) resolveExpressionsInNode(c.children[1]);
+                    if (c.children.length === 2) resolveValueTypesInNode(c.children[1]);
                 });
             }
         };
@@ -1475,7 +1475,7 @@ export class MistDocument {
             let s = schema.properties[key];
             if (!valueNode) return;
             validate(valueNode);
-            resolveExpressionsInNode(valueNode);
+            resolveValueTypesInNode(valueNode);
             if (s) {
                 let errors = validateJsonNode(valueNode, s);
                 diagnostics.push(...errors.map(e => new vscode.Diagnostic(range(e.node.offset, e.node.length), e.error, vscode.DiagnosticSeverity.Warning)));
