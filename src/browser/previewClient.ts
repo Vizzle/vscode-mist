@@ -229,13 +229,11 @@ class Client {
         context.strokeStyle = 'rgba(112, 168, 218, 0.88)';
         context.fillStyle = 'rgba(112, 168, 218, 0.16)';
         let nodes = document.getElementsByClassName('mist-node');
-        let mainNode = <HTMLElement>nodes.item(0);
-        let mainRect = mainNode.getBoundingClientRect();
         let s = scales[this.scalesDropdown.index].scale;
         let drawNode = (node: HTMLElement) => {
             let rect = node.getBoundingClientRect();
-            let l = (rect.left - mainRect.left + mainNode.offsetLeft) / s,
-                t = (rect.top - mainRect.top + mainNode.offsetTop) / s,
+            let l = (rect.left - this.framesOverlay.getBoundingClientRect().left) / s,
+                t = (rect.top - this.framesOverlay.getBoundingClientRect().top) / s,
                 w = rect.width / s, h = rect.height / s;
             context.fillRect(l, t, w, h);
             context.strokeRect(l, t, w, h);
@@ -661,7 +659,7 @@ class Client {
             }
             
             this.framesOverlay.style.minWidth = this.framesOverlay.style.width = div.clientWidth + 'px';
-            this.framesOverlay.style.minHeight = this.framesOverlay.style.height = r.clientHeight + r.offsetTop + 'px';
+            this.framesOverlay.style.minHeight = this.framesOverlay.style.height = r.clientHeight + 1 + 'px';
             if (token.isCancelled()) return;
             postRender(r);
             if (token.isCancelled()) return;

@@ -868,7 +868,7 @@ export function render(_layout, clientWidth: number, scale: number, images: stri
         let container = document.createElement('div');
         container.appendChild(result);
         container.style.width = _layout.result.width / config.scale + 'px';
-        container.style.height = _layout.result.height / config.scale + 'px';
+        container.style.height = (_layout.result.height + _layout.result.top) / config.scale + 'px';
         container.style.transformOrigin = "top left";
         container.style.transform = `scale(${1 / config.scale})`;
         return container;
