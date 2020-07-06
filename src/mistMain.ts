@@ -214,6 +214,8 @@ function registerNodeTreeProvider(context: ExtensionContext) {
     }));
 
     context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(e => {
+        if (!treeView.visible) return
+
         const mistDoc = MistDocument.getDocumentByUri(e.textEditor.document.uri)
         if (!mistDoc) return
 
@@ -224,6 +226,23 @@ function registerNodeTreeProvider(context: ExtensionContext) {
             })
         }
     }))
+
+    treeView.onDidChangeVisibility(e => {
+        if (!e.visible) return
+
+        const textEditor = vscode.window.activeTextEditor
+        if (!textEditor) return
+
+        const mistDoc = MistDocument.getDocumentByUri(textEditor.document.uri)
+        if (!mistDoc) return
+
+        const node = mistDoc.nodeAtOffset(mistDoc.getRootMistNode(), textEditor.document.offsetAt(textEditor.selection.start))
+        if (node) {
+            treeView.reveal(node.node, {
+                expand: 1,
+            })
+        }
+    })
 }
 
 function registerCompletionProvider(context: ExtensionContext) {
