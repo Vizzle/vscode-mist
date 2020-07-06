@@ -141,6 +141,10 @@ function registerServer(context: ExtensionContext) {
   stopServerFunc = stopServer
 }
 
+/**
+ * 读取某个路径下的所有文件名和目录名，返回Array
+ * @param path 目录路径string
+ */
 function readFiles(path: string) {
   return new Promise<string[]>((resolve) => {
     fs.readdir(path, (err, files) => {
@@ -149,12 +153,39 @@ function readFiles(path: string) {
   })
 }
 
+/**
+ * 生成文件名和文件路径对象集合
+ * @param dir 父目录路径string
+ * @param fileNames 文件名数组
+ */
+function generatePathArray(dir, fileNames) {
+  const fileArray = []
+  if (fileNames && fileNames.length > 0) {
+    for (const fileName of fileNames) {
+      fileArray.push({
+        name: fileName,
+        path: dir + '/' + fileName
+      })
+    }
+  }
+  return fileArray
+}
+
+/**
+ * 用vscode编辑器打开指定路径的文件
+ * @param path 文件路径
+ */
 async function openEditor(path: string) {
   const exists = fs.existsSync(path)
   let doc = await vscode.workspace.openTextDocument(vscode.Uri.parse(`${exists ? 'file://' : 'untitled:'}${path}`))
   vscode.window.showTextDocument(doc)
 }
 
+/**
+ * 在json文件的第一个节点插入一个value为""的键值对，key为指定值
+ * @param path json文件路径
+ * @param name key的名称
+ */
 async function insertInEditor(path: string, name: string) {
   const exists = fs.existsSync(path)
   let doc = await vscode.workspace.openTextDocument(vscode.Uri.parse(`${exists ? 'file://' : 'untitled:'}${path}`))
@@ -212,10 +243,6 @@ function registerPushService(context: ExtensionContext) {
           return
         }
 
-        console.log('mist file: ' + mistFile)
-        console.log('deviceIp: ' + deviceIp)
-        console.log('bizCode:' + bizCode)
-
         let templateContent
         try {
           templateContent = await compile(mistFile, { minify: true, platform: 'android', debug: true })
@@ -225,43 +252,20 @@ function registerPushService(context: ExtensionContext) {
         }
 
         const imagesDir = mistPath.dir + '/Images'
-        let images = await readFiles(imagesDir)
+        const images = await readFiles(imagesDir)
+        const filePaths = generatePathArray(imagesDir, images)
+        const dataPath = generateDataPath(mistPath.dir, config.dataPath)
+        filePaths.push({
+          name: 'mockData.json',
+          path: dataPath
+        })
 
-        const formData = {}
-        formData['templateName'] = noBizCode ? mistPath.base : config.bizCode + '@' + mistPath.name
-        formData['templateHtml'] = templateContent
-        if (images && images.length > 0) {
-          for (let image of images) {
-            let imagePath = imagesDir + '/' + image
-            console.log('Upload file: ' + imagePath)
-            formData[image] = {
-              value: fs.createReadStream(imagePath),
-              options: {
-                filename: image
-              }
-            }
-          }
-        }
-
-        let dataPath = config.dataPath
-        if (dataPath) {
-          dataPath = path.join(mistPath.dir, dataPath)
-        }
-        dataPath = dataPath ? dataPath : mistPath.dir + '/mockData.json'
-        if (fs.existsSync(dataPath)) {
-          formData['mockData.json'] = {
-            value: fs.createReadStream(dataPath),
-            options: {
-              filename: 'mockData.json'
-            }
-          }
-        }
+        const templateName = noBizCode ? mistPath.base : config.bizCode + '@' + mistPath.name
+        const formData = generateFromData(filePaths, templateName, templateContent)
 
         const devicePort = config.devicePort
         const deviceUrl = `http://${deviceIp}:${devicePort ? parseInt(devicePort) : 9012}/update`
         postForm(deviceUrl, formData, (err, res, data) => {
-          console.log('bizCode Error: ' + err)
-          console.log('bizCode Data: ' + data)
           if (err) {
             vscode.window.showErrorMessage('请求手机失败：' + err)
           } else if (data) {
@@ -269,7 +273,7 @@ function registerPushService(context: ExtensionContext) {
             if (data.success == true) {
               vscode.window.showInformationMessage('模板已传输到手机.')
               if (!noBizCode) {
-                formData['templateName'] = mistPath.base
+                const formData = generateFromData(filePaths, mistPath.base, templateContent)
                 postForm(deviceUrl, formData, () => {})
               }
             } else if (data.message) {
@@ -284,10 +288,53 @@ function registerPushService(context: ExtensionContext) {
   )
 }
 
-function postForm(deviceUrl, formData, callback) {
+/**
+ * 生成数据文件路径
+ * @param dir 父目录路径string
+ * @param configPath config.json配置的dataPath
+ */
+function generateDataPath(dir, configPath) {
+  if (configPath) {
+    configPath = path.join(dir, configPath)
+  }
+  return configPath ? configPath : dir + '/mockData.json'
+}
+
+/**
+ * 组装表单数据对象
+ * @param filePaths 要添加到表单中的文件对象数组
+ * @param templateName mist模板名称
+ * @param templateContent mist模板内容
+ */
+function generateFromData(filePaths, templateName, templateContent) {
+  const formData = {}
+  formData['templateName'] = templateName
+  formData['templateHtml'] = templateContent
+  if (filePaths && filePaths.length > 0) {
+    for (let file of filePaths) {
+      if (fs.existsSync(file.path) && fs.lstatSync(file.path).isFile()) {
+        formData[file.name] = {
+          value: fs.createReadStream(file.path),
+          options: {
+            filename: file.name
+          }
+        }
+      }
+    }
+  }
+  return formData
+}
+
+/**
+ * post一个表单到指定url
+ * @param url url
+ * @param formData 表单对象
+ * @param callback 回调函数
+ */
+function postForm(url, formData, callback) {
   request.post(
     {
-      url: deviceUrl,
+      url: url,
       headers: { 'Content-Type': 'multipart/form-data' },
       formData: formData
     },
