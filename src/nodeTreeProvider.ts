@@ -133,7 +133,10 @@ export default class MistNodeTreeProvider implements vscode.TreeDataProvider<jso
         if (this.editor && this.editor.document && this.editor.document.languageId === 'mist') {
             const mistDoc = MistDocument.getDocumentByUri(this.editor.document.uri)
             if (!mistDoc) return
-            this.tree = mistDoc.getRootMistNode().node
+            const mistNode = mistDoc.getRootMistNode()
+            if (mistNode) {
+                this.tree = mistNode.node
+            }
         }
     }
 

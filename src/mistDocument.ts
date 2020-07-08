@@ -286,7 +286,12 @@ export class MistData {
             }
             travelTree(jsonTree);
             this.dataMap[dir][file] = results;
-            Object.keys(MistDocument.documents).forEach(k => MistDocument.documents[k].clearDatas());
+            Object.keys(MistDocument.documents).forEach(k => {
+                const doc = MistDocument.documents[k]
+                if (doc) {
+                    doc.clearDatas()
+                }
+            });
         }
     }
 
@@ -359,7 +364,12 @@ export class MistData {
             }
 
             this.dataMap[dir][file] = results;
-            Object.keys(MistDocument.documents).forEach(k => MistDocument.documents[k].clearDatas());
+            Object.keys(MistDocument.documents).forEach(k => {
+                const doc = MistDocument.documents[k]
+                if (doc) {
+                    doc.clearDatas()
+                }
+            });
         }
     }
 
