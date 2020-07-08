@@ -1,4 +1,5 @@
 import Device from "./previewDevice";
+import * as flex from '../../lib/FlexLayout';
 import { render, postRender } from "./render";
 import { bindData } from "./template";
 import { ImageInfo } from "./image";
@@ -562,7 +563,7 @@ class Client {
         }
     }
 
-    private render() {
+    private async render() {
         for (let token of this.renderingTokens) {
             token.cancel();
         }
@@ -574,6 +575,9 @@ class Client {
         let div = document.getElementsByClassName('mist-main')[0];
         this.bindedTemplate = bindData(this.template, this.getData(), this.getBuiltinVars());
         let imageFiles = this.resolveImageFiles(this.bindedTemplate.layout);
+
+        (global as any).flex = await flex;
+
         return render(this.bindedTemplate.layout, this.device.width, this.device.scale, imageFiles, token).then(r => {
             if (token.isCancelled()) return;
 

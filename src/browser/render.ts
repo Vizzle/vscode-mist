@@ -1,13 +1,14 @@
-import * as flex from '../../lib/FlexLayout';
+/// <reference path="../../lib/FlexLayout.d.ts" />
 
 declare const $: any;
+declare const flex: any;
 
 var config = {
     scale: 1,
     screenWidth: 375,
 };
 
-function length(obj): flex.Length {
+function length(obj) {
     if (typeof(obj) === 'number') {
         return new flex.Length(obj * config.scale);
     }
@@ -45,7 +46,7 @@ function length(obj): flex.Length {
     return new flex.Length(0);
 }
 
-function lengthString(length: flex.Length) {
+function lengthString(length) {
     switch (length.type) {
         case flex.LengthTypeAuto: return 'auto';
         case flex.LengthTypeContent: return 'content';
@@ -584,7 +585,7 @@ function imageSize(file: string) {
     return new flex.Size(image.width / scale * config.scale, image.height / scale * config.scale);
 }
 
-function measureElement(el: HTMLElement, constrainedSize: flex.Size) {
+function measureElement(el: HTMLElement, constrainedSize) {
     const id = '__measure_container';
     let container = document.getElementById(id);
     if (!container) {
@@ -608,7 +609,7 @@ function measureElement(el: HTMLElement, constrainedSize: flex.Size) {
     return new flex.Size(Math.ceil(rect.width), Math.ceil(rect.height));
 }
 
-function getElementBaseline(el: HTMLElement, constrainedSize: flex.Size) {
+function getElementBaseline(el: HTMLElement, constrainedSize) {
     const id = '__measure_container';
     let container = document.getElementById(id);
     if (!container) {
@@ -647,8 +648,8 @@ function getElementBaseline(el: HTMLElement, constrainedSize: flex.Size) {
     return baseline;
 }
 
-type MeasureFunc = (layout, constrainedSize: flex.Size) => flex.Size;
-type BaselineFunc = (layout, constrainedSize: flex.Size) => number;
+type MeasureFunc = (layout, constrainedSize) => any;
+type BaselineFunc = (layout, constrainedSize) => number;
 
 var measureFuncs: { [type: string]: MeasureFunc } = {
     text: function (layout, constrainedSize) {
@@ -678,7 +679,7 @@ var baselineFuncs: Record<string, BaselineFunc> = {
 }
 
 function didLayout(layout) {
-    var node: flex.Node = layout.node;
+    var node = layout.node;
     layout.result = {
         "left": node.resultLeft,
         "top": node.resultTop,
