@@ -37,7 +37,7 @@ export let functions = {
       {
         "params": [
           {
-            "type": "number",
+            "type": "number | string",
             "name": "tag"
           }
         ],
@@ -1046,7 +1046,199 @@ export let functions = {
         },
       }
     ],
+    "findNode": [
+      {
+        "params": [
+          {
+            "type": "string",
+            "name": "id"
+          }
+        ],
+        "return": "Node",
+        "comment": "根据 id 查找节点，只能在 `on-after-layout` 事件中调用"
+      }
+    ],
+    "with": [
+      {
+        "params": [
+          {
+            "type": "any",
+            "name": "obj"
+          },
+          {
+            "type": "(obj: any) => void",
+            "name": "block"
+          }
+        ],
+        "return": "void",
+        "comment": "方便对同一个对象调用多次操作"
+      }
+    ]
   }, 
+  "Node": {
+    "top": [
+      {
+        "isProp": true,
+        "return": "number"
+      }
+    ],
+    "right": [
+      {
+        "isProp": true,
+        "return": "number"
+      }
+    ],
+    "bottom": [
+      {
+        "isProp": true,
+        "return": "number"
+      }
+    ],
+    "left": [
+      {
+        "isProp": true,
+        "return": "number"
+      }
+    ],
+    "width": [
+      {
+        "isProp": true,
+        "return": "number"
+      }
+    ],
+    "height": [
+      {
+        "isProp": true,
+        "return": "number"
+      }
+    ],
+    "visible": [
+      {
+        "isProp": true,
+        "return": "boolean",
+        "comment": "当前节点是否可见"
+      }
+    ],
+    "line": [
+      {
+        "isProp": true,
+        "return": "number",
+        "comment": "当前节点在其父节点中的行索引"
+      }
+    ],
+    "lines": [
+      {
+        "isProp": true,
+        "return": "number",
+        "comment": "当前节点的行数"
+      }
+    ],
+    "index": [
+      {
+        "isProp": true,
+        "return": "number",
+        "comment": "当前节点在其父节点中的索引"
+      }
+    ],
+    "parent": [
+      {
+        "isProp": true,
+        "return": "Node",
+        "comment": "父节点"
+      }
+    ],
+    "children": [
+      {
+        "isProp": true,
+        "return": "Node[]",
+        "comment": "子节点数组"
+      }
+    ],
+    "visibleCount": [
+      {
+        "isProp": true,
+        "return": "number",
+        "comment": "可见的子节点数量。刚布局结束时，可认为 children[visibleCount - 1] 即为最后一个可见子节点"
+      }
+    ],
+    "setTop": [
+      {
+        "params": [
+          {
+            "name": "top",
+            "type": "number"
+          }
+        ],
+        "return": "Node"
+      }
+    ],
+    "setRight": [
+      {
+        "params": [
+          {
+            "name": "right",
+            "type": "number"
+          }
+        ],
+        "return": "Node"
+      }
+    ],
+    "setBottom": [
+      {
+        "params": [
+          {
+            "name": "bottom",
+            "type": "number"
+          }
+        ],
+        "return": "Node"
+      }
+    ],
+    "setLeft": [
+      {
+        "params": [
+          {
+            "name": "left",
+            "type": "number"
+          }
+        ],
+        "return": "Node"
+      }
+    ],
+    "setWidth": [
+      {
+        "params": [
+          {
+            "name": "width",
+            "type": "number"
+          }
+        ],
+        "return": "Node"
+      }
+    ],
+    "setHeight": [
+      {
+        "params": [
+          {
+            "name": "height",
+            "type": "number"
+          }
+        ],
+        "return": "Node"
+      }
+    ],
+    "setVisible": [
+      {
+        "params": [
+          {
+            "name": "visible",
+            "type": "boolean"
+          }
+        ],
+        "return": "Node"
+      }
+    ],
+  },
   "View": {
     "animation": [
       {

@@ -532,7 +532,12 @@ const propertiesMap: { [type: string]: PropertyMap} = {
     common: {
         "tag": {
             type: "integer",
+            deprecatedMessage: "建议使用 id 代替",
             description: "元素的 tag，用于在 native 查找该 view。必须是整数"
+        },
+        "id": {
+            type: "string",
+            description: "用于模板中或 Native 查找该节点"
         },
         "identifier": {
             type: "string",
@@ -574,6 +579,7 @@ const propertiesMap: { [type: string]: PropertyMap} = {
         "on-long-press": EventSchema("元素被长按时触发"),
         "on-display": EventSchema("元素显示时触发。在列表中滑出可见区域再滑回来会重新触发\n\n[查看文档](https://vizzle.github.io/MIST/basics/Property.html#on-display)"),
         "on-create": EventSchema("元素被创建时触发，此时还没显示\n\n[查看文档](https://vizzle.github.io/MIST/basics/Property.html#on-create)"),
+        "on-after-layout": EventSchema("布局完成时触发，可以在这里修改布局结果。通过 `_event_.node` 获取当前节点，通过 `findNode(id)` 查找其它节点"),
         // "on-update-appear": EventSchema("更新状态后，元素出现时（隐藏→更新状态→显示）"),
         // "on-update-disappear": EventSchema("更新状态后，元素消失时（显示→更新状态→隐藏）"),
         // "on-update-reuse": EventSchema("更新状态后，元素复用时（显示→更新状态→显示）"),

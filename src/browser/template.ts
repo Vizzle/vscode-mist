@@ -1,12 +1,20 @@
 import { ExpressionContext, ExpressionNode, None, LiteralNode, ParseResult, Parser, ExpressionError } from "./parser";
-import { IType, Type, Property, Method, Parameter, ArrowType } from "./type";
+import { IType, Type, Property, Method, Parameter, ArrowType, ArrayType, UnionType } from "./type";
 import { functions } from "./functions";
 
 function isObject(obj: any) {
     return obj && typeof(obj) === 'object' && obj.constructor === Object;
 }
 
-function getTypeFromString(name: string) {
+function getTypeFromString(name: string): IType {
+    if (name.endsWith('[]')) {
+        return new ArrayType(getTypeFromString(name.slice(0, -2).trim()))
+    }
+
+    if (name.indexOf('|') > 0) {
+        return new UnionType(...name.split('|').map(s => getTypeFromString(s.trim())))
+    }
+
     const arrowTypeRE = /^\((.*)\)\s*=>\s*(\w+)$/;
     let match = arrowTypeRE.exec(name);
     if (match) {
@@ -51,7 +59,13 @@ function registerTypes() {
                 if (info.deprecated) {
                     doc = `[Deprecated] ${info.deprecated}\n${doc || ''}`.trim();
                 }
-                type.registerMethod(fun, new Method(getType(info.return), doc, (info.params || []).map(p => new Parameter(p.name, getType(p.type) || Type.Any)), info.js));
+
+                if (info.isProp) {
+                    type.registerProperty(fun, new Property(getType(info.return), doc))
+                }
+                else {
+                    type.registerMethod(fun, new Method(getType(info.return), doc, (info.params || []).map(p => new Parameter(p.name, getType(p.type) || Type.Any)), info.js));
+                }
             });
         });
     });
