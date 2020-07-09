@@ -197,7 +197,7 @@
   },
   "dependencies": {
     "jsonc-parser": "^0.4.0",
-    "mistc": "^1.0.5",
+    "mistc": "^1.0.6-beta.0",
     "request": "^2.88.2",
     "request-light": "^0.2.2",
     "ws": "^1.1.1"
