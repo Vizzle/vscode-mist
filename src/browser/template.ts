@@ -332,7 +332,7 @@ export function bindData(template: any, data: any, builtin: any) {
         }
         return obj;
     }
-    function extract<T> (obj: any, defaultValue: T = null, blacklist: string[] = null): T {
+    function extract<T = any> (obj: any, defaultValue: T = null, blacklist: string[] = null): T {
         if (blacklist) {
             obj = Object.assign({}, obj);
             blacklist.forEach(k => delete obj[k]);

@@ -12,7 +12,7 @@ class CompiledPreviewDocumentProvider implements vscode.TextDocumentContentProvi
     const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(fileName))
     const content = doc.getText()
     try {
-      return await compile(fileName, { minify: false }, content)
+      return await compile(fileName, { minify: false }, content) as string
     } catch (error) {
       return '编译失败：\n' + error
     }
