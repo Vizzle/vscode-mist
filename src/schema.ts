@@ -85,7 +85,7 @@ function valueToJsonNode(value: any): json.Node {
         nodeType = 'null';
     }
     else {
-        nodeType = type;
+        nodeType = type as json.NodeType;
     }
     let node: json.Node = {
         type: nodeType,

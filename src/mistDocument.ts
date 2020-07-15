@@ -1737,6 +1737,7 @@ export class MistDocument {
         }
         path.splice(0, 1);
         let node = this.nodeTree;
+        // @ts-ignore
         while (path.length >= 2 && path[0] === 'children' && typeof(path[1]) === 'number') {
             node = node.children[path[1]];
             path.splice(0, 2);

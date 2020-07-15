@@ -307,7 +307,7 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
 
         let template: any
         if (fs.existsSync(mistDoc.document.uri.fsPath)) {
-            const result = await compile(mistDoc.document.uri.fsPath, { minify: true }, mistDoc.document.getText()).catch(this.errorTemplate)
+            const result = await compile(mistDoc.document.uri.fsPath, { minify: true }, mistDoc.document.getText()).catch(this.errorTemplate) as string
             template = JSON.parse(result)
         }
         else {
@@ -355,6 +355,7 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
         }
         else {
             path.splice(0, 1);
+            // @ts-ignore
             while (path.length >= 2 && path[0] === 'children') {
                 indexes.push(path[1]);
                 path.splice(0, 2);
