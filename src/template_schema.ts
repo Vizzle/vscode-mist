@@ -286,7 +286,7 @@ export class NodeSchema implements ISchema {
                 params: {
                     additionalProperties: true,
                     description: 'Action 参数',
-                    snippet: "{\n  $0\n}"
+                    snippet: ""
                 },
                 success: {
                     type: 'object',

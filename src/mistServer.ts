@@ -51,7 +51,18 @@ function registerServer(context: ExtensionContext) {
 
           let content: string
           if (path.extname(file) === '.mist') {
-            content = await compile(file, { platform: 'ios', debug: true }) as string
+            try {
+              content = await compile(file, { platform: 'ios', debug: true }) as string
+            } catch (e) {
+              output.appendLine(e)
+              const name = req.url.replace(/^\//, '')
+              vscode.window.showErrorMessage(`'${name}' 模板编译失败，请修复错误后重新请求。${e}`, '打开该模板').then(async r => {
+                const doc = await vscode.workspace.openTextDocument(file)
+                if (doc) {
+                  vscode.window.showTextDocument(doc)
+                }
+              })
+            }
           } else if (path.extname(file) === '.png') {
             fs.readFile(file, 'binary', function (err, file) {
               if (err) {
