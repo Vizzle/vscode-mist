@@ -307,8 +307,13 @@ export class MistContentProvider implements vscode.TextDocumentContentProvider {
 
         let template: any
         if (fs.existsSync(mistDoc.document.uri.fsPath)) {
-            const result = await compile(mistDoc.document.uri.fsPath, { minify: true }, mistDoc.document.getText()).catch(this.errorTemplate) as string
-            template = JSON.parse(result)
+            try {
+                const result = await compile(mistDoc.document.uri.fsPath, { minify: true }, mistDoc.document.getText()) as string
+                template = JSON.parse(result)
+            }
+            catch (e) {
+                template = this.errorTemplate(e)
+            }
         }
         else {
             template = mistDoc.getTemplate();

@@ -38,7 +38,7 @@ export default class MistNodeTreeProvider implements vscode.TreeDataProvider<jso
     }
 
     getParent(node: json.Node) {
-        return node.parent.parent
+        return node.parent && node.parent.parent
     }
 
     getTreeItem(node: json.Node): vscode.TreeItem {

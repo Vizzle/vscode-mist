@@ -1238,6 +1238,54 @@ export let functions = {
         "return": "Node"
       }
     ],
+    "offset": [
+      {
+        "params": [
+          {
+            "name": "x",
+            "type": "number"
+          },
+          {
+            "name": "y",
+            "type": "number"
+          }
+        ],
+        "return": "Node",
+        "comment": "对当前节点的位置进行偏移。例如 `node.offset(5, 0)` 表示将节点向右移动 5"
+      }
+    ],
+    "align": [
+      {
+        "params": [
+          {
+            "name": "target",
+            "type": "Node"
+          },
+          {
+            "name": "type",
+            "type": "string"
+          }
+        ],
+        "return": "Node",
+        "comment": "与 target 节点对齐。type 为对齐方式，可选的值为 'top', 'right', 'bottom', 'left', 'center'。"
+      }
+    ],
+    "beside": [
+      {
+        "params": [
+          {
+            "name": "target",
+            "type": "Node"
+          },
+          {
+            "name": "type",
+            "type": "string"
+          }
+        ],
+        "return": "Node",
+        "comment": "移动到 target 节点的旁边。type 为对齐方式，可选的值为 'top', 'right', 'bottom', 'left'。"
+      }
+    ],
   },
   "View": {
     "animation": [
