@@ -39,15 +39,16 @@ export default class Snippets {
 "paging": 
 `"type": "paging",
 "style": {
+  "reuse": true,
   "direction": "$1"\${2:,
   "page-control": true,
   "page-control-margin-bottom": \${3:6},
-  "page-control-color": "\${4:#a000}",
-  "page-control-selected-color": "\${5:#5000}"}
+  "page-control-color": "\${4:#5000}",
+  "page-control-selected-color": "\${5:#a000}"}
 },
 "children": [
   {
-    "repeat": "\\\${\${6:repeat array or count}}",
+    "repeat": "\\\${\${6:array or count}}",
     $0
   }
 ]`,
@@ -59,7 +60,7 @@ export default class Snippets {
 },
 "children": [
   {
-    "repeat": "\\\${\${2:repeat array or count}}",
+    "repeat": "\\\${\${2:array or count}}",
     $0
   }
 ]`,

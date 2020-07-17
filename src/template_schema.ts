@@ -1032,6 +1032,7 @@ const stylesMap: { [type: string]: PropertyMap} = {
         "scroll-enabled": SimpleSchema("boolean", "是否允许用户拖动\n\n[查看文档](https://vizzle.github.io/MIST/components/scroll.html#scroll-enabled)"),
     },
     paging: {
+        "reuse": SimpleSchema("boolean", "【仅 iOS 生效】 是否开启 paging 子元素的复用，建议开启。如果不复用，每次 attach 时子元素都会重新创建，性能较差"),
         "direction": EnumSchema({
             "horizontal": "水平方向滚动",
             "vertical": "竖直方向滚动",
