@@ -20,7 +20,7 @@ function getTypeFromString(name: string): IType {
     if (match) {
         let params = match[1].split(',').map(s => {
             let components = s.trim().split(':');
-            return new Parameter(components[0].trim(), Type.getType(components[1].trim()));
+            return new Parameter(components[0].trim(), getTypeFromString(components[1].trim()));
         });
         return new ArrowType(Type.getType(match[2]), params);
     }

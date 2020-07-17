@@ -182,7 +182,7 @@ export abstract class IType {
         }
         else if (this instanceof ArrowType && type instanceof ArrowType) {
             return this.returnType.kindof(type.returnType)
-                && this.params.length === type.params.length
+                && this.params.length <= type.params.length
                 && this.params.every((t, i) => t.type.kindof(type.params[i].type));
         }
         return false;

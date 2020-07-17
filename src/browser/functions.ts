@@ -1472,7 +1472,7 @@ export let functions = {
         "comment": " 是否所有元素都满足条件\n\n `[11, 12, 13, 14].all(n -> n % 2 == 0)`      =>      `false`", 
         "params": [
           {
-            "type": "(element: any) => any", 
+            "type": "(value: any, index: number, array: any[]) => any", 
             "name": "block"
           }
         ], 
@@ -1509,7 +1509,7 @@ export let functions = {
         "comment": " 最后一个满足条件的元素，没有满足条件的元素时返回 `nil`\n\n `[11, 12, 13, 14].last(n -> n % 2 == 0)`       =>      `14`", 
         "params": [
           {
-            "type": "(element: any) => any", 
+            "type": "(value: any, index: number, array: any[]) => any", 
             "name": "block"
           }
         ], 
@@ -1563,7 +1563,7 @@ export let functions = {
         "comment": " 最后一个满足条件的元素的索引，没有满足条件的元素时返回 `-1`\n\n `[11, 12, 13, 14].lastIndex(n -> n % 2 == 0)`       =>      `3`", 
         "params": [
           {
-            "type": "(element: any) => any", 
+            "type": "(value: any, index: number, array: any[]) => any", 
             "name": "block"
           }
         ], 
@@ -1602,7 +1602,7 @@ export let functions = {
         "comment": " 筛选出符合条件的元素\n\n `[11, 12, 13, 14].filter(n -> n % 2 == 0)`      =>      `[12, 14]`", 
         "params": [
           {
-            "type": "(element: any) => any", 
+            "type": "(value: any, index: number, array: any[]) => any", 
             "name": "block"
           }
         ], 
@@ -1776,7 +1776,7 @@ export let functions = {
         "comment": " 第一个满足条件的元素的索引，没有满足条件的元素时返回 `-1`\n\n `[11, 12, 13, 14].firstIndex(n -> n % 2 == 0)`       =>      `1`", 
         "params": [
           {
-            "type": "(element: any) => any", 
+            "type": "(value: any, index: number, array: any[]) => any", 
             "name": "block"
           }
         ], 
@@ -1789,7 +1789,7 @@ export let functions = {
         "comment": " 是否有至少一个元素满足条件\n\n `[11, 12, 13, 14].any(n -> n % 2 == 0)`      =>      `true`", 
         "params": [
           {
-            "type": "(element: any) => any", 
+            "type": "(value: any, index: number, array: any[]) => any", 
             "name": "block"
           }
         ], 
@@ -1802,7 +1802,7 @@ export let functions = {
         "comment": " 对数组每个元素做转换\n\n `[1, 2, 3].select(n -> n * 2)`      =>      `[2, 4, 6]`", 
         "params": [
           {
-            "type": "(element: any) => any", 
+            "type": "(value: any, index: number, array: any[]) => any", 
             "name": "block"
           }
         ], 
@@ -1820,7 +1820,7 @@ export let functions = {
         "comment": " 第一个满足条件的元素，没有满足条件的元素时返回 `nil`\n\n `[11, 12, 13, 14].first(n -> n % 2 == 0)`       =>      `12`", 
         "params": [
           {
-            "type": "(element: any) => any", 
+            "type": "(value: any, index: number, array: any[]) => any", 
             "name": "block"
           }
         ], 
@@ -1847,6 +1847,75 @@ export let functions = {
         "comment": " 数组内最小值\n\n `[1, 2, 3].min()`      =>      `1`",
         "return": "number",
         "js": (_this: any[]) => _this.reduce((a, b) => Math.min(a, b), _this[0])
+      }
+    ],
+    "reduce": [
+      {
+        "comment": " 方法接受一个函数作为参数，这个函数作为一个累加器，从左到右遍历整个类型数组，最后返回一个单一的值\n\n `[1, 2, 3].reduce((a, b) -> a + b)`      =>      `6`",
+        "params": [
+          {
+            "type": "(previousValue: any, currentValue: any, index: number, array: any[]) => any",
+            "name": "block"
+          }
+        ],
+        "return": "any",
+        "js": (_this: any[], cb: (...args) => any) => _this.reduce(cb)
+      },
+      {
+        "comment": " 方法接受一个函数作为参数，这个函数作为一个累加器，从左到右遍历整个类型数组，最后返回一个单一的值\n\n `[1, 2, 3].reduce((a, b) -> a + b, '')`      =>      `'123'`",
+        "params": [
+          {
+            "type": "(previousValue: any, currentValue: any, index: number, array: any[]) => any",
+            "name": "block"
+          },
+          {
+            "type": "any",
+            "name": "initialValue"
+          }
+        ],
+        "return": "any",
+        "js": (_this: any[], cb: (...args) => any, initialValue: any) => _this.reduce(cb, initialValue)
+      }
+    ],
+    "reduceRight": [
+      {
+        "comment": " 方法接受一个函数作为参数，这个函数作为一个累加器，从右到左遍历整个类型数组，最后返回一个单一的值\n\n `[1, 2, 3].reduceRight((a, b) -> a - b)`      =>      `0`",
+        "params": [
+          {
+            "type": "(previousValue: any, currentValue: any, index: number, array: any[]) => any",
+            "name": "block"
+          }
+        ],
+        "return": "any",
+        "js": (_this: any[], cb: (...args) => any) => _this.reduceRight(cb)
+      },
+      {
+        "comment": " 方法接受一个函数作为参数，这个函数作为一个累加器，从右到左遍历整个类型数组，最后返回一个单一的值\n\n `[1, 2, 3].reduceRight((a, b) -> a + b, '')`      =>      `'321'`",
+        "params": [
+          {
+            "type": "(previousValue: any, currentValue: any, index: number, array: any[]) => any",
+            "name": "block"
+          },
+          {
+            "type": "any",
+            "name": "initialValue"
+          }
+        ],
+        "return": "any",
+        "js": (_this: any[], cb: (...args) => any, initialValue: any) => _this.reduceRight(cb, initialValue)
+      }
+    ],
+    "sort": [
+      {
+        "params": [
+          {
+            "type": "(a: any, b: any) => number",
+            "name": "block"
+          }
+        ],
+        "comment": " 对数组的元素进行排序，并返回数组\n\n `[2,1,3].sort((a, b) -> a - b)`      =>      `[1,2,3]`",
+        "return": "any[]",
+        "js": (_this: any[], cb: (...args) => number) => _this.sort(cb)
       }
     ],
   }, 
