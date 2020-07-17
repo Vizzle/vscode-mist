@@ -101,6 +101,9 @@ export abstract class IType {
     private static isArrayType(type: IType) {
         return type === Type.Array || type instanceof ArrayType
     }
+    private static isObjectType(type: IType) {
+        return type === Type.Object || type instanceof ObjectType
+    }
     private static getArrayElementType(type: IType) {
         if (type === Type.Array) {
             return Type.Any
@@ -167,18 +170,28 @@ export abstract class IType {
                 return IType.getArrayElementType(this).kindof(IType.getArrayElementType(type), unionCheck);
             }
         }
-        else if (this instanceof ObjectType && type instanceof ObjectType) {
-            let t = this;
-            let required = type.getRequiredProperties();
-            return Object.keys(type.getMap()).every(k => {
-                let thisKeyType = t.getMap()[k];
-                if (thisKeyType) {
-                    return thisKeyType.kindof(type.getMap()[k], unionCheck);
+        else if (IType.isObjectType(this) && IType.isObjectType(type)) {
+            if (type instanceof ObjectType) {
+                if (this instanceof ObjectType) {
+                    let t = this;
+                    let required = type.getRequiredProperties();
+                    return Object.keys(type.getMap()).every(k => {
+                        let thisKeyType = t.getMap()[k];
+                        if (thisKeyType) {
+                            return thisKeyType.kindof(type.getMap()[k], unionCheck);
+                        }
+                        else {
+                            return required.indexOf(k) < 0;
+                        }
+                    });
                 }
                 else {
-                    return required.indexOf(k) < 0;
+                    return false
                 }
-            });
+            }
+            else {
+                return true
+            }
         }
         else if (this instanceof ArrowType && type instanceof ArrowType) {
             return this.returnType.kindof(type.returnType)

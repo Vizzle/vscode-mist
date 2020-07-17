@@ -1329,13 +1329,33 @@ export let functions = {
             "name": "value"
           }
         ], 
-        "return": "NSDictionary*",
+        "return": "object",
         "js": (_this, key, value) => {
           _this[key] = value;
           return _this;
         }
       }
-    ]
+    ],
+    "keys": [
+      {
+        "comment": " 获取字典的所有 key，返回一个数组\n\n `{'a': 1, 'b': 2}.keys()`      =>      `['a', 'b']`",
+        "return": "array",
+        "js": (_this) => Object.keys(_this)
+      }
+    ],
+    "concat": [
+      {
+        "params": [
+          {
+            "type": "NSDictionary*",
+            "name": "obj"
+          },
+        ], 
+        "comment": " 合并字典返回一个新的字典\n\n `{'a': 1, 'b': 2}.concat({'b': 3, 'c': 4})`      =>      `{'a': 1, 'b': 3, 'c': 4}`",
+        "return": "object",
+        "js": (_this, obj) => Object.assign({}, _this, obj)
+      }
+    ],
   }, 
   "NSString": {
     "trim": [
