@@ -293,6 +293,31 @@ export class IdentifierNode extends ExpressionNode {
     }
 }
 
+export class ParenNode extends ExpressionNode {
+    expression: ExpressionNode;
+
+    constructor(expression: ExpressionNode) {
+        super();
+        this.expression = expression;
+    }
+
+    compute(context: ExpressionContext) {
+        return this.expression.compute(context);
+    }
+
+    computeValue(context: ExpressionContext) {
+        return this.expression.computeValue(context);
+    }
+
+    getType(context: ExpressionContext): IType {
+        return this.expression.getType(context);
+    }
+
+    check(context: ExpressionContext) {
+        return this.expression.check(context);
+    }
+}
+
 class ArrayExpressionNode extends ExpressionNode {
     list: ExpressionNode[];
 
@@ -1063,12 +1088,12 @@ class FunctionExpressionNode extends ExpressionNode {
 }
 
 class LambdaExpressionNode extends ExpressionNode {
-    parameter: IdentifierNode;
+    parameters: IdentifierNode[];
     expression: ExpressionNode;
 
-    constructor(parameter: IdentifierNode, expression: ExpressionNode) {
+    constructor(parameters: IdentifierNode[], expression: ExpressionNode) {
         super();
-        this.parameter = parameter;
+        this.parameters = parameters;
         this.expression = expression;
     }
 
@@ -1083,14 +1108,14 @@ class LambdaExpressionNode extends ExpressionNode {
     }
 
     getType(context: ExpressionContext): IType {
-        return new ArrowType(Type.Any, [new Parameter(this.parameter.identifier, Type.Any)]);
+        return new ArrowType(Type.Any, this.parameters.map(p => new Parameter(p.identifier, Type.Any)));
     }
 
     computeValue(context: ExpressionContext) {
-        return param => {
-            context.push(this.parameter.identifier, param);
+        return (...params) => {
+            this.parameters.forEach((p, i) => context.push(p.identifier, params[i]))
             let value = this.expression.computeValue(context);
-            context.pop(this.parameter.identifier);
+            this.parameters.forEach(p => context.pop(p.identifier))
             return value;   
         };
     }
@@ -1108,6 +1133,38 @@ export type ParseResult = {
     errorOffset?: number,
     errorLength?: number,
 };
+
+export class CommaExpressionNode extends ExpressionNode {
+    expressions: ExpressionNode[];
+
+    constructor(expressions: ExpressionNode[]) {
+        super();
+        this.expressions = expressions;
+    }
+
+    visitNode(visitor: NodeVisitor) {
+        super.visitNode(visitor)
+        this.expressions.forEach(exp => exp.visitNode(visitor));
+    }
+
+    compute(context: ExpressionContext) {
+        return this.expressions[this.expressions.length - 1].compute(context);
+    }
+
+    getType(context: ExpressionContext): IType {
+        return this.expressions[this.expressions.length - 1].getType(context);
+    }
+
+    computeValue(context: ExpressionContext) {
+        return this.expressions[this.expressions.length - 1].computeValue(context);
+    }
+
+    check(context: ExpressionContext) {
+        const errors = []
+        this.expressions.forEach(exp => errors.push(...exp.check(context)))
+        return errors
+    }
+}
 
 export class Parser {
     private lexer: Lexer;
@@ -1375,7 +1432,7 @@ export class Parser {
     }
 
     private parsePrimaryExpression() {
-        let expression: ExpressionNode;
+        let expression: ExpressionNode = null;
         let type = this.lexer.token.type;
         switch (type) {
             case TokenType.String:
@@ -1388,10 +1445,42 @@ export class Parser {
                 return node;
             }
             case TokenType.OpenParen:
+            {
+                let open = this.lexer.token;
                 this.lexer.next();
-                if (!(expression = this.requireExpression())) return null;
-                if (!this.requireOperator(TokenType.CloseParen, ParserErrorCode.CloseParenExpected)) return null;
-                return expression;
+                const expressions: ExpressionNode[] = []
+                if (this.lexer.token.type !== TokenType.CloseParen) {
+                    if (!(expression = this.requireExpression())) return null;
+                    expressions.push(expression)
+                    while (this.lexer.token.type === TokenType.Comma) {
+                        this.lexer.next();
+                        if (!(expression = this.requireExpression())) return null;
+                        expressions.push(expression)
+                    }
+                }
+
+                const close = this.requireOperator(TokenType.CloseParen, ParserErrorCode.CloseParenExpected)
+                if (!close) return null;
+
+                if (this.lexer.token.type === TokenType.Arrow && expressions.every(exp => exp instanceof IdentifierNode)) {
+                    this.lexer.next();
+                    if (!(expression = this.requireExpression())) return null;
+                    return new LambdaExpressionNode(expressions as IdentifierNode[], expression).setRange(open.offset, expression.offset + expression.length - open.offset);
+                }
+
+                if (expressions.length > 1) {
+                    return new CommaExpressionNode(expressions).setRange(open.offset, close.offset + close.length - open.offset)
+                }
+                else if (expression) {
+                    return new ParenNode(expression).setRange(open.offset, close.offset + close.length - open.offset);
+                }
+                else {
+                    if (!this.error) {
+                        this.error = ParserErrorCode.ExpressionExpected
+                    }
+                    return null
+                }
+            }
             case TokenType.OpenBracket:
             {
                 let open = this.lexer.token;
@@ -1434,7 +1523,7 @@ export class Parser {
                 }
                 else if (this.parseOperator(TokenType.Arrow)) {
                     if (!(expression = this.requireExpression())) return null;
-                    return new LambdaExpressionNode(identifier, expression).setRange(identifier.offset, expression.offset + expression.length - identifier.offset);
+                    return new LambdaExpressionNode([identifier], expression).setRange(identifier.offset, expression.offset + expression.length - identifier.offset);
                 }
                 return identifier;
             }
