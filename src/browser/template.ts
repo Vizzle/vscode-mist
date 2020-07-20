@@ -1,5 +1,5 @@
 import { ExpressionContext, ExpressionNode, None, LiteralNode, ParseResult, Parser, ExpressionError } from "./parser";
-import { IType, Type, Property, Method, Parameter, ArrowType, ArrayType, UnionType } from "./type";
+import { IType, Type, Property, Method, Parameter, ArrowType, ArrayType, UnionType, LiteralType } from "./type";
 import { functions } from "./functions";
 
 function isObject(obj: any) {
@@ -23,6 +23,17 @@ function getTypeFromString(name: string): IType {
             return new Parameter(components[0].trim(), getTypeFromString(components[1].trim()));
         });
         return new ArrowType(Type.getType(match[2]), params);
+    }
+    else {
+        try {
+            const result = Parser.parse(name)
+            if (result.expression && result.expression instanceof LiteralNode) {
+                return new LiteralType(result.expression.value)
+            }
+        }
+        catch (e) {
+
+        }
     }
     return Type.getType(name);
 }

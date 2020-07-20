@@ -1263,7 +1263,7 @@ export let functions = {
           },
           {
             "name": "type",
-            "type": "string"
+            "type": "'top' | 'right' | 'bottom' | 'left' | 'center'"
           }
         ],
         "return": "Node",
@@ -1279,7 +1279,7 @@ export let functions = {
           },
           {
             "name": "type",
-            "type": "string"
+            "type": "'top' | 'right' | 'bottom' | 'left'"
           }
         ],
         "return": "Node",
