@@ -6,7 +6,7 @@ import * as fs from 'fs'
 import { parseJson, getPropertyNode, getNodeValue } from './utils/json'
 import { ImageHelper } from "./imageHelper";
 import { LexerErrorCode } from "./browser/lexer";
-import { Type, IType, Method, Property, ArrayType, UnionType, ObjectType, IntersectionType } from "./browser/type";
+import { Type, IType, Method, Property, ArrayType, UnionType, ObjectType, IntersectionType, LiteralType } from "./browser/type";
 import { ExpressionContext, None, ExpressionNode, IdentifierNode, ExpressionErrorLevel } from "./browser/parser";
 import Snippets from "./snippets";
 import { parse, parseExpressionInObject } from "./browser/template";
@@ -95,6 +95,9 @@ let BUILTIN_VARS = [
     new Variable("_height_", Type.Number, "屏幕高度"),
     new Variable("_mistitem_", Type.Any, "当前模板对应的 item 对象"),
     new Variable("_controller_", Type.Any, "当前模板对应的 controller 对象"),
+    new Variable("_platform_", new UnionType(new LiteralType('iOS'), new LiteralType('Android')), "当前运行平台"),
+    new Variable("is_ios", Type.Boolean, "当前运行平台是否为 iOS"),
+    new Variable("is_android", Type.Boolean, "当前运行平台是否为 Android"),
     new Variable("system", Type.registerType(new Type('system')).registerPropertys({
         "name": new Property(Type.String, "系统名称"),
         "version": new Property(Type.String, "系统版本"),
