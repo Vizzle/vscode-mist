@@ -968,8 +968,9 @@ class FunctionExpressionNode extends ExpressionNode {
     getType(context: ExpressionContext): IType {
         let targetType: IType;
         if (!this.target) {
-            if (context.get(this.action.identifier)) {
-                return Type.Any;
+            const type = this.action.getType(context)
+            if (type instanceof ArrowType) {
+                return type.returnType
             }
         }
         if (this.target) {

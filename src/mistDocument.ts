@@ -6,7 +6,7 @@ import * as fs from 'fs'
 import { parseJson, getPropertyNode, getNodeValue } from './utils/json'
 import { ImageHelper } from "./imageHelper";
 import { LexerErrorCode } from "./browser/lexer";
-import { Type, IType, Method, Property, ArrayType, UnionType, ObjectType, IntersectionType, LiteralType } from "./browser/type";
+import { Type, IType, Method, Property, ArrayType, UnionType, ObjectType, IntersectionType, LiteralType, ArrowType } from "./browser/type";
 import { ExpressionContext, None, ExpressionNode, IdentifierNode, ExpressionErrorLevel } from "./browser/parser";
 import Snippets from "./snippets";
 import { parse, parseExpressionInObject } from "./browser/template";
@@ -844,7 +844,9 @@ export class MistDocument {
                 let exp = getCurrentExpression(expression);
                 let {prefix: prefix, function: func} = getPrefix(exp);
                 let type: IType;
-                let ctx = this.contextAtLocation(location);        
+                let ctx = this.contextAtLocation(location);
+                const varMethods: Record<string, Method[]> = {}
+                
                 if (prefix) {
                     type = this.expressionTypeWithContext(prefix, ctx.typeContext);
                 }
@@ -856,7 +858,12 @@ export class MistDocument {
                     items = items.concat(['true', 'false', 'null', 'nil'].map(s => new CompletionItem(s, vscode.CompletionItemKind.Keyword)));
 
                     ctx.vars.forEach(v => {
-                        let item = new CompletionItem(v.name, vscode.CompletionItemKind.Field);
+                        if (v.type instanceof ArrowType) {
+                            varMethods[v.name] = [new Method(v.type, v.description, v.type.params)]
+                            return
+                        }
+
+                        let item = new CompletionItem(v.name, vscode.CompletionItemKind.Variable);
                         item.detail = v.value !== None ? `"${v.name}": ${JSON.stringify(v.value, null, '\t')}` : `${v.name}: ${v.type.getName()}`;
                         let doc = [];
                         if (v.type && v.value === None) {
@@ -871,7 +878,7 @@ export class MistDocument {
                 }
                 if (type) {
                     let properties = type.getAllProperties();
-                    let methods = type.getAllMethods();
+                    let methods = { ...varMethods, ...type.getAllMethods() };
                     items = items.concat(Object.keys(properties).filter(isId).map(k => {
                         let p = properties[k];
                         let item = new vscode.CompletionItem(k, type === Type.Global ? vscode.CompletionItemKind.Constant : vscode.CompletionItemKind.Property);
@@ -1175,7 +1182,7 @@ export class MistDocument {
             if (prefix) {
                 type = this.expressionTypeWithContext(prefix, ctx.typeContext);
             }
-            else if (!isFunction) {
+            else {
                 let v = ctx.vars.find(v => v.name === func);
                 if (v) {
                     // if (v.value !== None) {
@@ -1188,10 +1195,11 @@ export class MistDocument {
                         contents.push(v.description);
                     }
                 }
+                else if (isFunction) {
+                    type = Type.Global
+                }
             }
-            else {
-                type = Type.Global;
-            }
+
             if (type) {
                 if (isFunction) {
                     let fun = type.getMethods(func);
@@ -1272,10 +1280,10 @@ export class MistDocument {
         if (prefix) {
             return null;
         }
-        let isFunction = document.getText(new vscode.Range(wordRange.end, wordRange.end.translate(0, 1))) === '(';
-        if (isFunction) {
-            return null;
-        }
+        // let isFunction = document.getText(new vscode.Range(wordRange.end, wordRange.end.translate(0, 1))) === '(';
+        // if (isFunction) {
+        //     return null;
+        // }
         let ctx = this.contextAtLocation(location);
         let index = findLastIndex(ctx.vars, v => v.name === name);
         if (index >= 0) {
