@@ -11,7 +11,7 @@ import { ExpressionContext, None, ExpressionNode, IdentifierNode, ExpressionErro
 import Snippets from "./snippets";
 import { parse, parseExpressionInObject } from "./browser/template";
 import { Schema, validateJsonNode, TypedNode } from "./schema";
-import { templateSchema, NodeSchema } from "./template_schema";
+import { templateSchema, NodeSchema, eventParamsMap } from "./template_schema";
 
 enum ExpType {
     Void,
@@ -1608,7 +1608,21 @@ export class MistDocument {
                     let keyNode = childrenNode.parent.children[0];
                     diagnostics.push(new vscode.Diagnostic(range(keyNode.offset, keyNode.length), '不存在属性 `children`', vscode.DiagnosticSeverity.Warning));
                 }
-                otherNodes.forEach(n => validateProperty(n, schema));
+                otherNodes.forEach(n => {
+                    const key = n.children[0].value
+                    if (typeof key !== 'string') return
+
+                    const isEvent = key.startsWith('on-')
+                    if (isEvent) {
+                        push('_event_', this.getEventParamsType(key))
+                    }
+
+                    validateProperty(n, schema)
+
+                    if (isEvent) {
+                        pop('_event_')
+                    }
+                });
             }
 
             if (node.children) {
@@ -1892,10 +1906,32 @@ export class MistDocument {
             }
         }
 
+        let inEvent = path.length > 0 && (path[0] as string).startsWith('on-')
+        if (inEvent) {
+            let eventParamsName = '_event_'
+            pushVariable(new Variable(eventParamsName, this.getEventParamsType(path[0] as string), '事件回调对象'))
+        }
+
         return {
             vars: Variable.unique(vars),
             typeContext: typeContext   
         };
+    }
+
+    private getEventParamsType(eventName: string) {
+        const eventType = Type.registerType(new Type('event').registerPropertys({
+            'sender': new Property(Type.getType('View'), '触发事件的 View，某些事件 View 可能为空'),
+        }))
+
+        eventName = eventName.replace(/-once$/, '')
+        const params = eventParamsMap[eventName]
+        if (params) {
+            Object.keys(params).forEach(k => {
+                eventType.registerProperty(k, new Property(params[k].type, params[k].description))
+            })
+        }
+
+        return eventType
     }
 
     private expressionTypeWithContext(expression: string, context: ExpressionContext) {

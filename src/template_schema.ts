@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { xhr, XHRResponse, getErrorStatusDescription } from 'request-light';
+import { Property, Type } from "./browser/type";
 
 type PropertyMap = {
     [name: string]: Schema;
@@ -526,6 +527,22 @@ const importSchemaProperties: SchemaObject['properties'] = {
         }
     },
     "children": childrenSchema
+}
+
+export const eventParamsMap: {
+    [eventName: string]: {
+        [name: string]: Property
+    }
+} = {
+    'on-switch': {
+        'detail': new Property(new Type('').registerProperty('current', new Property(Type.Number, '选中的页面索引')))
+    },
+    'on-after-layout': {
+        'node': new Property(Type.getType('Node'), '布局节点，可以获取或修改布局结果')
+    },
+    'on-link': {
+        'link': new Property(Type.String, '点击的链接')
+    }
 }
 
 const propertiesMap: { [type: string]: PropertyMap} = {
