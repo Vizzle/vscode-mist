@@ -915,6 +915,13 @@ class FunctionExpressionNode extends ExpressionNode {
     }
 
     computeValue(context: ExpressionContext) {
+        if (!this.target) {
+            const action = this.action.computeValue(context)
+            if (typeof action === 'function') {
+                return action(...this.parameters.map(p => p.computeValue(context)))
+            }
+        }
+
         let target = this.target ? this.target.computeValue(context) : Type.Global;
         if (target === null || target === undefined) {
             return null;
