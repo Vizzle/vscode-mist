@@ -681,6 +681,9 @@ var baselineFuncs: Record<string, BaselineFunc> = {
 function didLayout(layout) {
     var node = layout.node;
     layout.result = {
+        "visible": node.resultVisible,
+        "lines": node.resultLines,
+        "line": node.resultLine,
         "left": node.resultLeft,
         "top": node.resultTop,
         "width": node.resultWidth,
@@ -830,6 +833,7 @@ export function render(_layout, clientWidth: number, scale: number, images: stri
         if (cancellationToken.isCancelled()) return;
         function _render(l) {
             if (cancellationToken.isCancelled()) return;
+            if (!l.result.visible) return;
             var el = elementFromLayout(l);
             el.style.position = "absolute";
             el.classList.add('mist-node');
@@ -857,7 +861,10 @@ export function render(_layout, clientWidth: number, scale: number, images: stri
                         l.children[i].result.left -= borderWidth;
                         l.children[i].result.top -= borderWidth;
                     }
-                    el.appendChild(_render(l.children[i]));
+                    const child = _render(l.children[i])
+                    if (child) {
+                        el.appendChild(child);
+                    }
                 }
                 if (l.type === 'paging') {
                     setPagingIndicator(el, style, childrenCount);
