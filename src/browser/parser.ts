@@ -1129,7 +1129,10 @@ class LambdaExpressionNode extends ExpressionNode {
     }
 
     check(context: ExpressionContext) {
-        return this.expression.check(context);
+        this.parameters.forEach((p, i) => context.push(p.identifier, undefined))
+        const errors = this.expression.check(context);
+        this.parameters.forEach(p => context.pop(p.identifier))
+        return errors
     }
 }
 

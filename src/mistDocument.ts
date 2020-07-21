@@ -1443,13 +1443,18 @@ export class MistDocument {
 
                         if (scopeVars && scopeVars.length > 0) {
                             const ids: IdentifierNode[] = []
+                            const ctx = new TrackExpressionContext()
+                            for (const v of scopeVars) {
+                                ctx.push(v, true)
+                            }
+                            expNode.check(ctx)
                             expNode.visitNode(node => {
                                 if (node instanceof IdentifierNode) {
                                     ids.push(node)
                                 }
                             })
                             for (const id of ids) {
-                                if (scopeVars.indexOf(id.identifier) >= 0) {
+                                if (scopeVars.indexOf(id.identifier) >=0 && ctx.isAccessed(id.identifier)) {
                                     let start = exp.string.sourceIndex(id.offset);
                                     let end = exp.string.sourceIndex(id.offset + id.length);
                                     diagnostics.push(new vscode.Diagnostic(range(start + exp.offset + node.offset, end - start), `不能引用同一字典中定义的变量 \`${id.identifier}\`，由于 JSON 字典是无序处理的，会导致未定义行为。\n\n可以将 vars 定义为数组，如："vars": [{"a": 1}, {"b": "\${a}"}]`, vscode.DiagnosticSeverity.Error));
