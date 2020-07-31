@@ -5,9 +5,29 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { ImageInfo } from './browser/image';
 
+function tryReadDirSync(dir: string) {
+    try {
+        return fs.readdirSync(dir)
+    }
+    catch (e) {
+        console.error(`failed to read dir '${dir}'`)
+        return [];
+    }
+}
+
+function tryReadTextFileSync(file: string) {
+    try {
+        return fs.readFileSync(file, 'utf-8')
+    }
+    catch (e) {
+        console.error(`failed to read file '${file}'`)
+        return '';
+    }
+}
+
 function findXcodeProjectPath(dir: string) {
     while (dir.length > 1) {
-        let files = fs.readdirSync(dir);
+        let files = tryReadDirSync(dir);
         files = files.filter(f => f.endsWith('.xcodeproj'));
         if (files.length > 0) {
             return dir + '/' + files[0];
@@ -68,7 +88,7 @@ function getImageFiles(dir: string): ImageInfo[] {
     }
     dir = path.dirname(xcodeproj);
     let pbxprojPath = xcodeproj + '/project.pbxproj';
-    let pbxproj = fs.readFileSync(pbxprojPath).toString();
+    let pbxproj = tryReadTextFileSync(pbxprojPath);
     // let resourcesSection = readXcodeProjSection('PBXResourcesBuildPhase', pbxproj);
     let groupSection = readXcodeProjSection('PBXGroup', pbxproj);
     let groups = getGroups(groupSection);
@@ -103,11 +123,11 @@ function getImageFiles(dir: string): ImageInfo[] {
     resources = resources.map(r => dir + '/' + pathForId(r.id) + r.file);
     let images: ImageInfo[] = [];
     let readAssetsDir = dir => {
-        let files = fs.readdirSync(dir);
+        let files = tryReadDirSync(dir);
         files.forEach(f => {
             let file = dir + '/' + f;
             if (f.endsWith('.imageset')) {
-                let contentsJson = fs.readFileSync(file + '/Contents.json').toString();
+                let contentsJson = tryReadTextFileSync(file + '/Contents.json');
                 let contents = JSON.parse(contentsJson);
                 let imageList: any[] = contents.images || [];
                 let info = new ImageInfo(f.replace(/\.[^/.]+$/, ''), imageList.reduce((p, c) => { p[parseInt(c.scale)] = file + '/' + c.filename; return p; }, {}));
@@ -119,7 +139,7 @@ function getImageFiles(dir: string): ImageInfo[] {
         });
     }
     let readBundle = dir => {
-        let files = fs.readdirSync(dir);
+        let files = tryReadDirSync(dir);
         files.forEach(f => {
             let file = dir + '/' + f;
             let ext = path.extname(f);
