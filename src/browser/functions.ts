@@ -1397,7 +1397,22 @@ export let functions = {
           }
         ], 
         "return": "NSString*",
-        "js": (_this: string, target, replacement) => _this.replace(new RegExp(target, "mg"), replacement)
+        "js": (_this: string, target: string, replacement: string) => {
+          let index = 0;
+          let result = _this;
+          while (index <= result.length - target.length) {
+            index = result.indexOf(target, index)
+            if (index < 0) {
+              break
+            }
+            result = result.slice(0, index) + replacement + result.slice(index + target.length)
+            index += replacement.length
+            if (target === '') {
+              index += 1
+            }
+          }
+          return result
+        }
       }
     ], 
     "substring": [
