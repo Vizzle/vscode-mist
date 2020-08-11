@@ -1641,6 +1641,18 @@ export class MistDocument {
                 });
             }
 
+            if (getPropertyNode(node.node, 'type').value === 'image') {
+                const style = getPropertyNode(node.node, 'style')
+                if (style) {
+                    const hasClip = !!getPropertyNode(style, 'clip')
+                    const modeNode = getPropertyNode(style, 'content-mode')
+                    const mode = (modeNode && modeNode.value) || 'scale-to-fill'
+                    if (mode === 'scale-aspect-fill' && !hasClip) {
+                        diagnostics.push(new vscode.Diagnostic(range(modeNode.offset, modeNode.length), '设置 `scale-aspect-fill` 时，需要显式指定 clip 属性，一般设置为 true。 clip 默认为 false，可能导致图片绘制超出', vscode.DiagnosticSeverity.Warning))
+                    }
+                }
+            }
+
             if (node.children) {
                 node.children.forEach(validateNode);
             }
