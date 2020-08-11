@@ -200,7 +200,7 @@
     "mistc": "^1.0.6-beta.6",
     "request": "^2.88.2",
     "request-light": "^0.2.2",
-    "ws": "^1.1.1"
+    "ws": "^3.3.1"
   },
   "devDependencies": {
     "@types/mocha": "^2.2.32",
