@@ -49,100 +49,100 @@ export let functions = {
       {
         "params": [
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "m11"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "m12"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "m13"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "m14"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "m21"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "m22"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "m23"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "m24"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "m31"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "m32"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "m33"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "m34"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "m41"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "m42"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "m43"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "m44"
           }
         ], 
-        "return": "CATransform3D"
+        "return": "Transform"
       }, 
       {
         "params": [
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "a"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "b"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "c"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "d"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "tx"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "ty"
           }
         ], 
-        "return": "CATransform3D"
+        "return": "Transform"
       }
     ], 
     "point": [
@@ -157,22 +157,22 @@ export let functions = {
             "name": "y"
           }
         ], 
-        "return": "CGPoint"
+        "return": "Point"
       }
     ], 
     "concat": [
       {
         "params": [
           {
-            "type": "CATransform3D", 
+            "type": "Transform", 
             "name": "a"
           }, 
           {
-            "type": "CATransform3D", 
+            "type": "Transform", 
             "name": "b"
           }
         ], 
-        "return": "CATransform3D"
+        "return": "Transform"
       }
     ], 
     "pow": [
@@ -229,32 +229,32 @@ export let functions = {
       {
         "params": [
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "sx"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "sy"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "sz"
           }
         ], 
-        "return": "CATransform3D"
+        "return": "Transform"
       }, 
       {
         "params": [
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "sx"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "sy"
           }
         ], 
-        "return": "CATransform3D"
+        "return": "Transform"
       }
     ], 
     "E": [
@@ -287,47 +287,47 @@ export let functions = {
             "name": "height"
           }
         ], 
-        "return": "CGSize"
+        "return": "Size"
       }
     ], 
     "scale": [
       {
         "params": [
           {
-            "type": "CATransform3D", 
+            "type": "Transform", 
             "name": "t"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "sx"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "sy"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "sz"
           }
         ], 
-        "return": "CATransform3D"
+        "return": "Transform"
       }, 
       {
         "params": [
           {
-            "type": "CATransform3D", 
+            "type": "Transform", 
             "name": "t"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "sx"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "sy"
           }
         ], 
-        "return": "CATransform3D"
+        "return": "Transform"
       }
     ], 
     "log": [
@@ -419,43 +419,43 @@ export let functions = {
       {
         "params": [
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "tx"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "ty"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "tz"
           }
         ], 
-        "return": "CATransform3D"
+        "return": "Transform"
       }, 
       {
         "params": [
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "tx"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "ty"
           }
         ], 
-        "return": "CATransform3D"
+        "return": "Transform"
       }
     ], 
     "invert": [
       {
         "params": [
           {
-            "type": "CATransform3D", 
+            "type": "Transform", 
             "name": "t"
           }
         ], 
-        "return": "CATransform3D"
+        "return": "Transform"
       }
     ], 
     "m34": [
@@ -463,11 +463,11 @@ export let functions = {
         "comment": "单位矩阵设置 m34 的值，一般用于创建 3D 旋转", 
         "params": [
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "m34"
           }
         ], 
-        "return": "CATransform3D"
+        "return": "Transform"
       }
     ], 
     "inset": [
@@ -510,7 +510,7 @@ export let functions = {
         "comment": "设置指定行列的值，并返回新的矩阵", 
         "params": [
           {
-            "type": "CATransform3D", 
+            "type": "Transform", 
             "name": "transform"
           }, 
           {
@@ -522,11 +522,11 @@ export let functions = {
             "name": "column"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "value"
           }
         ], 
-        "return": "CATransform3D"
+        "return": "Transform"
       }
     ], 
     "color": [
@@ -574,7 +574,7 @@ export let functions = {
     "identity": [
       {
         "comment": "单位矩阵", 
-        "return": "CATransform3D"
+        "return": "Transform"
       }
     ], 
     "rgba": [
@@ -722,40 +722,40 @@ export let functions = {
       {
         "params": [
           {
-            "type": "CATransform3D", 
+            "type": "Transform", 
             "name": "t"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "angle"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "x"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "y"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "z"
           }
         ], 
-        "return": "CATransform3D"
+        "return": "Transform"
       }, 
       {
         "params": [
           {
-            "type": "CATransform3D", 
+            "type": "Transform", 
             "name": "t"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "angle"
           }
         ], 
-        "return": "CATransform3D"
+        "return": "Transform"
       }
     ], 
     "alert": [
@@ -777,15 +777,15 @@ export let functions = {
       {
         "params": [
           {
-            "type": "CGPoint", 
+            "type": "Point", 
             "name": "origin"
           }, 
           {
-            "type": "CGSize", 
+            "type": "Size", 
             "name": "size"
           }
         ], 
-        "return": "CGRect"
+        "return": "Rect"
       }, 
       {
         "params": [
@@ -806,7 +806,7 @@ export let functions = {
             "name": "height"
           }
         ], 
-        "return": "CGRect"
+        "return": "Rect"
       }
     ], 
     "trunc": [
@@ -837,40 +837,40 @@ export let functions = {
       {
         "params": [
           {
-            "type": "CATransform3D", 
+            "type": "Transform", 
             "name": "t"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "tx"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "ty"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "tz"
           }
         ], 
-        "return": "CATransform3D"
+        "return": "Transform"
       }, 
       {
         "params": [
           {
-            "type": "CATransform3D", 
+            "type": "Transform", 
             "name": "t"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "tx"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "ty"
           }
         ], 
-        "return": "CATransform3D"
+        "return": "Transform"
       }
     ], 
     "HUGENUM": [
@@ -914,32 +914,32 @@ export let functions = {
       {
         "params": [
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "angle"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "x"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "y"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "z"
           }
         ], 
-        "return": "CATransform3D"
+        "return": "Transform"
       }, 
       {
         "params": [
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "angle"
           }
         ], 
-        "return": "CATransform3D"
+        "return": "Transform"
       }
     ], 
     "fmod": [
@@ -1288,6 +1288,196 @@ export let functions = {
     ],
   },
   "View": {
+    "top": [
+      {
+        "isProp": true,
+        "return": "number"
+      }
+    ],
+    "right": [
+      {
+        "isProp": true,
+        "return": "number"
+      }
+    ],
+    "bottom": [
+      {
+        "isProp": true,
+        "return": "number"
+      }
+    ],
+    "left": [
+      {
+        "isProp": true,
+        "return": "number"
+      }
+    ],
+    "width": [
+      {
+        "isProp": true,
+        "return": "number"
+      }
+    ],
+    "height": [
+      {
+        "isProp": true,
+        "return": "number"
+      }
+    ],
+    "alpha": [
+      {
+        "isProp": true,
+        "return": "number"
+      }
+    ],
+    "translation": [
+      {
+        "isProp": true,
+        "return": "Point"
+      }
+    ],
+    "scale": [
+      {
+        "isProp": true,
+        "return": "Point"
+      }
+    ],
+    "rotation": [
+      {
+        "isProp": true,
+        "return": "number"
+      }
+    ],
+    "pivot": [
+      {
+        "isProp": true,
+        "return": "Point"
+      }
+    ],
+    "setTop": [
+      {
+        "params": [
+          {
+            "name": "top",
+            "type": "number"
+          }
+        ],
+        "return": "View"
+      }
+    ],
+    "setRight": [
+      {
+        "params": [
+          {
+            "name": "right",
+            "type": "number"
+          }
+        ],
+        "return": "View"
+      }
+    ],
+    "setBottom": [
+      {
+        "params": [
+          {
+            "name": "bottom",
+            "type": "number"
+          }
+        ],
+        "return": "View"
+      }
+    ],
+    "setLeft": [
+      {
+        "params": [
+          {
+            "name": "left",
+            "type": "number"
+          }
+        ],
+        "return": "View"
+      }
+    ],
+    "setWidth": [
+      {
+        "params": [
+          {
+            "name": "width",
+            "type": "number"
+          }
+        ],
+        "return": "View"
+      }
+    ],
+    "setHeight": [
+      {
+        "params": [
+          {
+            "name": "height",
+            "type": "number"
+          }
+        ],
+        "return": "View"
+      }
+    ],
+    "setAlpha": [
+      {
+        "params": [
+          {
+            "name": "alpha",
+            "type": "number"
+          }
+        ],
+        "return": "View"
+      }
+    ],
+    "setTranslation": [
+      {
+        "params": [
+          {
+            "name": "translation",
+            "type": "Point"
+          }
+        ],
+        "return": "View"
+      }
+    ],
+    "setScale": [
+      {
+        "comment": "设置缩放（以 pivot 为中心点）", 
+        "params": [
+          {
+            "name": "scale",
+            "type": "number|Point"
+          }
+        ],
+        "return": "View"
+      }
+    ],
+    "setRotation": [
+      {
+        "comment": "设置旋转（单位为角度，以 pivot 为中心点）", 
+        "params": [
+          {
+            "name": "rotation",
+            "type": "number"
+          }
+        ],
+        "return": "View"
+      }
+    ],
+    "setPivot": [
+      {
+        "comment": "设置旋转和缩放的中心点，相对于 View，单位为系统单位，例如 (0, 0) 表示左上角。默认为 View 的中心", 
+        "params": [
+          {
+            "name": "pivot",
+            "type": "Point"
+          }
+        ],
+        "return": "View"
+      }
+    ],
     "animation": [
       {
         "comment": "播放动画", 
@@ -1312,6 +1502,20 @@ export let functions = {
           }
         ], 
         "return": "View"
+      }
+    ]
+  },
+  "Point": {
+    "x": [
+      {
+        "isProp": true,
+        "return": "number"
+      }
+    ],
+    "y": [
+      {
+        "isProp": true,
+        "return": "number"
       }
     ]
   },
@@ -1957,12 +2161,12 @@ export let functions = {
   "UIImage": {
     "width": [
       {
-        "return": "CGFloat"
+        "return": "number"
       }
     ], 
     "aspectRatio": [
       {
-        "return": "CGFloat"
+        "return": "number"
       }
     ], 
     "imageWithContentMode_width_height": [
@@ -1973,11 +2177,11 @@ export let functions = {
             "name": "modeString"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "width"
           }, 
           {
-            "type": "CGFloat", 
+            "type": "number", 
             "name": "height"
           }
         ], 
@@ -1986,7 +2190,7 @@ export let functions = {
     ], 
     "height": [
       {
-        "return": "CGFloat"
+        "return": "number"
       }
     ]
   }
