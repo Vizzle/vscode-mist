@@ -1222,7 +1222,9 @@ export let functions = {
             "name": "endValue",
             "comment": "结束值。目前支持类型为数字和 Point"
           }
-        ]
+        ],
+        "return": "any",
+        "comment": "用于将 0~1 的值映射到另一个区间的值。例如：`lerp(0.5, 10, 20)` 为 15，`lerp(0.1, 10, 0)` 为 9"
       }
     ]
   }, 
