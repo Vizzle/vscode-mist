@@ -1640,8 +1640,9 @@ export class MistDocument {
                     }
                 });
             }
-
-            if (getPropertyNode(node.node, 'type').value === 'image') {
+            
+            const typeNode = getPropertyNode(node.node, 'type')
+            if (typeNode && typeNode.value === 'image') {
                 const style = getPropertyNode(node.node, 'style')
                 if (style) {
                     const hasClip = !!getPropertyNode(style, 'clip')

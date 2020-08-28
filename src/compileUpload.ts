@@ -8,6 +8,10 @@ export function registerMistTemplate(context: ExtensionContext) {
 
 function registerMistUpload(context: ExtensionContext) {
     let workingDir = workspace.rootPath;
+    if (!workingDir) {
+        console.warn('未打开文件夹，Mist 上传服务未启动')
+        return
+    }
     const file = path.join(workingDir, 'config.json')
     if (!fs.existsSync(file)) {
         commands.executeCommand('setContext', 'mist:hasConfig', false);
