@@ -1072,6 +1072,157 @@ export let functions = {
         ],
         "return": "void",
         "comment": "方便对同一个对象调用多次操作"
+      },
+      {
+        "params": [
+          {
+            "type": "any",
+            "name": "obj1"
+          },
+          {
+            "type": "any",
+            "name": "obj2"
+          },
+          {
+            "type": "(obj1: any, obj2: any) => void",
+            "name": "block"
+          }
+        ],
+        "return": "void",
+        "comment": "方便对同一个对象调用多次操作"
+      },
+      {
+        "params": [
+          {
+            "type": "any",
+            "name": "obj1"
+          },
+          {
+            "type": "any",
+            "name": "obj2"
+          },
+          {
+            "type": "any",
+            "name": "obj3"
+          },
+          {
+            "type": "(obj1: any, obj2: any, obj3: any) => void",
+            "name": "block"
+          }
+        ],
+        "return": "void",
+        "comment": "方便对同一个对象调用多次操作"
+      },
+      {
+        "params": [
+          {
+            "type": "any",
+            "name": "obj1"
+          },
+          {
+            "type": "any",
+            "name": "obj2"
+          },
+          {
+            "type": "any",
+            "name": "obj3"
+          },
+          {
+            "type": "any",
+            "name": "obj4"
+          },
+          {
+            "type": "(obj1: any, obj2: any, obj3: any, obj4: any) => void",
+            "name": "block"
+          }
+        ],
+        "return": "void",
+        "comment": "方便对同一个对象调用多次操作"
+      },
+      {
+        "params": [
+          {
+            "type": "any",
+            "name": "obj1"
+          },
+          {
+            "type": "any",
+            "name": "obj2"
+          },
+          {
+            "type": "any",
+            "name": "obj3"
+          },
+          {
+            "type": "any",
+            "name": "obj4"
+          },
+          {
+            "type": "any",
+            "name": "obj5"
+          },
+          {
+            "type": "(obj1: any, obj2: any, obj3: any, obj4: any, obj5: any) => void",
+            "name": "block"
+          }
+        ],
+        "return": "void",
+        "comment": "方便对同一个对象调用多次操作"
+      },
+      {
+        "params": [
+          {
+            "type": "any",
+            "name": "obj1"
+          },
+          {
+            "type": "any",
+            "name": "obj2"
+          },
+          {
+            "type": "any",
+            "name": "obj3"
+          },
+          {
+            "type": "any",
+            "name": "obj4"
+          },
+          {
+            "type": "any",
+            "name": "obj5"
+          },
+          {
+            "type": "any",
+            "name": "obj6"
+          },
+          {
+            "type": "(obj1: any, obj2: any, obj3: any, obj4: any, obj5: any, obj6: any) => void",
+            "name": "block"
+          }
+        ],
+        "return": "void",
+        "comment": "方便对同一个对象调用多次操作"
+      }
+    ],
+    "lerp": [
+      {
+        "params": [
+          {
+            "type": "number",
+            "name": "t",
+            "comment": "0~1 的值，只能为数字。超出 0~1 的数字会做截断"
+          },
+          {
+            "type": "number | Point",
+            "name": "beginValue",
+            "comment": "开始值。目前支持类型为数字和 Point"
+          },
+          {
+            "type": "number | Point",
+            "name": "endValue",
+            "comment": "结束值。目前支持类型为数字和 Point"
+          }
+        ]
       }
     ]
   }, 
@@ -1516,6 +1667,42 @@ export let functions = {
       {
         "isProp": true,
         "return": "number"
+      }
+    ]
+  },
+  "Controller": {
+    "getValue": [
+      {
+        "comment": "获取缓存值",
+        "params": [
+          {
+            "type": "string",
+            "name": "key"
+          }
+        ],
+        "return": "any",
+        "js": (_this, key) => {
+          return _this[key];
+        }
+      }
+    ],
+    "setValue": [
+      {
+        "comment": "设置缓存值",
+        "params": [
+          {
+            "type": "string",
+            "name": "key"
+          },
+          {
+            "type": "any",
+            "name": "value"
+          }
+        ],
+        "return": "void",
+        "js": (_this, key, value) => {
+          _this[key] = value;
+        }
       }
     ]
   },

@@ -537,6 +537,14 @@ export const eventParamsMap: {
     'on-switch': {
         'detail': new Property(new Type('').registerProperty('current', new Property(Type.Number, '选中的页面索引')))
     },
+    'on-scroll': {
+        'detail': new Property(new Type('')
+            .registerProperty('scrollLeft', new Property(Type.Number, '水平偏移'))
+            .registerProperty('scrollTop', new Property(Type.Number, '竖直偏移'))
+            .registerProperty('scrollWidth', new Property(Type.Number, '滚动内容宽度'))
+            .registerProperty('scrollHeight', new Property(Type.Number, '滚动内容高度'))
+            )
+    },
     'on-after-layout': {
         'node': new Property(Type.getType('Node'), '布局节点，可以获取或修改布局结果')
     },
@@ -614,6 +622,7 @@ const propertiesMap: { [type: string]: PropertyMap} = {
         "on-link": EventSchema("文本中的链接被点击时触发，可以使用 `_event_.link` 获取点击的链接。\n（链接通过在 `html-text` 属性中使用 `<a>` 标签插入）"),
     },
     scroll: {
+        "on-scroll": EventSchema("滚动时触发\n\nevent.detail = {scrollLeft, scrollTop, scrollHeight, scrollWidth}"),
         "children": childrenSchema,
     },
     paging: {

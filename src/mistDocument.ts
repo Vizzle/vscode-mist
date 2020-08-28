@@ -94,7 +94,7 @@ let BUILTIN_VARS = [
     new Variable("_width_", Type.Number, "屏幕宽度"),
     new Variable("_height_", Type.Number, "屏幕高度"),
     new Variable("_mistitem_", Type.Any, "当前模板对应的 item 对象"),
-    new Variable("_controller_", Type.Any, "当前模板对应的 controller 对象"),
+    new Variable("_controller_", Type.getType('Controller'), "当前模板对应的 controller 对象"),
     new Variable("_platform_", new UnionType(new LiteralType('iOS'), new LiteralType('Android')), "当前运行平台"),
     new Variable("is_ios", Type.Boolean, "当前运行平台是否为 iOS"),
     new Variable("is_android", Type.Boolean, "当前运行平台是否为 Android"),
