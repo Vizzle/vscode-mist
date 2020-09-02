@@ -1265,6 +1265,18 @@ export let functions = {
         "return": "number"
       }
     ],
+    "position": [
+      {
+        "isProp": true,
+        "return": "Point"
+      }
+    ],
+    "center": [
+      {
+        "isProp": true,
+        "return": "Point"
+      }
+    ],
     "visible": [
       {
         "isProp": true,
@@ -1437,6 +1449,22 @@ export let functions = {
         ],
         "return": "Node",
         "comment": "移动到 target 节点的旁边。type 为对齐方式，可选的值为 'top', 'right', 'bottom', 'left'。"
+      }
+    ],
+    "convertPoint": [
+      {
+        "params": [
+          {
+            "name": "target",
+            "type": "Node"
+          },
+          {
+            "name": "point",
+            "type": "Point"
+          }
+        ],
+        "return": "Point",
+        "comment": "将 point 从当前节点坐标系转换到 target 节点坐标系"
       }
     ],
   },
