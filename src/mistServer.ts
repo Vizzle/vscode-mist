@@ -283,10 +283,6 @@ function registerPushService(context: ExtensionContext) {
             data = JSON.parse(data)
             if (data.success == true) {
               vscode.window.showInformationMessage('模板已传输到手机.')
-              if (!noBizCode) {
-                const formData = generateFromData(filePaths, mistPath.base, templateContent)
-                postForm(deviceUrl, formData, () => {})
-              }
             } else if (data.message) {
               vscode.window.showErrorMessage('传输模板到手机失败：' + data.message)
             }
