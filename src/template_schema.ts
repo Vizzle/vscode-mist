@@ -1044,6 +1044,7 @@ const stylesMap: { [type: string]: PropertyMap} = {
             "scale-aspect-fill": "图片按短边缩放，图片能填满元素，可能显示不完全"
         }, "图片缩放模式\n\n[查看文档](https://vizzle.github.io/MIST/components/image.html#content-mode)"),
         "backing-view": SimpleSchema("string", "显示图片的 view 的类名"),
+        "tint-color": SimpleSchema("color", "改变图片的颜色，把整个图片修改为指定颜色（保留透明度）。对本地图和网络图都生效"),
     },
     scroll: {
         "scroll-direction": EnumSchema({
