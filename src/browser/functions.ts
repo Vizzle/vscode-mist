@@ -1907,6 +1907,13 @@ export let functions = {
         "return": "NSInteger",
         "js": (_this: string, str) => _this.indexOf(str)
       }
+    ],
+    "numberValue": [
+      {
+        "comment": "转换为数字",
+        "return": "number",
+        "js": (_this: string) => parseFloat(_this)
+      }
     ]
   }, 
   "NSDate": {
