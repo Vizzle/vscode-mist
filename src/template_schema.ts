@@ -63,7 +63,24 @@ SchemaFormat.registerFormat('event', {
                 { type: 'array', items: eventSchema }
             ]
         }
-        return validateJsonNode(node, eventSchema, offset, matchingSchemas);
+        const result = validateJsonNode(node, eventSchema, offset, matchingSchemas);
+
+        if (!json.findNodeAtLocation(node, ['type'])) {
+            for (const p of ['if', 'params', 'success', 'error', 'finish', 'result']) {
+                const n = json.findNodeAtLocation(node, [p]);
+                if (n) {
+                    result.push(new ValidationResult(`'${p}' 属性只能在 type 类型 Action 中使用。可以使用 invoke 将普通 Action 转为 type 类型，如：
+{
+  "type": "invoke",
+  "params": {
+    "openUrl": "xx"
+  }
+}`, n.parent.children[0], false))
+                }
+            }
+        }
+
+        return result;
     }
 });
 
