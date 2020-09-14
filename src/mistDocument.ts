@@ -117,6 +117,17 @@ let BUILTIN_VARS = [
         "isAlipay": new Property(Type.Boolean, "是否是支付宝客户端"),
         "isKoubei": new Property(Type.Boolean, "是否是口碑客户端"),
     }), "应用属性（暂仅支持 iOS）"),
+    new Variable("env", Type.registerType(new Type('env')).registerPropertys({
+        "screenWidth": new Property(Type.Number, "屏幕宽度"),
+        "screenHeight": new Property(Type.Number, "屏幕高度"),
+        "layoutWidth": new Property(Type.Number, "布局约束宽度，可能为 NAN"),
+        "layoutHeight": new Property(Type.Number, "布局约束高度，可能为 NAN"),
+        "scale": new Property(Type.Number, "屏幕像素密度"),
+        "statusBarHeight": new Property(Type.Number, "状态栏高度"),
+        "titleBarHeight": new Property(Type.Number, "导航栏高度"),
+        "systemVersion": new Property(Type.String, "系统版本"),
+        "appVersion": new Property(Type.String, "应用版本"),
+    }), "环境变量"),
 ];
 
 export class JsonStringError {
