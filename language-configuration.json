@@ -8,12 +8,13 @@
 		["[", "]"]
 	],
 	"autoClosingPairs": [
-		{ "open": "{", "close": "}" },
-		{ "open": "[", "close": "]" },
-		{ "open": "(", "close": ")" },
+		{ "open": "{", "close": "}", "notIn": ["comment"] },
+		{ "open": "[", "close": "]", "notIn": ["comment"] },
+		{ "open": "(", "close": ")", "notIn": ["comment"] },
 		{ "open": "\"", "close": "\"", "notIn": ["string", "comment"] },
 		{ "open": "/*", "close": "*/", "notIn": ["string", "comment"] }
 	],
+	"autoCloseBefore": ";:.,=}])>< \n\t\"",
 	"surroundingPairs": [
 		["{", "}"],
 		["[", "]"],

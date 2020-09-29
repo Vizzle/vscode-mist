@@ -39,18 +39,6 @@ export default class MistCompletionProvider implements vscode.CompletionItemProv
 
         let change = event.contentChanges[0];
 
-        if (change.text === '{') {
-            let prev = textEditor.document.getText(new vscode.Range(change.range.start.translate(0, -1), change.range.start));
-            if (prev === '$') {
-                textEditor.edit(edit => {
-                    edit.insert(change.range.end.translate(0, 1), '}')
-                }, { undoStopBefore: false, undoStopAfter: true }).then(() => {
-                    let pos = change.range.end.translate(0, 1);
-                    textEditor.selection = new vscode.Selection(pos, pos);
-                });
-            }
-        }
-
         if (!this.isTriggerCharacter(change.text)) {
             return;
         }
