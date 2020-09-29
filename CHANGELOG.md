@@ -1,5 +1,14 @@
 # 更新日志
 
+## 0.3.36 - 2020-09-29
+
+### Improve
+
+- 优化输入 `${` 自动插入 `}` 字符的体验，现在输入 `}` 后不会多一个 `}` 字符了
+- 增加在非 type 类型 Action 中使用 if 等属性的错误检查
+- Node 增加 `position`, `center`, `convertPoint()` 等定义
+- 增加 `tint-color`, `numberValue()`, `env` 等定义
+
 ## 0.3.35 - 2020-08-28
 
 ### Fix
