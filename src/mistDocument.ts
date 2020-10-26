@@ -1575,6 +1575,8 @@ export class MistDocument {
             }
             validateProperty(c, templateSchema);
         });
+
+        let hasAccessibilityDepth = 0;
         
         let validateNode = (node: MistNode) => {
             if (!node) return;
@@ -1633,7 +1635,7 @@ export class MistDocument {
                 let childrenNode = json.findNodeAtLocation(node.node, ['children']);
                 if (childrenNode && !schema.properties['children'] && schema.additionalProperties === false) {
                     let keyNode = childrenNode.parent.children[0];
-                    diagnostics.push(new vscode.Diagnostic(range(keyNode.offset, keyNode.length), '不存在属性 `children`', vscode.DiagnosticSeverity.Warning));
+                    diagnostics.push(new vscode.Diagnostic(nodeRange(keyNode), '不存在属性 `children`', vscode.DiagnosticSeverity.Warning));
                 }
                 otherNodes.forEach(n => {
                     const key = n.children[0].value
@@ -1651,23 +1653,58 @@ export class MistDocument {
                     }
                 });
             }
-            
+
+            const styleNode = getPropertyNode(node.node, 'style')
             const typeNode = getPropertyNode(node.node, 'type')
-            if (typeNode && typeNode.value === 'image') {
-                const style = getPropertyNode(node.node, 'style')
-                if (style) {
-                    const hasClip = !!getPropertyNode(style, 'clip')
-                    const modeNode = getPropertyNode(style, 'content-mode')
+            const type = typeNode && typeNode.value
+            if (type === 'image') {
+                if (styleNode) {
+                    const hasClip = !!getPropertyNode(styleNode, 'clip')
+                    const modeNode = getPropertyNode(styleNode, 'content-mode')
                     const mode = (modeNode && modeNode.value) || 'scale-to-fill'
                     if (mode === 'scale-aspect-fill' && !hasClip) {
-                        diagnostics.push(new vscode.Diagnostic(range(modeNode.offset, modeNode.length), '设置 `scale-aspect-fill` 时，需要显式指定 clip 属性，一般设置为 true。 clip 默认为 false，可能导致图片绘制超出', vscode.DiagnosticSeverity.Warning))
+                        diagnostics.push(new vscode.Diagnostic(nodeRange(modeNode), '设置 `scale-aspect-fill` 时，需要显式指定 clip 属性，一般设置为 true。 clip 默认为 false，可能导致图片绘制超出', vscode.DiagnosticSeverity.Warning))
                     }
+                }
+            }
+
+            // 无障碍检查
+            // 1. 对于非 text, button 类型的节点，如果打开了 is-accessibility-element，必须同时设置 accessibility-label，自行拼接朗读的文本
+            // 2. 嵌套的两个节点不能同时打开 is-accessibility-element
+            // 3. 有 on-tap 的节点必须设置 is-accessibility-element 属性（可以设置为 false）
+            const accessibilityCheckEnabled = this.template['disable-accessibility-check'] !== true
+            if (accessibilityCheckEnabled) {
+                const isA11yNode = getPropertyNode(styleNode, 'is-accessibility-element')
+                const a11yLabelNode = getPropertyNode(styleNode, 'accessibility-label')
+
+                if (isA11yNode && !a11yLabelNode && type !== 'text' && type !== 'button') {
+                    diagnostics.push(new vscode.Diagnostic(nodeRange(isA11yNode.parent.children[0]), '对于非 `text`, `button` 类型的节点，如果打开了 `is-accessibility-element`，必须同时设置 `accessibility-label`，自行拼接朗读的文本', vscode.DiagnosticSeverity.Error))
+                }
+
+                if (isA11yNode && isA11yNode.value === true) {
+                    if (hasAccessibilityDepth > 0) {
+                        diagnostics.push(new vscode.Diagnostic(nodeRange(isA11yNode), '嵌套的两个节点不能同时打开 `is-accessibility-element`', vscode.DiagnosticSeverity.Error))
+                    }
+                    hasAccessibilityDepth++;
+                }
+
+                const onTapNode = getPropertyNode(node.node, 'on-tap')
+                if (onTapNode && !isA11yNode) {
+                    diagnostics.push(new vscode.Diagnostic(nodeRange(onTapNode.parent.children[0]), '有 `on-tap` 的节点必须设置 `is-accessibility-element` 属性（可以设置为 false）', vscode.DiagnosticSeverity.Error))
                 }
             }
 
             if (node.children) {
                 node.children.forEach(validateNode);
             }
+
+            if (accessibilityCheckEnabled) {
+                const isA11yNode = getPropertyNode(node.node, 'is-accessibility-element')
+                if (isA11yNode && isA11yNode.value === true) {
+                    hasAccessibilityDepth--;
+                }
+            }
+
             pushed.forEach(pop);
         };
 

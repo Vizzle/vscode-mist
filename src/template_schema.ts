@@ -775,8 +775,9 @@ const stylesMap: { [type: string]: PropertyMap} = {
         "corner-radius-bottom-right": SimpleSchema("number", "右下角圆角半径\n\n[查看文档](https://vizzle.github.io/MIST/basics/Style.html#corner-radius)"),
         "user-interaction-enabled": SimpleSchema("boolean", "设置生成的 view 的userInteractionEnabled。默认不设置\n\n[查看文档](https://vizzle.github.io/MIST/basics/Style.html#user-interaction-enabled)"),
         "clip": SimpleSchema("boolean", "设置生成的 view 的 clipsToBounds\n\n[查看文档](https://vizzle.github.io/MIST/basics/Style.html#clip)"),
-        "is-accessibility-element": SimpleSchema("boolean", "是否为无障碍元素，如果为 true，则该元素与其子元素一起朗读，子元素不能再单独设置为无障碍元素"),
-        "accessibility-label": SimpleSchema("string", "无障碍模式下朗读的文本"),
+        "is-accessibility-element": SimpleSchema("boolean", "是否为无障碍元素，即是否可以获得焦点。嵌套的节点不能同时设置为 true，否则只有最外层的节点生效"),
+        "accessibility-label": SimpleSchema("string", "无障碍模式下朗读的文本。对于 text, button 元素会可以自动获取，其他类型元素需要手动设置"),
+        "disable-accessibility": SimpleSchema("string", "禁用自身及所有子节点的无障碍效果，无法获得焦点，也不被朗读"),
         "properties": {
             type: "object",
             additionalProperties: true,
@@ -1383,6 +1384,10 @@ export const templateSchema: Schema = parseSchema({
             "type": "object",
             "additionalProperties": EventSchema(),
             "description": "接收 native 通知"
+        },
+        "disable-accessibility-check": {
+            "type": "boolean",
+            "description": "关闭编辑器插件的无障碍规范检查",
         },
     }
 });
