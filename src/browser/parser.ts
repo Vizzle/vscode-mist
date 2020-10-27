@@ -72,9 +72,11 @@ enum UnaryOp {
 
 export class ExpressionContext {
     private table: { [key: string]: any[] };
+    public expVersion: number
 
-    constructor() {
+    constructor(expVersion: number = 1) {
         this.table = {};
+        this.expVersion = expVersion
     }
 
     push(key: string, value: any) {
@@ -139,8 +141,14 @@ export class ExpressionContext {
 
 }
 
-export function boolValue(obj: any): boolean {
-    if (obj === null || obj === undefined || obj === 0 || obj === '') {
+export function boolValue(obj: any, context: ExpressionContext): boolean {
+    if (obj === null || obj === '') {
+        if (context.expVersion >= 2) {
+            return false
+        }
+        return true
+    }
+    if (obj === undefined || obj === 0) {
         return false;
     }
     switch (typeof(obj)) {
@@ -484,7 +492,7 @@ class UnaryExpressionNode extends ExpressionNode {
         }
         switch (this.operator) {
             case UnaryOp.Not:
-                return !boolValue(r);
+                return !boolValue(r, context);
             case UnaryOp.Negative:
             {
                 if (isNumber(r)) {
@@ -503,7 +511,7 @@ class UnaryExpressionNode extends ExpressionNode {
         let r = this.oprand.computeValue(context);
         switch (this.operator) {
             case UnaryOp.Not:
-                return !boolValue(r);
+                return !boolValue(r, context);
             case UnaryOp.Negative:
             {
                 if (isNumber(r)) {
@@ -621,9 +629,9 @@ class BinaryExpressionNode extends ExpressionNode {
     
         // logical operation
         else if (BinaryOp.And === this.operator) {
-            return boolValue(value1) && boolValue(value2);
+            return boolValue(value1, context) && boolValue(value2, context);
         } else if (BinaryOp.Or === this.operator) {
-            return boolValue(value1) || boolValue(value2);
+            return boolValue(value1, context) || boolValue(value2, context);
         }
     
         if ((value1 && typeof(value1) !== 'number') || (value2 && typeof(value2) !== 'number')) {
@@ -666,6 +674,15 @@ class BinaryExpressionNode extends ExpressionNode {
     }
 
     computeValue(context: ExpressionContext) {
+        if (context.expVersion >= 2) {
+            if (BinaryOp.And === this.operator) {
+                return boolValue(this.oprand1.computeValue(context), context) && boolValue(this.oprand2.computeValue(context), context)
+            }
+            else if (BinaryOp.Or === this.operator) {
+                return boolValue(this.oprand1.computeValue(context), context) || boolValue(this.oprand2.computeValue(context), context)
+            }
+        }
+
         let value1 = this.oprand1.computeValue(context);
         let value2 = this.oprand2.computeValue(context);
 
@@ -705,9 +722,9 @@ class BinaryExpressionNode extends ExpressionNode {
     
         // logical operation
         else if (BinaryOp.And === this.operator) {
-            return boolValue(value1) && boolValue(value2);
+            return boolValue(value1, context) && boolValue(value2, context);
         } else if (BinaryOp.Or === this.operator) {
-            return boolValue(value1) || boolValue(value2);
+            return boolValue(value1, context) || boolValue(value2, context);
         }
     
         if ((value1 && typeof(value1) !== 'number') || (value2 && typeof(value2) !== 'number')) {
@@ -894,7 +911,7 @@ class FunctionExpressionNode extends ExpressionNode {
         }
         else {
             let type = Type.typeof(target);
-            let method = type.getMethod(this.action.identifier, this.parameters.length);
+            let method = type.getMethod(this.action.identifier, this.parameters.length, context);
             if (method && method.jsEquivalent) {
                 let params = this.parameters.map(p => p.compute(context));
                 if (params.some(p => p === None)) return None;
@@ -941,7 +958,7 @@ class FunctionExpressionNode extends ExpressionNode {
         }
         else {
             let type = Type.typeof(target);
-            let method = type.getMethod(this.action.identifier, this.parameters.length);
+            let method = type.getMethod(this.action.identifier, this.parameters.length, context);
             if (method && method.jsEquivalent) {
                 let params = this.parameters.map(p => p.computeValue(context));
                 if (target === Type.Global) {
@@ -983,7 +1000,7 @@ class FunctionExpressionNode extends ExpressionNode {
             return Type.Any;
         }
         if (this.parameters) {
-            let method = targetType.getMethod(this.action.identifier, this.parameters.length);
+            let method = targetType.getMethod(this.action.identifier, this.parameters.length, context);
             if (method) {
                 return method.type;
             }
@@ -1000,7 +1017,7 @@ class FunctionExpressionNode extends ExpressionNode {
             if (p) {
                 return p.type;
             }
-            let method = targetType.getMethod(this.action.identifier, 0);
+            let method = targetType.getMethod(this.action.identifier, 0, context);
             if (method) {
                 return method.type;
             }
@@ -1062,11 +1079,11 @@ class FunctionExpressionNode extends ExpressionNode {
         }
 
         if (this.parameters) {
-            let method = targetType.getMethod(this.action.identifier, this.parameters.length);
+            let method = targetType.getMethod(this.action.identifier, this.parameters.length, context);
             if (!method) {
                 let prop = targetType.getProperty(this.action.identifier);
                 if (this.parameters.length > 0 || !prop) {
-                    let methods = targetType.getMethods(this.action.identifier);
+                    let methods = targetType.getMethods(this.action.identifier, context);
                     if ((!methods || methods.length === 0) && !prop) {
                         errors.push(new ExpressionError(this.action, `${targetType === Type.Global ? '' : `类型 \`${this.simpleTypeName(targetType)}\` 上`}不存在方法 \`${this.action.identifier}\``));
                     }
@@ -1086,7 +1103,7 @@ class FunctionExpressionNode extends ExpressionNode {
         }
         else {
             let p = targetType.getProperty(this.action.identifier);
-            if (!p && !targetType.getMethod(this.action.identifier, 0)) {
+            if (!p && !targetType.getMethod(this.action.identifier, 0, context)) {
                 errors.push(new ExpressionError(this.action, `${targetType === Type.Global ? '' : `类型 \`${this.simpleTypeName(targetType)}\` 上`}不存在属性 \`${this.action.identifier}\``, ExpressionErrorLevel.Warning));
             }
         }

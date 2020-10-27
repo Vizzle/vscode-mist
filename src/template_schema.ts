@@ -1389,5 +1389,10 @@ export const templateSchema: Schema = parseSchema({
             "type": "boolean",
             "description": "关闭编辑器插件的无障碍规范检查",
         },
+        "exp-version": {
+            "type": "number",
+            "snippet": "2",
+            "description": "表达式版本\n\n[查看文档](https://yuque.antfin-inc.com/mist/doc/yqsn0x#185f7bf6)"
+        },
     }
 });

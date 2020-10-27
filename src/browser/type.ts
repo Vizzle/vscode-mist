@@ -1,3 +1,5 @@
+import { ExpressionContext } from "./parser";
+
 export class Parameter{
     name: string;
     type: IType;
@@ -14,6 +16,8 @@ export class Method {
     type?: IType;
     ownerType?: Type;
     description?: string;
+    minVersion?: number;
+    maxVersion?: number;
     params: Parameter[];
     jsEquivalent: (...params) => any;
 
@@ -120,8 +124,8 @@ export abstract class IType {
     public abstract getName(): string;
     public abstract getAllProperties(): { [name: string]: Property };
     public abstract getProperty(name: string): Property;
-    public abstract getAllMethods(): { [name: string]: Method[] };
-    public abstract getMethods(name: string): Method[];
+    public abstract getAllMethods(context: ExpressionContext): { [name: string]: Method[] };
+    public abstract getMethods(name: string, context: ExpressionContext): Method[];
     public getTypeAtIndex(index: IType): IType {
         return Type.Any;
     }
@@ -200,8 +204,8 @@ export abstract class IType {
         }
         return false;
     }
-    public getMethod(name: string, paramsCount: number): Method {
-        let methods = this.getMethods(name);
+    public getMethod(name: string, paramsCount: number, context: ExpressionContext): Method {
+        let methods = this.getMethods(name, context);
         if (methods) {
             return methods.find(m => m.params.length === paramsCount);
         }
@@ -283,6 +287,8 @@ export class Type extends IType {
     private methods: { [name: string]: Method[] };
     private classMethods: { [name: string]: Method[] };
 
+    private versionedMethodsCache = {}
+
     public static getType(name: string) {
         return this.types[name];
     }
@@ -304,22 +310,29 @@ export class Type extends IType {
         return this.properties;
     }
 
-    public getAllMethods(): { [name: string]: Method[] } {
-        return this.methods;
+    public getAllMethods(context: ExpressionContext): { [name: string]: Method[] } {
+        const expVersion = context.expVersion
+        let methods = this.versionedMethodsCache[expVersion]
+        if (!methods) {
+            methods = {}
+            for (const key in this.methods) {
+                const ms = this.methods[key]
+                const filteredMethods = ms.filter(m => (!m.maxVersion || m.maxVersion >= expVersion) && (!m.minVersion || m.minVersion <= expVersion))
+                if (filteredMethods.length > 0) {
+                    methods[key] = filteredMethods
+                }
+            }
+            this.versionedMethodsCache[expVersion] = methods;
+        }
+        return methods;
     }
 
     public getProperty(name: string) {
         return this.properties[name];
     }
 
-    public getMethods(name: string) {
-        return this.methods[name];
-    }
-
-    public getMethod(name: string, paramsCount: number) {
-        let methods = this.methods[name];
-        if (!methods) return null;
-        return methods.find(m => m.params.length === paramsCount);
+    public getMethods(name: string, context: ExpressionContext) {
+        return this.getAllMethods(context)[name];
     }
 
     public getClassMethods(name: string) {
@@ -361,11 +374,11 @@ export class LiteralType extends IType {
     public getProperty(name: string): Property {
         return Type.typeof(this.value).getProperty(name);
     }
-    public getAllMethods(): { [name: string]: Method[]; } {
-        return Type.typeof(this.value).getAllMethods();
+    public getAllMethods(context: ExpressionContext): { [name: string]: Method[]; } {
+        return Type.typeof(this.value).getAllMethods(context);
     }
-    public getMethods(name: string): Method[] {
-        return Type.typeof(this.value).getMethods(name);
+    public getMethods(name: string, context: ExpressionContext): Method[] {
+        return Type.typeof(this.value).getMethods(name, context);
     }
 }
 
@@ -473,8 +486,8 @@ export class IntersectionType extends CombinedType {
         }
     }
 
-    public getAllMethods(): { [name: string]: Method[] } {
-        let methodsList = this.types.map(t => t.getAllMethods());
+    public getAllMethods(context: ExpressionContext): { [name: string]: Method[] } {
+        let methodsList = this.types.map(t => t.getAllMethods(context));
         let names = [...new Set(methodsList.map(ms => Object.keys(ms)).reduce((p, c) => p.concat(c), []))];
         let methods = {};
         names.forEach(name => {
@@ -498,8 +511,8 @@ export class IntersectionType extends CombinedType {
         return methods;
     }
 
-    public getMethods(name: string): Method[] {
-        let ms = this.types.map(t => t.getMethods(name)).filter(p => p).reduce((p, c) => p.concat(c), []);
+    public getMethods(name: string, context: ExpressionContext): Method[] {
+        let ms = this.types.map(t => t.getMethods(name, context)).filter(p => p).reduce((p, c) => p.concat(c), []);
         ms = ms.reduce((p, c) => {
             let index = p.findIndex(name => Method.isSame(c, name));
             if (index >= 0) {
@@ -591,8 +604,8 @@ export class UnionType extends CombinedType {
         }
     }
 
-    public getAllMethods(): { [name: string]: Method[] } {
-        let methodsList = this.types.map(t => t.getAllMethods());
+    public getAllMethods(context: ExpressionContext): { [name: string]: Method[] } {
+        let methodsList = this.types.map(t => t.getAllMethods(context));
         let names = methodsList.map(ms => Object.keys(ms)).reduce((p, c) => p.filter(m => c.indexOf(m) >= 0, []));
         let methods = {};
         names.forEach(name => {
@@ -615,8 +628,8 @@ export class UnionType extends CombinedType {
         return methods;
     }
 
-    public getMethods(name: string): Method[] {
-        let msList = this.types.map(t => t.getMethods(name)).filter(p => p);
+    public getMethods(name: string, context: ExpressionContext): Method[] {
+        let msList = this.types.map(t => t.getMethods(name, context)).filter(p => p);
         if (msList.length === 0) return [];
         let ms = msList.slice(1).reduce((p, c) => {
             let ret = [];
@@ -680,12 +693,12 @@ export class ArrayType extends IType {
         return Type.getType('array').getProperty(name);
     }
 
-    public getAllMethods(): { [name: string]: Method[]; } {
-        return Type.getType('array').getAllMethods();
+    public getAllMethods(context: ExpressionContext): { [name: string]: Method[]; } {
+        return Type.getType('array').getAllMethods(context);
     }
 
-    public getMethods(name: string): Method[] {
-        return Type.getType('array').getMethods(name);
+    public getMethods(name: string, context: ExpressionContext): Method[] {
+        return Type.getType('array').getMethods(name, context);
     }
 
     public getTypeAtIndex(index: IType): IType {
@@ -773,12 +786,12 @@ export class ObjectType extends IType {
         return null;
     }
 
-    public getAllMethods(): { [name: string]: Method[]; } {
-        return Type.getType('object').getAllMethods();
+    public getAllMethods(context: ExpressionContext): { [name: string]: Method[]; } {
+        return Type.getType('object').getAllMethods(context);
     }
 
-    public getMethods(name: string): Method[] {
-        return Type.getType('object').getMethods(name);
+    public getMethods(name: string, context: ExpressionContext): Method[] {
+        return Type.getType('object').getMethods(name, context);
     }
 }
 

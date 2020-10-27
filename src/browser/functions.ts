@@ -2092,17 +2092,18 @@ export let functions = {
         "return": "NSArray*",
         "js": (_this: any[], array) => _this.concat(array)
       }
-    ], 
-    "slice": [
+    ],
+    "divide": [
       {
-        "comment": " 把数组分割成若干个指定元素个数的小数组\n\n `[1, 2, 3, 4, 5, 6, 7, 8].slice(3)`    =>      `[[1, 2, 3], [4, 5, 6], [7, 8]]`", 
+        "min-version": 2,
+        "comment": " 把数组分割成若干个指定元素个数的小数组\n\n `[1, 2, 3, 4, 5, 6, 7, 8].divide(3)`    =>      `[[1, 2, 3], [4, 5, 6], [7, 8]]`",
         "params": [
           {
-            "type": "NSUInteger", 
+            "type": "NSUInteger",
             "name": "count"
           }
-        ], 
-        "return": "NSArray*",
+        ],
+        "return": "array",
         "js": (_this: any[], count) => {
           let arrays = [];
           for (var i = 0; i < _this.length; i += count) {
@@ -2111,7 +2112,59 @@ export let functions = {
           return arrays;
         }
       }
-    ], 
+    ],
+    "slice": [
+      {
+        "max-version": 1,
+        "comment": " 把数组分割成若干个指定元素个数的小数组\n\n `[1, 2, 3, 4, 5, 6, 7, 8].slice(3)`    =>      `[[1, 2, 3], [4, 5, 6], [7, 8]]`",
+        "params": [
+          {
+            "type": "NSUInteger",
+            "name": "count"
+          }
+        ],
+        "return": "NSArray*",
+        "js": (_this: any[], count) => {
+          let arrays = [];
+          for (var i = 0; i < _this.length; i += count) {
+            arrays.push(_this.slice(i, Math.min(i + count, _this.length)))
+          }
+          return arrays;
+        }
+      },
+      {
+        "min-version": 2,
+        "comment": " 返回数组的一个片段\n\n `[1, 2, 3, 4, 5].slice(2)`    =>      `[3, 4, 5]`\n `[1, 2, 3, 4, 5].slice(-2)`    =>      `[4, 5]`",
+        "params": [
+          {
+            "type": "NSUInteger",
+            "name": "start"
+          }
+        ],
+        "return": "array",
+        "js": (_this: any[], start) => {
+          return _this.slice(start)
+        }
+      },
+      {
+        "min-version": 2,
+        "comment": " 返回数组的一个片段\n\n `[1, 2, 3, 4, 5].slice(2, 4)`    =>      `[3, 4]`\n `[1, 2, 3, 4, 5].slice(-3, -1)`    =>      `[3, 4]`",
+        "params": [
+          {
+            "type": "NSUInteger",
+            "name": "start"
+          },
+          {
+            "type": "NSUInteger",
+            "name": "end"
+          }
+        ],
+        "return": "array",
+        "js": (_this: any[], start, end) => {
+          return _this.slice(start, end)
+        }
+      }
+    ],
     "sub_array": [
       {
         "comment": " 返回给定范围内的子数组\n\n `[1, 2, 3, 4, 5].sub_array(0, 3)`      =>      `[1, 2, 3]`", 

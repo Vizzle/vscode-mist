@@ -54,7 +54,7 @@ suite("Extension Tests", () => {
                 let p = ps[n];
                 console.log(`${p.ownerType ? `${p.ownerType.getName()}.` : ''}${n}: ${p.type.getName()}`);
             });
-            let ms = t.getAllMethods();
+            let ms = t.getAllMethods(new ExpressionContext());
             Object.keys(ms).forEach(n => {
                 let m = ms[n];
                 m.forEach(p => console.log(`${p.ownerType ? `${p.ownerType.getName()}.` : ''}${n}(${p.params.map(p => `${p.name}: ${p.type.getName()}`)}): ${p.type.getName()}`));

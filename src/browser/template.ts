@@ -75,7 +75,10 @@ function registerTypes() {
                     type.registerProperty(fun, new Property(getType(info.return), doc))
                 }
                 else {
-                    type.registerMethod(fun, new Method(getType(info.return), doc, (info.params || []).map(p => new Parameter(p.name, getType(p.type) || Type.Any)), info.js));
+                    const method = new Method(getType(info.return), doc, (info.params || []).map(p => new Parameter(p.name, getType(p.type) || Type.Any)), info.js)
+                    method.minVersion = info['min-version']
+                    method.maxVersion = info['max-version']
+                    type.registerMethod(fun, method);
                 }
             });
         });
@@ -341,7 +344,7 @@ export function parseExpressionInObject(obj: any) {
 export function bindData(template: any, data: any, builtin: any) {
     if (!template) return { layout: {} };
     let parsedTemplate = parseExpressionInObject(template);
-    let valueContext = new ExpressionContext();
+    let valueContext = new ExpressionContext(template['exp-version'] || 1);
     let compute = obj => {
         if (obj instanceof ExpressionNode) {
             let value = obj.computeValue(valueContext);

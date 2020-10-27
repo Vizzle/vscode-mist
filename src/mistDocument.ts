@@ -658,8 +658,8 @@ function isId(str: string) {
 class TrackExpressionContext extends ExpressionContext {
     private accessed: { [key: string]: boolean[] };
 
-    constructor() {
-        super();
+    constructor(expVersion: number) {
+        super(expVersion);
         this.accessed = {};
     }
 
@@ -813,6 +813,10 @@ export class MistDocument {
         return vscode.workspace.rootPath;
     }
 
+    public getExpVersion(): number {
+        return this.template && this.template['exp-version'] || 1
+    }
+
     public provideCompletionItems(position: vscode.Position, token: vscode.CancellationToken) {
         NodeSchema.setCurrentDir(this.dir());
         let document = this.document;
@@ -889,7 +893,7 @@ export class MistDocument {
                 }
                 if (type) {
                     let properties = type.getAllProperties();
-                    let methods = { ...varMethods, ...type.getAllMethods() };
+                    let methods = { ...varMethods, ...type.getAllMethods(ctx.typeContext) };
                     items = items.concat(Object.keys(properties).filter(isId).map(k => {
                         let p = properties[k];
                         let item = new vscode.CompletionItem(k, type === Type.Global ? vscode.CompletionItemKind.Constant : vscode.CompletionItemKind.Property);
@@ -1119,42 +1123,6 @@ export class MistDocument {
 
     public provideHover(position: vscode.Position, token: vscode.CancellationToken): vscode.ProviderResult<vscode.Hover> {
         NodeSchema.setCurrentDir(this.dir());
-        function findNodeAtLocation(root: json.Node, path: json.JSONPath): json.Node {
-            if (!root) {
-                return void 0;
-            }
-            let node = root;
-            for (let segment of path) {
-                if (typeof segment === 'string') {
-                    if (node.type !== 'object') {
-                        return void 0;
-                    }
-                    let found = false;
-                    for (let propertyNode of node.children) {
-                        if (propertyNode.children[0].value === segment) {
-                            if (propertyNode.children.length >= 2) {
-                                node = propertyNode.children[1];
-                            }
-                            else {
-                                node = propertyNode;
-                            }
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (!found) {
-                        return void 0;
-                    }
-                } else {
-                    let index = <number>segment;
-                    if (node.type !== 'array' || index < 0 || index >= node.children.length) {
-                        return void 0;
-                    }
-                    node = node.children[index];
-                }
-            }
-            return node;
-        }
 
         let contentsFromProperty = (name: string, prop: Property): vscode.MarkedString[] => {
             let contents: vscode.MarkedString[] = [];
@@ -1213,7 +1181,7 @@ export class MistDocument {
 
             if (type) {
                 if (isFunction) {
-                    let fun = type.getMethods(func);
+                    let fun = type.getMethods(func, ctx.typeContext);
                     if (fun && fun.length > 0) {
                         let current;
                         if (fun.length > 1) {
@@ -1235,9 +1203,9 @@ export class MistDocument {
                         contents.push(...contentsFromProperty(func, prop));
                     }
                     else {
-                        let fun = type.getMethod(func, 0);
+                        let fun = type.getMethod(func, 0, ctx.typeContext);
                         if (fun && fun.type && fun.type !== Type.Void) {
-                            contents.push(...contentsFromMethod(func, fun, type.getMethods(func).length));
+                            contents.push(...contentsFromMethod(func, fun, type.getMethods(func, ctx.typeContext).length));
                         }
                     }
                 }
@@ -1330,7 +1298,7 @@ export class MistDocument {
                     return null;
                 }
 
-                let fun = type.getMethods(signatureInfo.function);
+                let fun = type.getMethods(signatureInfo.function, this.contextAtLocation(location).typeContext);
                 if (fun && fun.length > 0) {
                     let signatureHelp = new vscode.SignatureHelp();
                     signatureHelp.signatures = fun.map(f => {
@@ -1354,7 +1322,7 @@ export class MistDocument {
         this.parseTemplate();
         if (!this.template) return [];
         let vars: Variable[] = [];
-        let typeContext = new TrackExpressionContext();
+        let typeContext = new TrackExpressionContext(this.getExpVersion());
 
         let diagnostics = [];
 
@@ -1454,7 +1422,7 @@ export class MistDocument {
 
                         if (scopeVars && scopeVars.length > 0) {
                             const ids: IdentifierNode[] = []
-                            const ctx = new TrackExpressionContext()
+                            const ctx = new TrackExpressionContext(this.getExpVersion())
                             for (const v of scopeVars) {
                                 ctx.push(v, true)
                             }
@@ -1884,7 +1852,7 @@ export class MistDocument {
         typeContext: ExpressionContext
     } {
         let vars: Variable[] = [];
-        let typeContext = new ExpressionContext();
+        let typeContext = new ExpressionContext(this.getExpVersion());
 
         let pushVariable = (v: Variable, isConst: boolean = false) => {
             vars.push(v);
