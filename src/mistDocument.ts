@@ -1677,6 +1677,13 @@ export class MistDocument {
         };
 
         validateNode(this.nodeTree);
+
+        // 检查 exp-version
+        const layoutNode = getPropertyNode(this.rootNode, 'layout')
+        const expVersionNode = getPropertyNode(this.rootNode, 'exp-version')
+        if (layoutNode && (!expVersionNode || expVersionNode.value < 2)) {
+            diagnostics.push(new vscode.Diagnostic(nodeRange(expVersionNode || layoutNode.parent.children[0]), '建议使用新版本表达式，详见[文档](https://yuque.antfin-inc.com/mist/doc/yqsn0x#185f7bf6)', vscode.DiagnosticSeverity.Warning))
+        }
         
         return diagnostics;
     }
