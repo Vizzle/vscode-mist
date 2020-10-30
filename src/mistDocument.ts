@@ -1646,19 +1646,19 @@ export class MistDocument {
                 const a11yLabelNode = getPropertyNode(styleNode, 'accessibility-label')
 
                 if (isA11yNode && !a11yLabelNode && type !== 'text' && type !== 'button') {
-                    diagnostics.push(new vscode.Diagnostic(nodeRange(isA11yNode.parent.children[0]), '对于非 `text`, `button` 类型的节点，如果打开了 `is-accessibility-element`，必须同时设置 `accessibility-label`，自行拼接朗读的文本', vscode.DiagnosticSeverity.Error))
+                    diagnostics.push(new vscode.Diagnostic(nodeRange(isA11yNode.parent.children[0]), '【无障碍检查】对于非 `text`, `button` 类型的节点，如果打开了 `is-accessibility-element`，必须同时设置 `accessibility-label`，自行拼接朗读的文本\n\n*如果确定不需要进行无障碍适配，可以在模板根节点设置 `disable-accessibility-check` 属性关闭无障碍检查*', vscode.DiagnosticSeverity.Error))
                 }
 
                 if (isA11yNode && isA11yNode.value === true) {
                     if (hasAccessibilityDepth > 0) {
-                        diagnostics.push(new vscode.Diagnostic(nodeRange(isA11yNode), '嵌套的两个节点不能同时打开 `is-accessibility-element`', vscode.DiagnosticSeverity.Error))
+                        diagnostics.push(new vscode.Diagnostic(nodeRange(isA11yNode), '【无障碍检查】嵌套的两个节点不能同时打开 `is-accessibility-element`\n\n*如果确定不需要进行无障碍适配，可以在模板根节点设置 `disable-accessibility-check` 属性关闭无障碍检查*', vscode.DiagnosticSeverity.Error))
                     }
                     hasAccessibilityDepth++;
                 }
 
                 const onTapNode = getPropertyNode(node.node, 'on-tap')
                 if (onTapNode && !isA11yNode) {
-                    diagnostics.push(new vscode.Diagnostic(nodeRange(onTapNode.parent.children[0]), '有 `on-tap` 的节点必须设置 `is-accessibility-element` 属性（可以设置为 false）', vscode.DiagnosticSeverity.Error))
+                    diagnostics.push(new vscode.Diagnostic(nodeRange(onTapNode.parent.children[0]), '【无障碍检查】有 `on-tap` 的节点必须设置 `is-accessibility-element` 属性（可以设置为 false）\n\n*如果确定不需要进行无障碍适配，可以在模板根节点设置 `disable-accessibility-check` 属性关闭无障碍检查*', vscode.DiagnosticSeverity.Error))
                 }
             }
 
