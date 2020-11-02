@@ -1653,7 +1653,7 @@ export class MistDocument {
                     diagnostics.push(new vscode.Diagnostic(nodeRange(isA11yNode || a11yLabelNode), '【无障碍检查】如果设置了 `accessibility-label`，请同时设置 `is-accessibility-element: true`，否则是未定义行为，两端效果可能不一致\n\n*如果确定不需要进行无障碍适配，可以在模板根节点设置 `disable-accessibility-check` 属性关闭无障碍检查*', vscode.DiagnosticSeverity.Error))
                 }
 
-                if (isA11yNode && !a11yLabelNode && type !== 'text' && type !== 'button') {
+                if (isA11yNode && isA11yNode.value === true && !a11yLabelNode && type !== 'text' && type !== 'button') {
                     diagnostics.push(new vscode.Diagnostic(nodeRange(isA11yNode.parent.children[0]), '【无障碍检查】对于非 `text`, `button` 类型的节点，如果打开了 `is-accessibility-element`，必须同时设置 `accessibility-label`，自行拼接朗读的文本\n\n*如果确定不需要进行无障碍适配，可以在模板根节点设置 `disable-accessibility-check` 属性关闭无障碍检查*', vscode.DiagnosticSeverity.Error))
                 }
 
