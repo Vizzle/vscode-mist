@@ -1544,6 +1544,7 @@ export class MistDocument {
             validateProperty(c, templateSchema);
         });
 
+        const accessibilityCheckEnabled = this.template['disable-accessibility-check'] !== true
         let hasAccessibilityDepth = 0;
         
         let validateNode = (node: MistNode) => {
@@ -1640,10 +1641,17 @@ export class MistDocument {
             // 1. 对于非 text, button 类型的节点，如果打开了 is-accessibility-element，必须同时设置 accessibility-label，自行拼接朗读的文本
             // 2. 嵌套的两个节点不能同时打开 is-accessibility-element
             // 3. 有 on-tap 的节点必须设置 is-accessibility-element 属性（可以设置为 false）
-            const accessibilityCheckEnabled = this.template['disable-accessibility-check'] !== true
             if (accessibilityCheckEnabled) {
                 const isA11yNode = getPropertyNode(styleNode, 'is-accessibility-element')
                 const a11yLabelNode = getPropertyNode(styleNode, 'accessibility-label')
+
+                if (isA11yNode && isA11yNode.value !== true && isA11yNode.value !== false) {
+                    diagnostics.push(new vscode.Diagnostic(nodeRange(isA11yNode), '【无障碍检查】`is-accessibility-element` 应始终设置为常量，而不要使用表达式，只能设置为 true 或 false\n\n*如果确定不需要进行无障碍适配，可以在模板根节点设置 `disable-accessibility-check` 属性关闭无障碍检查*', vscode.DiagnosticSeverity.Error))
+                }
+
+                if (a11yLabelNode && (!isA11yNode || isA11yNode.value !== true)) {
+                    diagnostics.push(new vscode.Diagnostic(nodeRange(isA11yNode || a11yLabelNode), '【无障碍检查】如果设置了 `accessibility-label`，请同时设置 `is-accessibility-element: true`，否则是未定义行为，两端效果可能不一致\n\n*如果确定不需要进行无障碍适配，可以在模板根节点设置 `disable-accessibility-check` 属性关闭无障碍检查*', vscode.DiagnosticSeverity.Error))
+                }
 
                 if (isA11yNode && !a11yLabelNode && type !== 'text' && type !== 'button') {
                     diagnostics.push(new vscode.Diagnostic(nodeRange(isA11yNode.parent.children[0]), '【无障碍检查】对于非 `text`, `button` 类型的节点，如果打开了 `is-accessibility-element`，必须同时设置 `accessibility-label`，自行拼接朗读的文本\n\n*如果确定不需要进行无障碍适配，可以在模板根节点设置 `disable-accessibility-check` 属性关闭无障碍检查*', vscode.DiagnosticSeverity.Error))
@@ -1667,7 +1675,7 @@ export class MistDocument {
             }
 
             if (accessibilityCheckEnabled) {
-                const isA11yNode = getPropertyNode(node.node, 'is-accessibility-element')
+                const isA11yNode = getPropertyNode(styleNode, 'is-accessibility-element')
                 if (isA11yNode && isA11yNode.value === true) {
                     hasAccessibilityDepth--;
                 }

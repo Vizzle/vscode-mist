@@ -777,7 +777,7 @@ const stylesMap: { [type: string]: PropertyMap} = {
         "clip": SimpleSchema("boolean", "设置生成的 view 的 clipsToBounds\n\n[查看文档](https://vizzle.github.io/MIST/basics/Style.html#clip)"),
         "is-accessibility-element": SimpleSchema("boolean", "是否为无障碍元素，即是否可以获得焦点。嵌套的节点不能同时设置为 true，否则只有最外层的节点生效"),
         "accessibility-label": SimpleSchema("string", "无障碍模式下朗读的文本。对于 text, button 元素会可以自动获取，其他类型元素需要手动设置"),
-        "disable-accessibility": SimpleSchema("string", "禁用自身及所有子节点的无障碍效果，无法获得焦点，也不被朗读"),
+        "disable-accessibility": SimpleSchema("boolean", "禁用自身及所有子节点的无障碍效果，无法获得焦点，也不被朗读"),
         "properties": {
             type: "object",
             additionalProperties: true,
