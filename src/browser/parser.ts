@@ -309,6 +309,11 @@ export class ParenNode extends ExpressionNode {
         this.expression = expression;
     }
 
+    visitNode(visitor: NodeVisitor) {
+        super.visitNode(visitor)
+        this.expression.visitNode(visitor)
+    }
+
     compute(context: ExpressionContext) {
         return this.expression.compute(context);
     }
