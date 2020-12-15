@@ -116,11 +116,11 @@ function registerServer(context: ExtensionContext) {
   context.subscriptions.push(
     vscode.workspace.onDidSaveTextDocument((document) => {
 
-      if (isMistFile(document)) {
-        // Mist文件保存后自动触发推送到Android设备，免去手动点击Android机器人图标
-        pushTemplateToAndroid()
-        console.log("push template to Android: " + document.uri.path);
-      } 
+      // if (isMistFile(document)) {
+      //   // Mist文件保存后自动触发推送到Android设备，免去手动点击Android机器人图标
+      //   pushTemplateToAndroid()
+      //   console.log("push template to Android: " + document.uri.path);
+      // } 
 
       let validFormat = isMistFile(document) || document.uri.path.endsWith('.json')
       if (!validFormat || !server) {
