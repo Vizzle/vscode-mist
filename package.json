@@ -96,6 +96,24 @@
         }
       },
       {
+        "command": "mist.startiOS",
+        "title": "Connect to iOS Device",
+        "category": "Mist",
+        "icon": {
+          "light": "./media/light/apple-start.svg",
+          "dark": "./media/dark/apple-start.svg"
+        }
+      },
+      {
+        "command": "mist.stopiOS",
+        "title": "Disconnect to iOS Device",
+        "category": "Mist",
+        "icon": {
+          "light": "./media/light/apple-stop.svg",
+          "dark": "./media/dark/apple-stop.svg"
+        }
+      },
+      {
         "command": "mist.debugAndroid",
         "title": "Send To Android Phone",
         "category": "Mist",
@@ -142,9 +160,19 @@
           "group": "navigation@1"
         },
         {
+          "when": "editorLangId == mist && !mist:debugingiOS",
+          "command": "mist.startiOS",
+          "group": "navigation@2"
+        },
+        {
+          "when": "editorLangId == mist && mist:debugingiOS",
+          "command": "mist.stopiOS",
+          "group": "navigation@2"
+        },
+        {
           "when": "editorLangId == mist",
           "command": "mist.debugAndroid",
-          "group": "navigation@2"
+          "group": "navigation@3"
         },
         {
           "when": "editorLangId == mist",
@@ -181,6 +209,10 @@
           "type": "boolean",
           "default": false
         },
+        "mist.debugingiOS": {
+          "type": "boolean",
+          "default": false
+        },
         "mist.hasConfig": {
           "type": "boolean",
           "default": false
@@ -200,7 +232,9 @@
     "mistc": "^1.0.6-beta.6",
     "request": "^2.88.2",
     "request-light": "^0.2.2",
-    "ws": "^1.1.1"
+    "ws": "^1.1.1",
+    "qrcode": "^1.4.4",
+    "bonjour": "^3.5.0"
   },
   "devDependencies": {
     "@types/mocha": "^2.2.32",

@@ -6,11 +6,21 @@ import * as request from 'request'
 import * as vscode from 'vscode'
 import { commands, ExtensionContext } from 'vscode'
 import { isMistFile } from './previewProvider'
+import * as QRCode from 'qrcode'
+import * as os from 'os'
+import * as bonjour from 'bonjour'
 
 export let stopServerFunc: () => void
 
+let iOSConfig = {
+  debugingiOS: false,
+  clientAddress: undefined,
+  clientPort: 10002
+}
+
 enum CommandContext {
-  IsDebugging = 'mist:isDebugging'
+  IsDebugging = 'mist:isDebugging',
+  DebugingiOS = 'mist:debugingiOS'
 }
 
 function setCommandContext(key: CommandContext | string, value: any) {
@@ -40,9 +50,15 @@ function registerServer(context: ExtensionContext) {
 
       let serverPort = 10001
       server = http.createServer(async (req, res) => {
-        clientAddress = req.connection.remoteAddress
         output.appendLine(`> ${req.method}\t${req.url}`)
+        if (req.url === "/") {
+          res.writeHead(200, { 'Content-Type': 'text/plain;charset=utf-8' })
+          res.end("It works!")
+          return
+        }
 
+        clientAddress = req.connection.remoteAddress
+        
         const file = path.join(workingDir, req.url)
         try {
           if (!fs.existsSync(file)) {
@@ -83,7 +99,7 @@ function registerServer(context: ExtensionContext) {
           res.end(content)
         } catch (e) {
           res.writeHead(404)
-          res.end()
+          res.end(`'${file}' file not found`)
         }
       })
 
@@ -100,9 +116,34 @@ function registerServer(context: ExtensionContext) {
 
       server.listen(serverPort, '0.0.0.0', function () {
         setCommandContext(CommandContext.IsDebugging, true)
+        const nets = os.networkInterfaces()
+        let localAddress = undefined
+        if (nets.hasOwnProperty('en0')) {
+          for (let index = 0; index < nets.en0.length; index++) {
+            const net = nets.en0[index];
+            if (net.family === 'IPv4' && !net.internal) {
+              localAddress = net.address
+              break
+            }
+          }
+        }
+
         output = vscode.window.createOutputChannel('Mist Debug Server')
         output.show()
-        output.appendLine(`> Start mist debug server at 127.0.0.1:${serverPort}`)
+        output.appendLine(`> Start mist debug server at http://${localAddress? localAddress : "127.0.0.1"}:${serverPort}`)
+        if (localAddress) {
+          const qrcodePath = '/tmp/mist.png'
+          let config = {
+            ip: localAddress,
+            port: String(serverPort)
+          }
+          QRCode.toFile(qrcodePath, JSON.stringify(config))
+          output.appendLine('> 如果使用设备调试，记得配置调试参数，或者扫码配置。')
+          output.appendLine(`> QRCode: file://${qrcodePath}  ← Please hold command and click`)
+        } else {
+          output.appendLine('Can\'t find local address')
+        }
+        
       })
     })
   )
@@ -123,7 +164,16 @@ function registerServer(context: ExtensionContext) {
       // } 
 
       let validFormat = isMistFile(document) || document.uri.path.endsWith('.json')
-      if (!validFormat || !server) {
+      if (!validFormat) {
+        return
+      }
+
+      
+      if (iOSConfig.debugingiOS) {
+        pushTemplateToiOS(document.fileName)
+      }
+
+      if (!server) {
         return
       }
       let clientPort = 10002
@@ -138,6 +188,7 @@ function registerServer(context: ExtensionContext) {
         console.log(`SIMULATOR NOT RESPONSE: ${e.message}\n`)
       })
       req.end()
+
     })
   )
 
@@ -216,6 +267,41 @@ function registerPushService(context: ExtensionContext) {
   context.subscriptions.push(
     commands.registerCommand('mist.debugAndroid', (args) => {
       pushTemplateToAndroid()
+    })
+  )
+
+  let browser
+  context.subscriptions.push(
+    commands.registerCommand('mist.startiOS', (args) => {
+      setCommandContext(CommandContext.DebugingiOS, true)
+      iOSConfig.debugingiOS = true
+      if (browser) {
+        browser.stop()
+      }
+      browser = bonjour().find({ type: 'mistdev', protocol: 'tcp' }, function (service) {
+        let address = service.referer.address
+        vscode.window.showInformationMessage(`检查到可调式设备 ${address} (${service.name})，是否连接？`, "连接", "忽略")
+        .then((selected) => {
+          if ('连接' !== selected) {
+            return
+          }
+          iOSConfig.clientAddress = address
+          uppdateClientAddress(address)
+          vscode.window.showInformationMessage(`成功连接到设备 ${address}`)
+        })
+      })
+    })
+  )
+
+  context.subscriptions.push(
+    commands.registerCommand('mist.stopiOS', (args) => {
+      setCommandContext(CommandContext.DebugingiOS, false)
+      iOSConfig.debugingiOS = false
+      iOSConfig.clientAddress = undefined
+      if (browser) {
+        browser.stop()
+        browser = null
+      }
     })
   )
 }
@@ -304,6 +390,74 @@ function pushTemplateToAndroid(){
         }
       })
     })
+}
+
+function showErrorAndEdit(message) {
+  vscode.window.showErrorMessage(`${message}，是否手动配置？`, "配置", "忽略")
+    .then((selected) => {
+      if ('配置' !== selected) {
+        return
+      }
+      let configFile = `${os.homedir()}/mist_config.json`
+      insertInEditor(configFile, 'deviceIp')
+    })
+}
+
+function readClientAddress() {
+  let configFile = `${os.homedir()}/mist_config.json`
+  let config
+  try {
+    config = JSON.parse(fs.readFileSync(configFile, 'utf-8'))
+  } catch (e) {
+    vscode.window.showErrorMessage('请确保config.json文件内容格式为JSON。')
+    return undefined
+  }
+  return config.deviceIp
+}
+
+function uppdateClientAddress(address) {
+  let configFile = `${os.homedir()}/mist_config.json`
+  let config
+  try {
+    config = JSON.parse(fs.readFileSync(configFile, 'utf-8'))
+  } catch (e) {
+    openEditor(configFile)
+    vscode.window.showErrorMessage('请确保config.json文件内容格式为JSON。')
+    return
+  }
+  config.deviceIp = address
+  fs.writeFileSync(configFile, JSON.stringify(config), 'utf-8')
+}
+
+function pushTemplateToiOS(filePath) {
+  if (!iOSConfig.clientAddress) {
+    iOSConfig.clientAddress = readClientAddress()
+  }
+  if (!iOSConfig.clientAddress) {
+    // 手动选择设备
+    showErrorAndEdit('没有已连接的手机')
+    return
+  }
+  let templateName = filePath.substr(filePath.lastIndexOf('/')+1)
+  vscode.window.showInformationMessage(`${templateName} => ${iOSConfig.clientAddress}`)
+  compile(filePath, { platform: 'ios', debug: true }).then(function(templateContent) {
+    const formData = generateFromData([], templateName, templateContent)
+    const deviceUrl = `http://${iOSConfig.clientAddress}:${iOSConfig.clientPort}/update`
+    postForm(deviceUrl, formData, (err, res, data) => {
+      if (err) {
+        showErrorAndEdit(`请求手机失败 ${iOSConfig.clientAddress}：${err}`)
+      } else if (data) {
+        data = JSON.parse(data)
+        if (data.success == true) {
+          vscode.window.showInformationMessage('模板已传输到手机.')
+        } else if (data.message) {
+          vscode.window.showErrorMessage('传输模板到手机失败：' + data.message)
+        }
+      } else {
+        vscode.window.showErrorMessage('传输模板到手机失败: 未知错误!')
+      }
+    })
+  })
 }
 
 /**
