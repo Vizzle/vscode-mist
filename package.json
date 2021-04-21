@@ -2,7 +2,7 @@
   "name": "mist",
   "displayName": "Mist",
   "description": "Language support for Mist",
-  "version": "0.3.43",
+  "version": "0.3.44",
   "publisher": "Sleen",
   "engines": {
     "vscode": "^1.33.0"
@@ -243,7 +243,7 @@
     "mocha": "^2.3.3",
     "ts-loader": "^6.0.0",
     "typescript": "^2.0.3",
-    "vscode": "^1.0.0",
+    "vscode": "^1.1.37",
     "webpack": "^4.31.0",
     "webpack-cli": "^3.3.2"
   }
