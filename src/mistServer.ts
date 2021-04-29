@@ -440,21 +440,33 @@ function pushTemplateToiOS(filePath) {
   }
   let templateName = filePath.substr(filePath.lastIndexOf('/')+1)
   vscode.window.showInformationMessage(`${templateName} => ${iOSConfig.clientAddress}`)
-  compile(filePath, { platform: 'ios', debug: true }).then(function(templateContent) {
+
+  compile(filePath, { platform: 'ios', debug: true })
+  .then(function(templateContent) {
     const formData = generateFromData([], templateName, templateContent)
     const deviceUrl = `http://${iOSConfig.clientAddress}:${iOSConfig.clientPort}/update`
     postForm(deviceUrl, formData, (err, res, data) => {
       if (err) {
         showErrorAndEdit(`请求手机失败 ${iOSConfig.clientAddress}：${err}`)
       } else if (data) {
-        data = JSON.parse(data)
-        if (data.success == true) {
+        const parsedData = JSON.parse(data)
+        if (parsedData.success == true) {
           vscode.window.showInformationMessage('模板已传输到手机.')
-        } else if (data.message) {
-          vscode.window.showErrorMessage('传输模板到手机失败：' + data.message)
+        } else if (parsedData.message) {
+          vscode.window.showErrorMessage(`传输模板到手机失败：${parsedData.message}`)
+        } else {
+          vscode.window.showErrorMessage(`传输出错：${data}`)
         }
       } else {
         vscode.window.showErrorMessage('传输模板到手机失败: 未知错误!')
+      }
+    })
+  })
+  .catch(function(e) {
+    vscode.window.showErrorMessage(`'${filePath}' 模板编译失败，请修复错误后重新请求。${e}`, '打开该模板').then(async r => {
+      const doc = await vscode.workspace.openTextDocument(filePath)
+      if (doc) {
+        vscode.window.showTextDocument(doc)
       }
     })
   })
