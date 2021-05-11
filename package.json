@@ -96,21 +96,12 @@
         }
       },
       {
-        "command": "mist.startiOS",
-        "title": "Connect to iOS Device",
+        "command": "mist.debugIOS",
+        "title": "Send To iPhone",
         "category": "Mist",
         "icon": {
-          "light": "./media/light/apple-start.svg",
-          "dark": "./media/dark/apple-start.svg"
-        }
-      },
-      {
-        "command": "mist.stopiOS",
-        "title": "Disconnect to iOS Device",
-        "category": "Mist",
-        "icon": {
-          "light": "./media/light/apple-stop.svg",
-          "dark": "./media/dark/apple-stop.svg"
+          "light": "./media/light/ios.svg",
+          "dark": "./media/dark/ios.svg"
         }
       },
       {
@@ -160,13 +151,8 @@
           "group": "navigation@1"
         },
         {
-          "when": "editorLangId == mist && !mist:debugingiOS",
-          "command": "mist.startiOS",
-          "group": "navigation@2"
-        },
-        {
-          "when": "editorLangId == mist && mist:debugingiOS",
-          "command": "mist.stopiOS",
+          "when": "editorLangId == mist",
+          "command": "mist.debugIOS",
           "group": "navigation@2"
         },
         {
@@ -206,10 +192,6 @@
       "title": "Mist",
       "properties": {
         "mist.isDebugging": {
-          "type": "boolean",
-          "default": false
-        },
-        "mist.debugingiOS": {
           "type": "boolean",
           "default": false
         },
