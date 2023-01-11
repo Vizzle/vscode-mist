@@ -222,7 +222,7 @@
     "@types/mocha": "^2.2.32",
     "@types/node": "^6.0.40",
     "@types/ws": "0.0.36",
-    "mocha": "^2.3.3",
+    "mocha": "^10.2.0",
     "ts-loader": "^6.0.0",
     "typescript": "^2.0.3",
     "vscode": "^1.1.37",
